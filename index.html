@@ -1,1 +1,67 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SADC SME Credit Portal</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 20px; }
+    .form-container { background: #fff; padding: 20px; max-width: 600px; margin: auto; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #003366; text-align: center; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
+    button { margin-top: 20px; background: #003366; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; cursor: pointer; }
+    button:hover { background: #0052a3; }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>SME Credit Data Submission</h2>
+    <form id="creditForm">
+      <label for="name">Company Name</label>
+      <input type="text" id="name" required>
+
+      <label for="taxID">Tax Identification Number</label>
+      <input type="text" id="taxID" required>
+
+      <label for="country">Country</label>
+      <input type="text" id="country" required>
+
+      <label for="financials">Financial Summary</label>
+      <textarea id="financials" required></textarea>
+
+      <label for="docURL">Document URL (PDF)</label>
+      <input type="url" id="docURL" required>
+
+      <button type="submit">Submit Credit Record</button>
+    </form>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    document.getElementById("creditForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById("name").value,
+        taxID: document.getElementById("taxID").value,
+        country: document.getElementById("country").value,
+        financials: document.getElementById("financials").value,
+        docURL: document.getElementById("docURL").value
+      };
+
+      document.getElementById("status").innerText = "Submitting to blockchain...";
+
+      const res = await fetch("http://localhost:3000/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      document.getElementById("status").innerText = result.message || "Submitted successfully!";
+    });
+  </script>
+</body>
+</html>
+

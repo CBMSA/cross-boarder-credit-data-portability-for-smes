@@ -1,0 +1,12 @@
+# File: move_contracts/Move.toml
+
+[package]
+name = "sadc_credit"
+authors = ["CBM SARB <cbmsarb@sadc.int>"]
+version = "0.0.1"
+
+[dependencies]
+sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "devnet" }
+
+[addresses]
+sadc_credit = "0x0"

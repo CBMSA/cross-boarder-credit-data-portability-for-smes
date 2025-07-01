@@ -23,7 +23,10 @@
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/South_African_Reserve_Bank_Logo.svg/2560px-South_African_Reserve_Bank_Logo.svg.png" alt="SARB Logo">
       <img src="https://www.sadc.int/sites/default/files/images/sadc_logo.png" alt="SADC Logo">
     </div>
-
+<nav>
+  <a href="index.html">Credit Data</a>
+  <a href="transactions.html">Transactions  Payments</a>
+</nav>
     <div class="card p-4 mb-4">
       <h3 class="text-center">SADC Wallet Login</h3>
       <p class="text-muted text-center">Biometric login required (WebAuthn/Device fingerprint)</p>

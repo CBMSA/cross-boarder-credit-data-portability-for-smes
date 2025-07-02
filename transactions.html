@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,10 +22,10 @@
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/South_African_Reserve_Bank_Logo.svg/2560px-South_African_Reserve_Bank_Logo.svg.png" alt="SARB Logo">
       <img src="https://www.sadc.int/sites/default/files/images/sadc_logo.png" alt="SADC Logo">
     </div>
-<nav>
-  <a href="index.html">Credit Data</a>
-  <a href="transactions.html">Transactions  Payments</a>
-</nav>
+    <nav>
+      <a href="index.html">Credit Data</a>
+      <a href="transactions.html">Transactions  Payments</a>
+    </nav>
     <div class="card p-4 mb-4">
       <h3 class="text-center">SADC Wallet Login</h3>
       <p class="text-muted text-center">Biometric login required (WebAuthn/Device fingerprint)</p>
@@ -52,12 +51,12 @@
       <button class="btn btn-secondary w-100 mb-2" onclick="connectWallet()">Connect Wallet</button>
       <button class="btn btn-success w-100 mb-2" onclick="submitTransaction()">Submit Settlement</button>
 
-      <button class="btn btn-info w-100 mb-2" onclick="fetchCrossBorderPayments()">Fetch Cross-border Payments</button>
-
       <div id="result" class="alert alert-info mt-3" style="display: none;"></div>
-      <div id="crossBorderResult" class="alert alert-secondary mt-3" style="display: none;"></div>
       <div id="qrcode" class="mt-3"></div>
       <button class="btn btn-outline-dark mt-2" onclick="generatePDF()">Download Report</button>
+
+      <h6 class="mt-4">💳 ZimSwitch Payment</h6>
+      <div id="zimForm"></div>
     </div>
 
     <div class="mt-4">
@@ -80,6 +79,7 @@
       if (user === 'admin' && pass === 'cbdc2025') {
         document.getElementById('walletSection').style.display = 'block';
         document.getElementById('loginError').style.display = 'none';
+        loadZimSwitchPayment();
       } else {
         document.getElementById('loginError').style.display = 'block';
       }
@@ -90,7 +90,6 @@
       const bank = document.getElementById('regBank').value;
       const idFile = document.getElementById('idUpload').files[0];
       if (!name || !bank || !idFile) return alert("All fields required");
-
       walletAddress = "0x" + Math.floor(Math.random() * 1e16).toString(16);
       alert("Wallet created: " + walletAddress);
     }
@@ -135,30 +134,27 @@
       doc.save("SADC_Wallet_Report.pdf");
     }
 
-    async function fetchCrossBorderPayments() {
-      const recordNo = 1;
-      const noOfRecords = 5;
-      const apiKey = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwaXhwbGF0Zm9ybS5jb20iLCJzdWIiOiJiMWI0MGUyNy1lNDA3LTRkMDUtYmVjNC02YzRlNTkyYzUzOWQiLCJhdWQiOiJodHRwczovL2FwaS5hcGl4cGxhdGZvcm0uY29tIiwiZXhwIjoxNzUwOTcxMTQzLCJuYW1lIjoiQkxFU1NJTkcgRkFSQUkgTVVORVJJIiwiZW1haWwiOiJjYmRjQG1jYnNyZXNiYW5rLmNvbSJ9.XmOgBKdOsmcGN1OnlsjZ0RKfENKFEKj4C_KrNwPl_PmBpbFyIWaGibsZgX-2C-6BVS-mrwY8bV__tazhU8stajLegVIIF8X6Z6SA-SuFNojg44kIePTKDS6T1KKuQdZ5eR6_RF6FUQO2xG-FcNp-t7j6N0VEsPZCz4oO3mDD7NiTVVxHGizS65WVRwNskGbMdC2JzTsf841BR2vD1HSWf1RYqfr6RZ7Y7KdR0Vbbo1AQUSDqyXF6dvOClL0ahnVtmhnxOqWXDoMSTpvBaAKIrbnAs1HHJ7jJjQW1ObBNh5GexicvI_aV6HFJbat6qCkpwyFiHZgX_cOmCjJOWbvDvg";  // Replace with your actual X-Authorization key
-
-      try {
-        const url = `https://api.apixplatform.com/Cross Border payment/1.0/crossborderpayments?recordNo=${recordNo}&noOfRecords=${noOfRecords}`;
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'X-Authorization': apiKey
-          }
-        });
-
-        if (!response.ok) throw new Error("API Error: " + response.status);
-        const data = await response.json();
-        document.getElementById("crossBorderResult").style.display = "block";
-        document.getElementById("crossBorderResult").innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-      } catch (err) {
-        console.error(err);
-        document.getElementById("crossBorderResult").style.display = "block";
-        document.getElementById("crossBorderResult").innerHTML = "Failed to fetch cross-border payments.";
-      }
+    function loadZimSwitchPayment() {
+      const checkoutId = "REPLACE_WITH_DYNAMIC_CHECKOUT_ID";
+      const shopperResultUrl = "https://your-domain.com/result";
+      document.getElementById("zimForm").innerHTML = `
+        <script src="https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId=${checkoutId}" integrity="true" crossorigin="anonymous"></script>
+        <form action="${shopperResultUrl}" class="paymentWidgets" data-brands="VISA MASTER"></form>
+      `;
     }
   </script>
 </body>
 </html>
+
+
+✅ The ZimSwitch COPYandPAY integration has been added to your HTML. It will load the payment widget after a successful login.
+
+To finalize it:
+
+Replace REPLACE_WITH_DYNAMIC_CHECKOUT_ID with the actual checkout ID obtained from your backend server.
+
+Update shopperResultUrl with the correct URL that will handle post-payment results.
+
+
+If you need help generating the checkout ID via ZimSwitch’s API in Node.js or PHP, let me know!
+

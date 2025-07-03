@@ -1,0 +1,1 @@
+<mobile_wallet.js content from previous message>

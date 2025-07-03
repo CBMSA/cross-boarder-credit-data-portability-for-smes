@@ -1,0 +1,1 @@
+<azure_sql_schema.sql content from previous message>

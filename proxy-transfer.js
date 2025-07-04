@@ -40,7 +40,7 @@ module.exports = async function (context, req) {
       clientId,
       terminalId,
       amount,
-      currency: 'NGN',
+      currency: 'ZAR',
       destinationAccount,
       destinationBankCode,
       narration: narration || 'CBDC Transfer'

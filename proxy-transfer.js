@@ -74,6 +74,4 @@ module.exports = async function (context, req) {
 };
 
 
----
 
-✅ Next Step: Would you like a .zip of these two files for quick Azure Function deployment?

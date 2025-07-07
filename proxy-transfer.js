@@ -60,6 +60,21 @@ app.post('/api/transfer-to-bank', async (req, res) => {
   }
 });
 
+// P2P Transaction
+app.post('/api/p2p-transfer', async (req, res) => {
+  const { fromWallet, toWallet, amount } = req.body;
+  try {
+    if (!fromWallet || !toWallet || !amount) return res.status(400).json({ error: 'Missing fields' });
+
+    await sql.query`INSERT INTO P2PTransactions (FromWallet, ToWallet, Amount, Timestamp) 
+                    VALUES (${fromWallet}, ${toWallet}, ${amount}, GETDATE())`;
+
+    res.json({ status: 'success', message: `Transferred ZAR ${amount} from ${fromWallet} to ${toWallet}` });
+  } catch (err) {
+    res.status(500).json({ error: 'P2P transaction failed', details: err.message });
+  }
+});
+
 // Explorer Feed Endpoint
 app.get('/blockchain-feed', async (req, res) => {
   try {
@@ -94,3 +109,6 @@ setInterval(async () => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`CBDC Backend running on port ${PORT}`));
+
+
+

@@ -51,7 +51,7 @@ app.post('/move/transfer', async (req, res) => {
 app.post('/api/transfer-to-bank', async (req, res) => {
   const { amount, destinationAccount, destinationBankCode, narration, walletAddress } = req.body;
   try {
-    const bankRes = await axios.post('https://api.apixplatform.com/transfer', {
+    const bankRes = await axios.post('https://api.apixplatform.com/Cross Border payment/1.0', {
       amount,
       destinationAccount,
       destinationBankCode,

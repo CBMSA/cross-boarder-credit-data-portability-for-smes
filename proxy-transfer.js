@@ -1,3 +1,4 @@
+
 // proxy-transfer.js
 
 const express = require('express');
@@ -47,7 +48,7 @@ app.post('/move/transfer', async (req, res) => {
   }
 });
 
-// ===== Interbank Transfer via APIX =====
+// ===== Interbank Transfer via APIX (Old Test Endpoint) =====
 app.post('/api/transfer-to-bank', async (req, res) => {
   const { amount, destinationAccount, destinationBankCode, narration, walletAddress } = req.body;
   try {
@@ -70,6 +71,43 @@ app.post('/api/transfer-to-bank', async (req, res) => {
     res.json(bankRes.data);
   } catch (err) {
     res.status(500).json({ error: 'Fiat transfer failed', details: err.message });
+  }
+});
+
+// ===== LIVE Transfer (APIX Production Transfer API) =====
+app.post('/api/live-transfer', async (req, res) => {
+  const { account_id, destination_account_id, amount, narration } = req.body;
+
+  if (!account_id || !destination_account_id || !amount) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const apiUrl = `https://api.apixplatform.com/opencore-transactions/v1/deposits/${account_id}/transfer`;
+
+    const response = await axios.post(apiUrl, {
+      destination_account_id,
+      amount,
+      narration
+    }, {
+      headers: {
+        'X-Authorization': `Bearer ${process.env.APIX_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    await sql.query`
+      INSERT INTO Transfers (WalletAddress, Amount, BankCode, AccountNumber, Status, Timestamp)
+      VALUES (${account_id}, ${amount}, ${destination_account_id}, ${destination_account_id}, 'LIVE_SENT', GETDATE())
+    `;
+
+    res.json({
+      message: '✅ Live transfer completed',
+      data: response.data
+    });
+  } catch (err) {
+    console.error('❌ Live transfer failed:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Live transfer failed', details: err.message });
   }
 });
 

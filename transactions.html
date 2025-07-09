@@ -50,9 +50,10 @@
     <input type="text" id="treasuryName" class="form-control mb-2" placeholder="From Treasury Department">
     <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (ZAR)">
     <input type="text" id="recipientBank" class="form-control mb-2" placeholder="Recipient Commercial Bank">
+    <input type="text" id="destinationAccountID" class="form-control mb-2" placeholder="Destination Account ID">
     <button class="btn btn-secondary w-100 mb-2" onclick="connectWallet()">Connect Wallet</button>
     <button class="btn btn-success w-100 mb-2" onclick="submitTransaction()">Submit Settlement</button>
-    <button class="btn btn-outline-primary w-100 mb-2" onclick="interswitchTransfer()">Live Bank Transfer</button>
+    <button class="btn btn-outline-primary w-100 mb-2" onclick="liveBankTransfer()">Live Bank Transfer</button>
 
     <hr>
     <h5 class="mt-4">Send to Another Wallet (P2P)</h5>
@@ -145,24 +146,48 @@
     new QRCode(document.getElementById("qrcode"), JSON.stringify(tx));
   }
 
-  async function interswitchTransfer() {
+  async function liveBankTransfer() {
+    const amount = parseFloat(document.getElementById("amount").value);
+    const destination_account_id = document.getElementById("destinationAccountID").value;
+    const account_id = wallet.account;
+    const narration = "Live transfer via SADC Wallet";
+
+    if (!account_id || !destination_account_id || !amount) return alert("Please fill in all fields.");
+    if (amount > wallet.balance) return alert("Insufficient balance.");
+
     try {
-      const response = await fetch("https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net/", {
+      const response = await fetch("https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net/api/live-transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: document.getElementById("amount").value,
-          destinationAccount: wallet.account,
-          destinationBankCode: wallet.bankCode,
-          narration: "CBDC Wallet Transfer",
-          walletAddress: wallet.address
+          account_id,
+          destination_account_id,
+          amount,
+          narration
         })
       });
+
       const result = await response.json();
-      alert("Transfer Response: " + JSON.stringify(result));
-    } catch (error) {
-      alert("Transfer failed.");
-      console.error(error);
+
+      if (result.error) {
+        alert("Transfer Failed: " + result.details);
+      } else {
+        wallet.balance -= amount;
+        document.getElementById("balanceDisplay").innerText = `ZAR ${wallet.balance.toFixed(2)}`;
+        alert("✅ Transfer Successful: " + JSON.stringify(result.data));
+
+        const tx = {
+          type: "Live Bank Transfer",
+          from: account_id,
+          to: destination_account_id,
+          amount,
+          timestamp: new Date().toLocaleString()
+        };
+        transactions.push(tx);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error: Live transfer failed.");
     }
   }
 
@@ -189,7 +214,7 @@
     const doc = new jsPDF();
     doc.text("SADC Wallet - Settlement Report", 10, 10);
     transactions.forEach((tx, i) => {
-      doc.text(`${i + 1}. ${tx.timestamp} - ${tx.type}: ${tx.from || tx.treasury} → ${tx.to || tx.recipient} = ZAR ${tx.total}`, 10, 20 + (i * 10));
+      doc.text(`${i + 1}. ${tx.timestamp} - ${tx.type}: ${tx.from || tx.treasury} → ${tx.to || tx.recipient} = ZAR ${tx.total || tx.amount}`, 10, 20 + (i * 10));
     });
     doc.save("SADC_Wallet_Report.pdf");
   }
@@ -222,4 +247,5 @@
 </script>
 </body>
 </html>
+
 

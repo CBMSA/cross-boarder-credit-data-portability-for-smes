@@ -5,7 +5,8 @@
   "description": "proxy-transfer.js Backend for Move VM and APIX integration",
   "main": "proxy-transfer.js",
   "scripts": {
-    "start": "node proxy-transfer.js"
+    "start": "node proxy-transfer.js",
+    "build": "echo \"No build step required for backend deployment\""
   },
   "dependencies": {
     "axios": "^1.6.7",

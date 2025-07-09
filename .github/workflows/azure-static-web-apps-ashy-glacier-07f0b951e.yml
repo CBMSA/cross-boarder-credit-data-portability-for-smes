@@ -25,11 +25,11 @@ jobs:
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ASHY_GLACIER_07F0B951E }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for GitHub integrations (i.e. PR comments)
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "/"         # HTML frontend root
-          api_location: "html"      # ✅ Corrected here (no space)
-          output_location: ""       # No build output folder
+          app_location: "/"          # Your frontend HTML files are here
+          api_location: "html"       # Your Node.js backend (proxy-transfer.js)
+          output_location: "."       # 💡 Important: where your built site files are
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

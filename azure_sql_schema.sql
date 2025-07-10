@@ -92,6 +92,96 @@ BEGIN
     COMMIT;
 END
 
+-- 💳 WalletAccounts Table
+-- =====================================================
+CREATE TABLE WalletAccounts (
+  WalletID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  FullName NVARCHAR(100),
+  NationalID NVARCHAR(50),
+  Email NVARCHAR(100),
+  PhoneNumber NVARCHAR(20),
+  PasswordHash NVARCHAR(256),
+  WalletAddress NVARCHAR(100) UNIQUE,
+  BankName NVARCHAR(100),
+  AccountNumber NVARCHAR(50),
+  BankCode NVARCHAR(20),
+  Balance DECIMAL(18, 2) DEFAULT 2000000000000, -- Starting with 2 trillion ZAR
+  IsVerified BIT DEFAULT 0,
+  CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+-- =====================================================
+-- 🔁 Transactions Table (Wallet, Interbank, Mint, etc)
+-- =====================================================
+CREATE TABLE Transactions (
+  TransactionID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  WalletAddress NVARCHAR(100),
+  ToAddress NVARCHAR(100),
+  Amount DECIMAL(18, 2),
+  TransactionType NVARCHAR(50), -- e.g. 'P2P', 'Interbank', 'Mint', 'Conversion'
+  Tax DECIMAL(18, 2),
+  GasFee DECIMAL(18, 2),
+  TotalAmount DECIMAL(18, 2),
+  Status NVARCHAR(20) DEFAULT 'SUCCESS',
+  Timestamp DATETIME DEFAULT GETDATE(),
+  ReferenceID NVARCHAR(100) UNIQUE
+);
+
+-- =====================================================
+-- 🏦 InterbankTransfers Table
+-- =====================================================
+CREATE TABLE InterbankTransfers (
+  TransferID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+  FromInstitution NVARCHAR(100),
+  ToBank NVARCHAR(100),
+  Amount DECIMAL(18, 2),
+  ReferenceID NVARCHAR(100),
+  Status NVARCHAR(20) DEFAULT 'PENDING',
+  TransferType NVARCHAR(50), -- e.g. 'Wholesale Purchase', 'Fiat Conversion'
+  Timestamp DATETIME DEFAULT GETDATE()
+);
+
+-- =====================================================
+-- 💰 TaxRevenue Table (Tax Deductions to Admin Wallet)
+-- =====================================================
+CREATE TABLE TaxRevenue (
+  TaxID INT IDENTITY PRIMARY KEY,
+  FromWallet NVARCHAR(100),
+  Amount DECIMAL(18, 2),
+  ReferenceID NVARCHAR(100),
+  CollectedAt DATETIME DEFAULT GETDATE()
+);
+
+-- =====================================================
+-- 📄 KYCUploads Table (PDFs, ID Docs)
+-- =====================================================
+CREATE TABLE KYCUploads (
+  UploadID INT IDENTITY PRIMARY KEY,
+  WalletID UNIQUEIDENTIFIER,
+  FileName NVARCHAR(255),
+  FilePath NVARCHAR(500),
+  Verified BIT DEFAULT 0,
+  UploadedAt DATETIME DEFAULT GETDATE()
+);
+
+-- =====================================================
+-- ⚙️ AdminSettings Table (Optional Global Settings)
+-- =====================================================
+CREATE TABLE AdminSettings (
+  SettingKey NVARCHAR(100) PRIMARY KEY,
+  SettingValue NVARCHAR(500)
+);
+
+-- =====================================================
+-- ⚡ Performance Indexes
+-- =====================================================
+CREATE INDEX IX_WalletAddress ON WalletAccounts(WalletAddress);
+CREATE INDEX IX_Timestamp_Transactions ON Transactions(Timestamp);
+CREATE INDEX IX_ReferenceID_Transactions ON Transactions(ReferenceID);
+CREATE INDEX IX_ReferenceID_Interbank ON InterbankTransfers(ReferenceID);
+
+
+
 
 
 

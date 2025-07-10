@@ -8,12 +8,133 @@
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <style>body { font-family: 'Segoe UI'; }</style>
+  <style>
+    body { font-family: 'Segoe UI'; padding: 20px; background-color: #f9f9f9; }
+    nav a { margin-right: 15px; text-decoration: none; color: #0d6efd; font-weight: bold; }
+    .logo { height: 60px; }
+  </style>
 </head>
-<body><h1>SADC Wallet Interface</h1></body>
-<nav>
-  <a href="index.html">Credit Data</a>
-  <a href="transactions.html">Transactions  Payments</a>
-  <a href="sadccbdc.html">SADC CBDC</>
-</nav>
+<body>
+
+  <header class="d-flex align-items-center justify-content-between mb-4">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/South_African_Reserve_Bank_Logo.svg/2560px-South_African_Reserve_Bank_Logo.svg.png" alt="SCB Logo" class="logo">
+    <h3>SADC Wallet - SCB SARB</h3>
+  </header>
+
+  <nav class="mb-4">
+    <a href="#register">Register</a>
+    <a href="#login">Login</a>
+    <a href="#transactions">Transactions</a>
+  </nav>
+
+  <div id="register">
+    <h4>Account Registration</h4>
+    <input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
+    <input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
+    <input type="text" id="bankAccount" class="form-control mb-2" placeholder="Bank Account Number">
+    <input type="text" id="bankCode" class="form-control mb-2" placeholder="Bank Code (e.g., FNB, SBK)">
+    <input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
+    <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
+  </div>
+
+  <div id="login" class="mt-5">
+    <h4>Login</h4>
+    <input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
+    <input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
+    <button class="btn btn-success w-100" onclick="loginUser()">Login</button>
+    <p id="loginError" class="text-danger"></p>
+  </div>
+
+  <div id="transactions" class="mt-5" style="display:none;">
+    <h4>Send Payment</h4>
+    <p>Balance: <span id="balance">ZAR 0</span></p>
+    <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
+    <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (ZAR)">
+    <button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
+    <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
+    <div id="qr"></div>
+    <button class="btn btn-outline-secondary mt-3" onclick="generatePDF()">Download PDF Report</button>
+  </div>
+
+  <footer class="mt-5 text-center">
+    <p>&copy; 2025 SCB - SADC Central Bank. All rights reserved. Licensed and regulated by SCB SARB.</p>
+  </footer>
+
+  <script>
+    let users = {};
+    let currentUser = null;
+    let txHistory = [];
+
+    function registerUser() {
+      const name = document.getElementById("name").value;
+      const id = document.getElementById("idNumber").value;
+      const bankAccount = document.getElementById("bankAccount").value;
+      const bankCode = document.getElementById("bankCode").value;
+      const password = document.getElementById("password").value;
+      if (!name || !id || !bankAccount || !bankCode || !password) return alert("All fields required");
+      if (users[id]) return alert("User already exists");
+
+      users[id] = {
+        id,
+        name,
+        password,
+        bankAccount,
+        bankCode,
+        balance: 2000000000000
+      };
+      alert("Registered. Login to continue.");
+    }
+
+    function loginUser() {
+      const id = document.getElementById("loginId").value;
+      const password = document.getElementById("loginPassword").value;
+      if (!users[id] || users[id].password !== password) {
+        document.getElementById("loginError").innerText = "Login failed. Check credentials.";
+        return;
+      }
+      currentUser = users[id];
+      document.getElementById("transactions").style.display = "block";
+      document.getElementById("balance").innerText = `ZAR ${currentUser.balance.toLocaleString()}`;
+    }
+
+    function sendTransaction() {
+      const to = document.getElementById("toAccount").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      if (!to || isNaN(amount)) return alert("Invalid input");
+      if (amount > currentUser.balance) return alert("Insufficient funds");
+
+      const tax = amount * 0.1;
+      const net = amount - tax;
+      const txId = Math.floor(Math.random() * 1e12).toString(16);
+      currentUser.balance -= amount;
+
+      const tx = {
+        id: txId,
+        from: currentUser.id,
+        to,
+        amount,
+        tax,
+        net,
+        timestamp: new Date().toISOString()
+      };
+      txHistory.push(tx);
+      document.getElementById("balance").innerText = `ZAR ${currentUser.balance.toLocaleString()}`;
+      document.getElementById("txResult").style.display = 'block';
+      document.getElementById("txResult").innerText = `Transaction ID: ${tx.id}\nSent: ZAR ${net.toFixed(2)} (Tax ZAR ${tax.toFixed(2)})`;
+      document.getElementById("qr").innerHTML = "";
+      new QRCode(document.getElementById("qr"), JSON.stringify(tx));
+    }
+
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("SADC Wallet Transaction History", 10, 10);
+      txHistory.forEach((tx, i) => {
+        doc.text(`${i + 1}. ID: ${tx.id}, Amount: ZAR ${tx.amount}, Tax: ZAR ${tx.tax}, To: ${tx.to}`, 10, 20 + (i * 10));
+      });
+      doc.save("SADC_Transactions.pdf");
+    }
+  </script>
+</body>
 </html>
+

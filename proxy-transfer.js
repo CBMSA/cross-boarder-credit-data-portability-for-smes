@@ -1,4 +1,3 @@
-
 // proxy-transfer.js
 
 const express = require('express');
@@ -47,7 +46,6 @@ app.post('/move/transfer', async (req, res) => {
     res.status(500).json({ error: 'Move transaction failed', details: err.message });
   }
 });
-
 
 // ===== LIVE Transfer (APIX Production Transfer API) =====
 app.post('/api/live-transfer', async (req, res) => {
@@ -103,6 +101,25 @@ app.post('/api/p2p-transfer', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: 'P2P transaction failed', details: err.message });
+  }
+});
+
+// ===== Interbank Settlement Rails (SARB to Commercial Bank) =====
+app.post('/interbank/settlement', async (req, res) => {
+  const { centralBankAccount, commercialBankAccount, amount, bankCode } = req.body;
+  if (!centralBankAccount || !commercialBankAccount || !amount || !bankCode)
+    return res.status(400).json({ error: 'Missing interbank settlement fields' });
+
+  try {
+    await sql.query`
+      INSERT INTO InterbankSettlements (FromAccount, ToAccount, Amount, BankCode, Status, Timestamp)
+      VALUES (${centralBankAccount}, ${commercialBankAccount}, ${amount}, ${bankCode}, 'SETTLED', GETDATE())
+    `;
+    res.json({
+      message: `Interbank settlement of ZAR ${amount} from ${centralBankAccount} to ${commercialBankAccount} successful.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Interbank settlement failed', details: err.message });
   }
 });
 

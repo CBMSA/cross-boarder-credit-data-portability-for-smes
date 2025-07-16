@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Financial Gap Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #333; }
+    #output { margin-top: 20px; }
+    canvas { max-width: 700px; }
+  </style>
+</head>
+<body>
+  <h1>📊 Financial Gap Analyzer</h1>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <label>Select CSV File: </label>
+    <input type="file" name="csvFile" id="csvFile" />
+    <button type="submit">Upload and Analyze</button>
+  </form>
+  <div id="output">
+    <canvas id="gapChart"></canvas>
+  </div>
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append("csvFile", document.getElementById("csvFile").files[0]);
+
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      const labels = data.map(row => row.region);
+      const allocated = data.map(row => row.allocated);
+      const spent = data.map(row => row.spent);
+
+      new Chart(document.getElementById('gapChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Allocated Budget', data: allocated, backgroundColor: '#4CAF50' },
+            { label: 'Actual Spent', data: spent, backgroundColor: '#F44336' }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

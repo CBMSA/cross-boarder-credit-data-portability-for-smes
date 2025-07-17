@@ -171,4 +171,57 @@ export default function WalletApp() {
   );
 }
 
-Can you please generate a html for this server 
+const express = require('express');
+const multer = require('multer');
+const csv = require('csv-parser');
+const fs = require('fs');
+const cors = require('cors');
+const path = require('path');
+
+const app = express();
+const upload = multer({ dest: 'uploads/' });
+
+app.use(cors());
+app.use(express.static('public'));
+app.use(express.json());
+
+function analyzeCSV(filePath, callback) {
+  const results = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv())
+    .on('data', (row) => {
+      const region = row.region || row.Region || row["Region Name"];
+      const allocated = parseFloat(row.allocated || row.Allocated || 0);
+      const spent = parseFloat(row.spent || row.Spent || 0);
+      const gap = allocated - spent;
+      const gapInflection = (gap / allocated) * 100;
+
+      results.push({
+        region,
+        allocated,
+        spent,
+        gap,
+        gapInflection: gapInflection.toFixed(2),
+      });
+    })
+    .on('end', () => {
+      callback(results);
+    });
+}
+
+app.post('/upload', upload.single('csvFile'), (req, res) => {
+  const filePath = req.file.path;
+
+  analyzeCSV(filePath, (data) => {
+    fs.unlinkSync(filePath); // Clean up uploaded file
+    res.json(data);
+  });
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`📊 Financial Analyzer running at http://localhost:${PORT}`);
+});
+
+ 

@@ -1,0 +1,35 @@
+
+
+{
+  "routes": [
+    {
+      "route": "/",
+      "serve": "/photochat.html"
+    },
+    {
+      "route": "/chat",
+      "serve": "/photochat.html"
+    },
+    {
+      "route": "/meet/*",
+      "serve": "/photochat.html"
+    },
+    {
+      "route": "/video/*",
+      "serve": "/photochat.html"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/photochat.html",
+    "exclude": ["/static/*", "/images/*", "/css/*", "/js/*"]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/photochat.html"
+    }
+  }
+}
+
+
+
+

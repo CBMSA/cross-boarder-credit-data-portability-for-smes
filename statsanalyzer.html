@@ -1,27 +1,38 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Financial Gap Analyzer</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; }
     h1 { color: #333; }
-    #output { margin-top: 20px; }
+    #output { margin-top: 30px; }
     canvas { max-width: 700px; }
+    .btn { margin: 5px; padding: 8px 16px; background-color: #0066cc; color: white; border: none; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>📊 Financial Gap Analyzer</h1>
   <form id="uploadForm" enctype="multipart/form-data">
     <label>Select CSV File: </label>
-    <input type="file" name="csvFile" id="csvFile" />
-    <button type="submit">Upload and Analyze</button>
+    <input type="file" id="csvFile" />
+    <button class="btn" type="submit">Upload & Analyze</button>
   </form>
+
   <div id="output">
     <canvas id="gapChart"></canvas>
+    <div id="reportData"></div>
+    <button class="btn" id="downloadCSV">⬇️ Export CSV</button>
+    <button class="btn" id="downloadPDF">⬇️ Export PDF</button>
+    <button class="btn" id="downloadXML">⬇️ Export XML</button>
   </div>
+
   <script>
+    let reportData = [];
+
     document.getElementById('uploadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData();
@@ -33,9 +44,19 @@
       });
 
       const data = await res.json();
-      const labels = data.map(row => row.region);
-      const allocated = data.map(row => row.allocated);
-      const spent = data.map(row => row.spent);
+      reportData = data;
+
+      const labels = data.map(r => r.region);
+      const allocated = data.map(r => r.allocated);
+      const spent = data.map(r => r.spent);
+      const gaps = data.map(r => r.gap);
+
+      document.getElementById('reportData').innerHTML = `
+        <h3>📈 Summary</h3>
+        <ul>
+          ${data.map(d => `<li>${d.region}: Gap = ${d.gap}, Inflection = ${d.gapInflection}%</li>`).join('')}
+        </ul>
+      `;
 
       new Chart(document.getElementById('gapChart'), {
         type: 'bar',
@@ -43,17 +64,63 @@
           labels,
           datasets: [
             { label: 'Allocated Budget', data: allocated, backgroundColor: '#4CAF50' },
-            { label: 'Actual Spent', data: spent, backgroundColor: '#F44336' }
+            { label: 'Actual Spent', data: spent, backgroundColor: '#F44336' },
+            { label: 'Funding Gap', data: gaps, backgroundColor: '#FFC107' }
           ]
         },
         options: {
           responsive: true,
-          scales: {
-            y: { beginAtZero: true }
-          }
+          scales: { y: { beginAtZero: true } }
         }
       });
     });
+
+    document.getElementById('downloadCSV').onclick = () => {
+      const csv = "Region,Allocated,Spent,Gap,GapInflection\n" +
+        reportData.map(d => `${d.region},${d.allocated},${d.spent},${d.gap},${d.gapInflection}`).join("\n");
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "financial_gap_report.csv";
+      a.click();
+    };
+
+    document.getElementById('downloadPDF').onclick = () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(14);
+      doc.text("Financial Gap Report", 20, 20);
+
+      reportData.forEach((d, i) => {
+        doc.text(`${d.region}: Gap = ${d.gap}, Inflection = ${d.gapInflection}%`, 20, 30 + (i * 10));
+      });
+
+      doc.save("financial_gap_report.pdf");
+    };
+
+    document.getElementById('downloadXML').onclick = () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<FinancialGapReport>
+  ${reportData.map(d => `
+  <Region>
+    <Name>${d.region}</Name>
+    <Allocated>${d.allocated}</Allocated>
+    <Spent>${d.spent}</Spent>
+    <Gap>${d.gap}</Gap>
+    <GapInflection>${d.gapInflection}</GapInflection>
+  </Region>`).join('')}
+</FinancialGapReport>`;
+
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "financial_gap_report.xml";
+      a.click();
+    };
   </script>
 </body>
 </html>

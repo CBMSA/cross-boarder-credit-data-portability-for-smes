@@ -4,28 +4,28 @@
   "routes": [
     {
       "route": "/",
-      "serve": "/photochat.html"
+      "serve": "/photochatmeetings.html"
     },
     {
       "route": "/chat",
-      "serve": "/photochat.html"
+      "serve": "/photochatmeetings.html"
     },
     {
       "route": "/meet/*",
-      "serve": "/photochat.html"
+      "serve": "/photochatmeetings.html"
     },
     {
       "route": "/video/*",
-      "serve": "/photochat.html"
+      "serve": "/photochatmeetings.html"
     }
   ],
   "navigationFallback": {
-    "rewrite": "/photochat.html",
+    "rewrite": "/photochatmeetings.html",
     "exclude": ["/static/*", "/images/*", "/css/*", "/js/*"]
   },
   "responseOverrides": {
     "404": {
-      "rewrite": "/photochat.html"
+      "rewrite": "/photochatmeetings.html"
     }
   }
 }

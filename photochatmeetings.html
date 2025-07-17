@@ -1,15 +1,20 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PhotoChat Meeting Platform</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
       padding: 2rem;
       background-color: #f4f4f4;
+    }
+    .logo {
+      max-height: 80px;
+      margin-bottom: 1rem;
     }
     .video-container {
       display: flex;
@@ -21,19 +26,42 @@
       height: 200px;
       border: 2px solid #333;
     }
-    .controls, .presentation, .voice-message, .subscription, .subscribe-form {
+    .controls, .presentation, .voice-message, .chat-box {
       margin-top: 20px;
     }
     #meetingLink {
       margin-top: 10px;
       font-weight: bold;
-      word-break: break-all;
+      word-break: break-word;
+    }
+    .chat-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: white;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .chat-input {
+      display: flex;
+      margin-top: 10px;
+    }
+    .chat-input input {
+      flex: 1;
+      margin-right: 10px;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #666;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
+    <img src="A_vector-based_digital_logo_features_an_icon_and_t.png" alt="PhotoChat Logo" class="logo">
+
     <h2>📷 PhotoChat Video Conference</h2>
 
     <!-- Meeting Join/Create -->
@@ -58,30 +86,26 @@
 
     <!-- Voice Message -->
     <div class="voice-message">
-      <h4>Send Voice Message (Internet-Free Mode)</h4>
+      <h4>Send Voice Message</h4>
       <button onclick="startRecording()" class="btn btn-secondary">Start</button>
       <button onclick="stopRecording()" class="btn btn-danger">Stop</button>
       <audio id="audioPlayback" controls></audio>
     </div>
 
-    <!-- Subscription -->
-    <div class="subscription">
-      <h4>Subscription: $2/month</h4>
-      <p>Pay via EFT to Capitec Bank Account: <strong>1729390143</strong></p>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?data=Capitec-1729390143&size=150x150" alt="QR Code for Payment"/>
-      <p>Submit proof of payment below to activate voice messaging:</p>
+    <!-- Chat Section -->
+    <div class="chat-box mt-4">
+      <h4>💬 Live Chat</h4>
+      <div id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" class="form-control" placeholder="Type a message">
+        <button onclick="sendMessage()" class="btn btn-outline-primary">Send</button>
+      </div>
     </div>
 
-    <!-- Subscription Form -->
-    <div class="subscribe-form">
-      <form id="subscriptionForm">
-        <input type="text" class="form-control mb-2" id="name" placeholder="Your Name" required>
-        <input type="email" class="form-control mb-2" id="email" placeholder="Your Email" required>
-        <input type="text" class="form-control mb-2" id="proof" placeholder="Proof of Payment Reference or URL" required>
-        <button type="submit" class="btn btn-success">Submit Subscription</button>
-      </form>
-      <div id="formResponse" class="mt-2"></div>
-    </div>
+    <!-- Footer -->
+    <footer>
+      &copy; 2025 PhotoChat by CBM SARB — All rights reserved. Licensed under internal communication policy.
+    </footer>
   </div>
 
   <script>
@@ -126,7 +150,7 @@
         const reader = new FileReader();
         reader.onload = function (e) {
           document.getElementById('presentationViewer').src = e.target.result;
-        }
+        };
         reader.readAsDataURL(file);
       }
     }
@@ -149,21 +173,21 @@
       if (fullRecorder) fullRecorder.stop();
     }
 
-    document.getElementById('subscriptionForm').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const proof = document.getElementById('proof').value;
-
-      const res = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, proof })
-      });
-      const data = await res.json();
-      document.getElementById('formResponse').innerText = data.message || 'Submitted';
-    });
+    // Chat
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (!message) return;
+      const container = document.getElementById('chatMessages');
+      const div = document.createElement('div');
+      div.textContent = `🗨️ You: ${message}`;
+      container.appendChild(div);
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+    }
   </script>
 </body>
 
 </html>
+
+

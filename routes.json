@@ -1,5 +1,4 @@
 
-
 {
   "routes": [
     {
@@ -17,11 +16,29 @@
     {
       "route": "/video/*",
       "serve": "/photochatmeetings.html"
+    },
+    {
+      "route": "/ai",
+      "serve": "/photochatmeetings.html"
+    },
+    {
+      "route": "/support",
+      "serve": "/photochatmeetings.html"
+    },
+    {
+      "route": "/logo",
+      "serve": "/photochatmeetings.html"
     }
   ],
   "navigationFallback": {
     "rewrite": "/photochatmeetings.html",
-    "exclude": ["/static/*", "/images/*", "/css/*", "/js/*"]
+    "exclude": [
+      "/static/*",
+      "/images/*",
+      "/css/*",
+      "/js/*",
+      "/favicon.ico"
+    ]
   },
   "responseOverrides": {
     "404": {
@@ -29,7 +46,3 @@
     }
   }
 }
-
-
-
-

@@ -142,35 +142,34 @@
         a.click();
       };
       fullRecorder.start();
+
+      setupPeer();
+      socket.emit('ready');
     }
 
-    socket.on('ready', async () => {
+    function setupPeer() {
       peerConnection = new RTCPeerConnection(config);
       localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
       peerConnection.ontrack = event => {
         document.getElementById('remoteVideo').srcObject = event.streams[0];
       };
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      socket.emit('offer', offer);
       peerConnection.onicecandidate = e => {
         if (e.candidate) socket.emit('candidate', e.candidate);
       };
+    }
+
+    socket.on('ready', async () => {
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('offer', offer);
     });
 
     socket.on('offer', async offer => {
-      peerConnection = new RTCPeerConnection(config);
-      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-      peerConnection.ontrack = event => {
-        document.getElementById('remoteVideo').srcObject = event.streams[0];
-      };
+      setupPeer();
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
       socket.emit('answer', answer);
-      peerConnection.onicecandidate = e => {
-        if (e.candidate) socket.emit('candidate', e.candidate);
-      };
     });
 
     socket.on('answer', async answer => {
@@ -241,4 +240,3 @@
   </script>
 </body>
 </html>
-

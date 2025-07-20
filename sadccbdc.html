@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SADC National Treasures Wallet </title>
+  <title>SADC National Treasures Wallet</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -15,10 +15,9 @@
   </style>
 </head>
 <body>
-
   <header class="d-flex align-items-center justify-content-between mb-4">
     <img src="file_00000000968061f89abd9d3d435098f1.png" alt="SCB Logo" class="logo">
-    <h3>SADC Wallet </h3>
+    <h3>SADC Wallet</h3>
   </header>
 
   <nav class="mb-4">
@@ -54,6 +53,14 @@
     <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
     <div id="qr"></div>
     <button class="btn btn-outline-secondary mt-3" onclick="generatePDF()">Download PDF Report</button>
+
+    <hr>
+    <div id="conversion" class="mt-4">
+      <h5>CBDC Conversion</h5>
+      <p>USD Value: <strong id="usdValue">-</strong></p>
+      <p>SPY ETF Units: <strong id="spyValue">-</strong></p>
+      <p>Gold (Ounces): <strong id="goldValue">-</strong></p>
+    </div>
   </div>
 
   <footer class="mt-5 text-center">
@@ -64,6 +71,7 @@
     let users = {};
     let currentUser = null;
     let txHistory = [];
+    const apiKey = '67b2d451e5b8a8.90504186';
 
     function registerUser() {
       const name = document.getElementById("name").value;
@@ -95,6 +103,7 @@
       currentUser = users[id];
       document.getElementById("transactions").style.display = "block";
       document.getElementById("balance").innerText = `ZAR ${currentUser.balance.toLocaleString()}`;
+      fetchConversions(currentUser.balance);
     }
 
     function sendTransaction() {
@@ -123,6 +132,32 @@
       document.getElementById("txResult").innerText = `Transaction ID: ${tx.id}\nSent: ZAR ${net.toFixed(2)} (Tax ZAR ${tax.toFixed(2)})`;
       document.getElementById("qr").innerHTML = "";
       new QRCode(document.getElementById("qr"), JSON.stringify(tx));
+      fetchConversions(currentUser.balance);
+    }
+
+    async function fetchConversions(balanceZAR) {
+      const zarInMillions = balanceZAR / 1_000_000;
+      try {
+        const fxRes = await fetch(`https://eodhd.com/api/real-time/ZARUSD.FOREX?api_token=${apiKey}&fmt=json`);
+        const fxData = await fxRes.json();
+        const usdRate = fxData.close;
+        const usdValue = balanceZAR * usdRate;
+
+        const spyRes = await fetch(`https://eodhd.com/api/real-time/SPY.US?api_token=${apiKey}&fmt=json`);
+        const spyPrice = (await spyRes.json()).close;
+
+        const goldRes = await fetch(`https://eodhd.com/api/real-time/XAUUSD.FOREX?api_token=${apiKey}&fmt=json`);
+        const goldPrice = (await goldRes.json()).close;
+
+        document.getElementById("usdValue").innerText = `USD ${usdValue.toFixed(2)}`;
+        document.getElementById("spyValue").innerText = `${(usdValue / spyPrice).toFixed(4)} SPY`;
+        document.getElementById("goldValue").innerText = `${(usdValue / goldPrice).toFixed(4)} oz`;
+      } catch (err) {
+        console.error("Conversion fetch error", err);
+        document.getElementById("usdValue").innerText = "Error";
+        document.getElementById("spyValue").innerText = "Error";
+        document.getElementById("goldValue").innerText = "Error";
+      }
     }
 
     async function generatePDF() {
@@ -137,4 +172,6 @@
   </script>
 </body>
 </html>
+
+
 

@@ -1,7 +1,5 @@
 
-
 module 0xCBDC::SADCCBDC {
-
     use std::signer;
     use std::string;
     use std::event;
@@ -9,17 +7,17 @@ module 0xCBDC::SADCCBDC {
     use std::address;
     use std::option;
 
-    /// Stores the total balance in the Treasury (for minting and burning)
+    /// Stores the total minted CBDC by treasury
     struct Treasury has key {
         balance: u64,
     }
 
-    /// Represents CBDC balance held by any account
+    /// CBDC balance for an individual account
     struct CBDC has store, drop, key {
         amount: u64,
     }
 
-    /// Defines the structure of a transfer event
+    /// Event structure for logging transfers
     struct TransferEvent has drop, store {
         from: address,
         to: address,
@@ -27,59 +25,62 @@ module 0xCBDC::SADCCBDC {
         timestamp: u64,
     }
 
-    /// Holds the event handle used for emitting transfer events
+    /// Holds the event handle for a given account
     struct TransferEvents has key {
         event_handle: event::EventHandle<TransferEvent>
     }
 
-    /// Initialize the sender with a treasury and event handle
+    /// Initialize treasury and event log for the sender
     public fun init(sender: &signer) {
+        let addr = signer::address_of(sender);
+        assert!(!exists<Treasury>(addr), 100); // Already initialized
         move_to(sender, Treasury { balance: 0 });
         move_to(sender, TransferEvents {
-            event_handle: event::new_event_handle<TransferEvent>(sender)
+            event_handle: event::new_event_handle<TransferEvent>(sender),
         });
     }
 
-    /// Mint CBDC to a recipient address (admin only)
+    /// Mint new CBDC tokens to a target account (only treasury)
     public fun mint(sender: &signer, to: address, amount: u64) acquires Treasury {
-        let treasury = borrow_global_mut<Treasury>(signer::address_of(sender));
+        let admin = signer::address_of(sender);
+        let treasury = borrow_global_mut<Treasury>(admin);
         treasury.balance = treasury.balance + amount;
 
         if (exists<CBDC>(to)) {
-            let recipient = move_from<CBDC>(to);
-            let updated = CBDC { amount: recipient.amount + amount };
-            move_to(&to, updated);
+            let balance_ref = borrow_global_mut<CBDC>(to);
+            balance_ref.amount = balance_ref.amount + amount;
         } else {
             move_to(&to, CBDC { amount });
         }
     }
 
-    /// Burn CBDC from treasury
+    /// Burn CBDC tokens from treasury
     public fun burn(sender: &signer, amount: u64) acquires Treasury {
         let treasury = borrow_global_mut<Treasury>(signer::address_of(sender));
-        assert!(treasury.balance >= amount, 1);
+        assert!(treasury.balance >= amount, 101); // Insufficient balance
         treasury.balance = treasury.balance - amount;
     }
 
-    /// Transfer CBDC to another account with event logging
-    public fun transfer(sender: &signer, recipient: address, amount: u64) acquires TransferEvents {
+    /// Transfer CBDC between accounts, emits TransferEvent
+    public fun transfer(sender: &signer, recipient: address, amount: u64) acquires TransferEvents, CBDC {
         let sender_addr = signer::address_of(sender);
-        let sender_cbdc = move_from<CBDC>(sender_addr);
-        assert!(sender_cbdc.amount >= amount, 2);
+        assert!(exists<CBDC>(sender_addr), 102); // Sender must exist
 
-        let new_sender_amount = sender_cbdc.amount - amount;
-        move_to(&sender_addr, CBDC { amount: new_sender_amount });
+        let sender_balance = borrow_global_mut<CBDC>(sender_addr);
+        assert!(sender_balance.amount >= amount, 103); // Insufficient funds
+        sender_balance.amount = sender_balance.amount - amount;
 
         if (exists<CBDC>(recipient)) {
-            let existing = move_from<CBDC>(recipient);
-            move_to(&recipient, CBDC { amount: existing.amount + amount });
+            let recipient_balance = borrow_global_mut<CBDC>(recipient);
+            recipient_balance.amount = recipient_balance.amount + amount;
         } else {
             move_to(&recipient, CBDC { amount });
         }
 
-        let event_ref = borrow_global_mut<TransferEvents>(sender_addr);
-        let ts: u64 = 0; // Replace with on-chain timestamp if supported
-        event::emit_event(&mut event_ref.event_handle, TransferEvent {
+        // Emit transfer event
+        let events = borrow_global_mut<TransferEvents>(sender_addr);
+        let ts: u64 = 0; // Replace with blockchain time when available
+        event::emit_event(&mut events.event_handle, TransferEvent {
             from: sender_addr,
             to: recipient,
             amount,
@@ -87,13 +88,22 @@ module 0xCBDC::SADCCBDC {
         });
     }
 
-    /// Returns the CBDC balance of a specific account
+    /// Return CBDC balance for a given address
     public fun get_balance(owner: address): u64 {
         if (exists<CBDC>(owner)) {
-            let cbdc = borrow_global<CBDC>(owner);
-            cbdc.amount
+            borrow_global<CBDC>(owner).amount
+        } else {
+            0
+        }
+    }
+
+    /// Return total CBDC minted by treasury
+    public fun get_total_supply(admin: address): u64 {
+        if (exists<Treasury>(admin)) {
+            borrow_global<Treasury>(admin).balance
         } else {
             0
         }
     }
 }
+

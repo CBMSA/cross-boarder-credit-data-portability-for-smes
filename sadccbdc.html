@@ -24,14 +24,20 @@
     <a href="#register">Register</a>
     <a href="#login">Login</a>
     <a href="#transactions">Transactions</a>
+    <a href="#exchange">Exchange Rates</a>
   </nav>
 
   <div id="register">
     <h4>Account Registration</h4>
+    <select id="role" class="form-control mb-2">
+      <option value="user">User</option>
+      <option value="srb_admin">SRB Admin</option>
+      <option value="regional_bank">Regional Central Bank</option>
+      <option value="national_treasury">National Treasury</option>
+    </select>
     <input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
     <input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
-    <input type="text" id="bankAccount" class="form-control mb-2" placeholder="Bank Account Number">
-    <input type="text" id="bankCode" class="form-control mb-2" placeholder="Bank Code (e.g., FNB, SBK)">
+    <input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
     <input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
     <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
   </div>
@@ -45,10 +51,10 @@
   </div>
 
   <div id="transactions" class="mt-5" style="display:none;">
-    <h4>Send Payment</h4>
-    <p>Balance: <span id="balance">ZAR 0</span></p>
+    <h4>Send SADICOIN</h4>
+    <p>Balance: <span id="balance">SADICOIN 0</span></p>
     <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
-    <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (ZAR)">
+    <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
     <button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
     <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
     <div id="qr"></div>
@@ -56,11 +62,16 @@
 
     <hr>
     <div id="conversion" class="mt-4">
-      <h5>CBDC Conversion</h5>
+      <h5>Currency & Asset Conversion</h5>
       <p>USD Value: <strong id="usdValue">-</strong></p>
       <p>SPY ETF Units: <strong id="spyValue">-</strong></p>
       <p>Gold (Ounces): <strong id="goldValue">-</strong></p>
     </div>
+  </div>
+
+  <div id="exchange" class="mt-5">
+    <h4>Live Exchange Rates</h4>
+    <div id="rates"></div>
   </div>
 
   <footer class="mt-5 text-center">
@@ -71,26 +82,27 @@
     let users = {};
     let currentUser = null;
     let txHistory = [];
-    const apiKey = '67b2d451e5b8a8.90504186';
+    const apiKey = 'YOUR_EODHD_API_KEY';
 
     function registerUser() {
+      const role = document.getElementById("role").value;
       const name = document.getElementById("name").value;
       const id = document.getElementById("idNumber").value;
-      const bankAccount = document.getElementById("bankAccount").value;
-      const bankCode = document.getElementById("bankCode").value;
+      const wallet = document.getElementById("walletAddress").value;
       const password = document.getElementById("password").value;
-      if (!name || !id || !bankAccount || !bankCode || !password) return alert("All fields required");
+      if (!name || !id || !wallet || !password) return alert("All fields required");
       if (users[id]) return alert("User already exists");
 
       users[id] = {
         id,
         name,
+        role,
+        wallet,
         password,
-        bankAccount,
-        bankCode,
-        balance: 2000000000000
+        balance: 1000000
       };
       alert("Registered. Login to continue.");
+      // Here you'd also send to Azure DB via API call
     }
 
     function loginUser() {
@@ -102,8 +114,9 @@
       }
       currentUser = users[id];
       document.getElementById("transactions").style.display = "block";
-      document.getElementById("balance").innerText = `ZAR ${currentUser.balance.toLocaleString()}`;
+      document.getElementById("balance").innerText = `SADICOIN ${currentUser.balance.toLocaleString()}`;
       fetchConversions(currentUser.balance);
+      fetchExchangeRates();
     }
 
     function sendTransaction() {
@@ -112,51 +125,48 @@
       if (!to || isNaN(amount)) return alert("Invalid input");
       if (amount > currentUser.balance) return alert("Insufficient funds");
 
-      const tax = amount * 0.1;
+      const tax = amount * 0.02;
       const net = amount - tax;
       const txId = Math.floor(Math.random() * 1e12).toString(16);
       currentUser.balance -= amount;
 
-      const tx = {
-        id: txId,
-        from: currentUser.id,
-        to,
-        amount,
-        tax,
-        net,
-        timestamp: new Date().toISOString()
-      };
+      const tx = { id: txId, from: currentUser.id, to, amount, tax, net, timestamp: new Date().toISOString() };
       txHistory.push(tx);
-      document.getElementById("balance").innerText = `ZAR ${currentUser.balance.toLocaleString()}`;
+      document.getElementById("balance").innerText = `SADICOIN ${currentUser.balance.toLocaleString()}`;
       document.getElementById("txResult").style.display = 'block';
-      document.getElementById("txResult").innerText = `Transaction ID: ${tx.id}\nSent: ZAR ${net.toFixed(2)} (Tax ZAR ${tax.toFixed(2)})`;
+      document.getElementById("txResult").innerText = `Tx ID: ${tx.id}\nSent: ${net.toFixed(2)} SADICOIN (Tax: ${tax.toFixed(2)})`;
       document.getElementById("qr").innerHTML = "";
       new QRCode(document.getElementById("qr"), JSON.stringify(tx));
       fetchConversions(currentUser.balance);
     }
 
-    async function fetchConversions(balanceZAR) {
-      const zarInMillions = balanceZAR / 1_000_000;
+    async function fetchConversions(balance) {
       try {
         const fxRes = await fetch(`https://eodhd.com/api/real-time/ZARUSD.FOREX?api_token=${apiKey}&fmt=json`);
-        const fxData = await fxRes.json();
-        const usdRate = fxData.close;
-        const usdValue = balanceZAR * usdRate;
+        const usdRate = (await fxRes.json()).close;
+        const usdValue = balance * usdRate;
 
         const spyRes = await fetch(`https://eodhd.com/api/real-time/SPY.US?api_token=${apiKey}&fmt=json`);
-        const spyPrice = (await spyRes.json()).close;
-
         const goldRes = await fetch(`https://eodhd.com/api/real-time/XAUUSD.FOREX?api_token=${apiKey}&fmt=json`);
-        const goldPrice = (await goldRes.json()).close;
 
         document.getElementById("usdValue").innerText = `USD ${usdValue.toFixed(2)}`;
-        document.getElementById("spyValue").innerText = `${(usdValue / spyPrice).toFixed(4)} SPY`;
-        document.getElementById("goldValue").innerText = `${(usdValue / goldPrice).toFixed(4)} oz`;
+        document.getElementById("spyValue").innerText = `${(usdValue / (await spyRes.json()).close).toFixed(4)} SPY`;
+        document.getElementById("goldValue").innerText = `${(usdValue / (await goldRes.json()).close).toFixed(4)} oz`;
       } catch (err) {
-        console.error("Conversion fetch error", err);
-        document.getElementById("usdValue").innerText = "Error";
-        document.getElementById("spyValue").innerText = "Error";
-        document.getElementById("goldValue").innerText = "Error";
+        console.error(err);
+      }
+    }
+
+    async function fetchExchangeRates() {
+      const currencies = ["USDZAR", "ZARUSD", "USDEUR", "USDGBP", "USDJPY", "USDCNY", "USDAED", "USDKES"];
+      const container = document.getElementById("rates");
+      container.innerHTML = "";
+      for (let code of currencies) {
+        const res = await fetch(`https://eodhd.com/api/real-time/${code}.FOREX?api_token=${apiKey}&fmt=json`);
+        const data = await res.json();
+        const el = document.createElement("p");
+        el.innerText = `${code}: ${data.close}`;
+        container.appendChild(el);
       }
     }
 
@@ -165,7 +175,7 @@
       const doc = new jsPDF();
       doc.text("SADC Wallet Transaction History", 10, 10);
       txHistory.forEach((tx, i) => {
-        doc.text(`${i + 1}. ID: ${tx.id}, Amount: ZAR ${tx.amount}, Tax: ZAR ${tx.tax}, To: ${tx.to}`, 10, 20 + (i * 10));
+        doc.text(`${i + 1}. ID: ${tx.id}, Amount: ${tx.amount}, Tax: ${tx.tax}, To: ${tx.to}`, 10, 20 + (i * 10));
       });
       doc.save("SADC_Transactions.pdf");
     }

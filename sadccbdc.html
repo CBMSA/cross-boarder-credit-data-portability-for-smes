@@ -21,10 +21,10 @@
   </header>
 
   <nav class="mb-4">
-    <a href="#register"class=btn>Register</a>
-    <a href="#login"class=btn>Login</a>
-    <a href="#transactions"class=btn>Transactions</a>
-    <a href="#exchange"class=btn>Exchange Rates</a>
+    <a href="#register" class="btn">Register</a>
+    <a href="#login" class="btn">Login</a>
+    <a href="#transactions" class="btn">Transactions</a>
+    <a href="#exchange" class="btn">Exchange Rates</a>
   </nav>
 
   <div id="register">
@@ -69,13 +69,12 @@
     </div>
   </div>
 
-      <!-- CoinMarketCap Price Section -->
-    <div class="card p-3 mb-4">
-      <h6>Market Price (via CoinMarketCap)</h6>
-      <button class="btn btn-outline-primary w-100 mb-2" onclick="getMarketPrice()">Get SADICoin/ZAR</button>
-      <div id="cmcPriceResult" class="text-primary fw-bold text-center"></div>
-    </div>
-
+  <!-- CoinMarketCap Price Section -->
+  <div class="card p-3 mb-4">
+    <h6>Market Price (via CoinMarketCap)</h6>
+    <button class="btn btn-outline-primary w-100 mb-2" onclick="getMarketPrice()">Get SADICoin/ZAR</button>
+    <div id="cmcPriceResult" class="text-primary fw-bold text-center"></div>
+  </div>
 
   <div id="exchange" class="mt-5">
     <h4>Live Exchange Rates</h4>
@@ -110,7 +109,6 @@
         balance: 1000000
       };
       alert("Registered. Login to continue.");
-      // Here you'd also send to Azure DB via API call
     }
 
     function loginUser() {
@@ -186,20 +184,21 @@
         doc.text(`${i + 1}. ID: ${tx.id}, Amount: ${tx.amount}, Tax: ${tx.tax}, To: ${tx.to}`, 10, 20 + (i * 10));
       });
       doc.save("SADC_Transactions.pdf");
+    }
 
     function getMarketPrice() {
-      const apiKey = '0b53aa75-9da6-41c8-bbba-eb33bf350d3a'; // Replace with your actual key
-      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=BTC&convert=ZAR', {
+      const cmcKey = '0b53aa75-9da6-41c8-bbba-eb33bf350d3a';
+      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR', {
         method: 'GET',
         headers: {
-          'X-CMC_PRO_API_KEY': apiKey
+          'X-CMC_PRO_API_KEY': cmcKey
         }
       })
       .then(response => response.json())
       .then(data => {
         if(data && data.data && data.data.quote && data.data.quote.ZAR) {
           const price = data.data.quote.ZAR.price.toFixed(2);
-          document.getElementById('cmcPriceResult').innerText = `1 BTC = ZAR ${price}`;
+          document.getElementById('cmcPriceResult').innerText = `1 SADICOIN = ZAR ${price}`;
         } else {
           document.getElementById('cmcPriceResult').innerText = 'Price fetch failed.';
         }
@@ -212,6 +211,5 @@
   </script>
 </body>
 </html>
-
 
 

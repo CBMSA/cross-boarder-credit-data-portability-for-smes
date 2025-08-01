@@ -93,9 +93,38 @@
     <p class="ussd">Dial *134*CBDC# to access your wallet without internet.</p>
   </div>
 
-  <footer class="mt-4 text-center text-muted small">
-    &copy; 2025 CBM SARB | SADC Wallet • All rights reserved.
+
+    <hr>
+    <div id="conversion" class="mt-4">
+      <h5>Currency & Asset Conversion</h5>
+      <p>USD Value: <strong id="usdValue">-</strong></p>
+      <p>SPY ETF Units: <strong id="spyValue">-</strong></p>
+      <p>Gold (Ounces): <strong id="goldValue">-</strong></p>
+    </div>
+  </div>
+
+  <!-- CoinMarketCap Price Section -->
+  <div class="card p-3 mb-4">
+    <h6>Market Price (via CoinMarketCap)</h6>
+    <button class="btn btn-outline-primary w-100 mb-2" onclick="getMarketPrice()">Get SADICoin/ZAR</button>
+    <div id="cmcPriceResult" class="text-primary fw-bold text-center"></div>
+  </div>
+
+  <div id="exchange" class="mt-5">
+    <h4>Live Exchange Rates</h4>
+    <div id="rates"></div>
+  </div>
+
+  <footer class="mt-5 text-center">
+    <p>&copy; 2025 SCB - SADC Central Banks. All rights reserved. Licensed and regulated by CBM SARB.</p>
   </footer>
+
+  <script>
+    let users = {};
+    let currentUser = null;
+    let txHistory = [];
+    const apiKey = '67b2d451e5b8a8.90504186';
+
 </div>
 
 <script>

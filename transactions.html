@@ -242,6 +242,27 @@
     }, 5000);
   }
 
+    function getMarketPrice() {
+      const cmcKey = '0b53aa75-9da6-41c8-bbba-eb33bf350d3a';
+      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR', {
+        method: 'GET',
+        headers: {
+          'X-CMC_PRO_API_KEY': cmcKey
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if(data && data.data && data.data.quote && data.data.quote.ZAR) {
+          const price = data.data.quote.ZAR.price.toFixed(2);
+          document.getElementById('cmcPriceResult').innerText = `1 SADICOIN = ZAR ${price}`;
+        } else {
+          document.getElementById('cmcPriceResult').innerText = 'Price fetch failed.';
+        }
+      })
+      .catch(err => {
+        document.getElementById('cmcPriceResult').innerText = 'Error contacting CoinMarketCap.';
+        console.error(err);
+      });
   function drawChart() {
     const ctx = document.getElementById("txChart").getContext("2d");
     new Chart(ctx, {

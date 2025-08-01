@@ -186,6 +186,28 @@
         doc.text(`${i + 1}. ID: ${tx.id}, Amount: ${tx.amount}, Tax: ${tx.tax}, To: ${tx.to}`, 10, 20 + (i * 10));
       });
       doc.save("SADC_Transactions.pdf");
+
+    function getMarketPrice() {
+      const apiKey = '0b53aa75-9da6-41c8-bbba-eb33bf350d3a'; // Replace with your actual key
+      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=BTC&convert=ZAR', {
+        method: 'GET',
+        headers: {
+          'X-CMC_PRO_API_KEY': apiKey
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if(data && data.data && data.data.quote && data.data.quote.ZAR) {
+          const price = data.data.quote.ZAR.price.toFixed(2);
+          document.getElementById('cmcPriceResult').innerText = `1 BTC = ZAR ${price}`;
+        } else {
+          document.getElementById('cmcPriceResult').innerText = 'Price fetch failed.';
+        }
+      })
+      .catch(err => {
+        document.getElementById('cmcPriceResult').innerText = 'Error contacting CoinMarketCap.';
+        console.error(err);
+      });
     }
   </script>
 </body>

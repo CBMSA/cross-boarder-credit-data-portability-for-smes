@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SADI Banknotes Gallery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f9fc;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .note {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+      padding: 10px;
+    }
+
+    .note img {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .note:hover img {
+      transform: scale(1.03);
+    }
+
+    .label {
+      font-weight: bold;
+      margin-top: 10px;
+      color: #34495e;
+    }
+  </style>
+</head>
+<body>
+  <h1>SADI Banknotes - Front and Back</h1>
+
+  <div class="gallery">
+    <!-- Banknote 1 -->
+    <div class="note">
+      <img src="banknotes/sadi_1_front.jpg" alt="SADI 1 Front">
+      <div class="label">SADI 1 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_1_back.jpg" alt="SADI 1 Back">
+      <div class="label">SADI 1 - Back</div>
+    </div>
+
+    <!-- Banknote 2 -->
+    <div class="note">
+      <img src="banknotes/sadi_2_front.jpg" alt="SADI 2 Front">
+      <div class="label">SADI 2 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_2_back.jpg" alt="SADI 2 Back">
+      <div class="label">SADI 2 - Back</div>
+    </div>
+
+    <!-- Banknote 5 -->
+    <div class="note">
+      <img src="banknotes/sadi_5_front.jpg" alt="SADI 5 Front">
+      <div class="label">SADI 5 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_5_back.jpg" alt="SADI 5 Back">
+      <div class="label">SADI 5 - Back</div>
+    </div>
+
+    <!-- Banknote 10 -->
+    <div class="note">
+      <img src="banknotes/sadi_10_front.jpg" alt="SADI 10 Front">
+      <div class="label">SADI 10 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_10_back.jpg" alt="SADI 10 Back">
+      <div class="label">SADI 10 - Back</div>
+    </div>
+
+    <!-- Banknote 20 -->
+    <div class="note">
+      <img src="banknotes/sadi_20_front.jpg" alt="SADI 20 Front">
+      <div class="label">SADI 20 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_20_back.jpg" alt="SADI 20 Back">
+      <div class="label">SADI 20 - Back</div>
+    </div>
+
+    <!-- Banknote 50 -->
+    <div class="note">
+      <img src="banknotes/sadi_50_front.jpg" alt="SADI 50 Front">
+      <div class="label">SADI 50 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_50_back.jpg" alt="SADI 50 Back">
+      <div class="label">SADI 50 - Back</div>
+    </div>
+
+    <!-- Banknote 100 -->
+    <div class="note">
+      <img src="banknotes/sadi_100_front.jpg" alt="SADI 100 Front">
+      <div class="label">SADI 100 - Front</div>
+    </div>
+    <div class="note">
+      <img src="banknotes/sadi_100_back.jpg" alt="SADI 100 Back">
+      <div class="label">SADI 100 - Back</div>
+    </div>
+  </div>
+</body>
+</html>
+
+
+

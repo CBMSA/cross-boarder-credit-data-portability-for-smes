@@ -193,5 +193,31 @@
   &copy; 2025 SADC Digital Currency– Issued by the SADC Central Banks | Central Banks , Governments and Public CBDC Platform
 </footer>
 
+    // 🔁 Live Exchange Rates from EODHD
+    const eodhdToken = "67b2d451e5b8a8.90504186";  // <- Replace this with your real API key
+    const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
+
+    async function fetchExchangeRates() {
+      const ratesDiv = document.getElementById("rates");
+      let output = "<ul class='list-group'>";
+
+      for (let symbol of currencySymbols) {
+        try {
+          const res = await fetch(`https://eodhd.com/api/real-time/${symbol}.FOREX?api_token=${eodhdToken}&fmt=json`);
+          const data = await res.json();
+          const rate = data.close || data.price;
+          output += `<li class="list-group-item"><strong>${symbol}</strong>: ${rate}</li>`;
+        } catch (error) {
+          output += `<li class="list-group-item text-danger">${symbol}: Error</li>`;
+        }
+      }
+
+      output += "</ul>";
+      ratesDiv.innerHTML = output;
+    }
+
+    // Auto-fetch on load
+    window.onload = fetchExchangeRates;
+
 </body>
 </html>

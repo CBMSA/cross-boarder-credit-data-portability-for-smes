@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,14 +65,16 @@
   <div class="container">
     <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="Photo Chat Logo" class="logo">
     <h2>📷 PhotoChat Video Conference</h2>
-  <a href="index.html" class="btn">Home</a>|
-  <a href="photo-chatbusiness.html"class="btn">Chat Business</a>|
-  <a href="sadccbdc.html" class="btn">Treasures Portal</a>|
-  <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>
-  <div id="exchange" class="mt-5">
-    <h4>Live Exchange Rates</h4>
-    <div id="rates">Loading...</div>
-  </div>
+    <a href="index.html" class="btn">Home</a> |
+    <a href="photo-chatbusiness.html" class="btn">Chat Business</a> |
+    <a href="sadccbdc.html" class="btn">Treasures Portal</a> |
+    <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>
+
+    <div id="exchange" class="mt-5">
+      <h4>Live Exchange Rates</h4>
+      <div id="rates">Loading...</div>
+    </div>
+
     <!-- Meeting Join/Create -->
     <div class="controls">
       <input type="text" id="meetingId" class="form-control" placeholder="Enter or create Meeting ID">
@@ -80,8 +84,8 @@
 
     <!-- Video Conference -->
     <div class="video-container mt-4" id="videoContainer">
-      <video id="localVideo" autoplay muted></video>
-      <video id="remoteVideo" autoplay></video>
+      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="remoteVideo" autoplay playsinline></video>
     </div>
 
     <!-- Presentation Upload -->
@@ -112,7 +116,7 @@
 
     <!-- Footer -->
     <footer>
-      &copy; 2025 PhotoChat by Central Bank of SADC (CBS)— All rights reserved. Licensed under internal communication policy.
+      &copy; 2025 PhotoChat by Central Bank of SADC (CBS) — All rights reserved. Licensed under internal communication policy.
     </footer>
   </div>
 
@@ -120,11 +124,11 @@
   <script>
     const socket = io();
     let localStream;
+    let peerConnection;
     let mediaRecorder;
+    let fullRecorder;
     let audioChunks = [];
     let recordingChunks = [];
-    let fullRecorder;
-    let peerConnection;
     const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
     async function startMeeting() {
@@ -135,23 +139,31 @@
       document.getElementById('meetingLink').innerHTML = `Meeting Link: <a href="${link}" target="_blank">${link}</a>`;
       socket.emit('join', meetingId);
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      document.getElementById('localVideo').srcObject = stream;
-      localStream = stream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = stream;
+        localStream = stream;
 
-      fullRecorder = new MediaRecorder(stream);
-      fullRecorder.ondataavailable = e => recordingChunks.push(e.data);
-      fullRecorder.onstop = () => {
-        const blob = new Blob(recordingChunks, { type: 'video/webm' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'meeting-recording.webm';
-        a.click();
-      };
-      fullRecorder.start();
+        // Full meeting recording
+        fullRecorder = new MediaRecorder(stream);
+        recordingChunks = [];
+        fullRecorder.ondataavailable = e => recordingChunks.push(e.data);
+        fullRecorder.onstop = () => {
+          const blob = new Blob(recordingChunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'meeting-recording.webm';
+          a.textContent = 'Download Meeting Recording';
+          document.body.appendChild(a);
+        };
+        fullRecorder.start();
 
-      setupPeer();
-      socket.emit('ready');
+        setupPeer();
+        socket.emit('ready');
+      } catch (error) {
+        alert('Could not access camera/microphone: ' + error.message);
+      }
     }
 
     function setupPeer() {
@@ -205,19 +217,19 @@
     function startRecording() {
       if (!localStream) return alert('Start the meeting first.');
       mediaRecorder = new MediaRecorder(localStream);
+      audioChunks = [];
       mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
       mediaRecorder.onstop = () => {
         const blob = new Blob(audioChunks, { type: 'audio/mp3' });
         const url = URL.createObjectURL(blob);
         document.getElementById('audioPlayback').src = url;
       };
-      audioChunks = [];
       mediaRecorder.start();
     }
 
     function stopRecording() {
-      if (mediaRecorder) mediaRecorder.stop();
-      if (fullRecorder) fullRecorder.stop();
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      if (fullRecorder && fullRecorder.state !== 'inactive') fullRecorder.stop();
     }
 
     function sendMessage() {
@@ -244,14 +256,14 @@
     socket.on('cibot', response => {
       document.getElementById('chatbot-response').textContent = `🤖 CiBot: ${response}`;
     });
+
     // 🔁 Live Exchange Rates from EODHD
-    const eodhdToken = "67b2d451e5b8a8.90504186";  // <- Replace this with your real API key
+    const eodhdToken = "67b2d451e5b8a8.90504186";  // Replace with your valid API key
     const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
 
     async function fetchExchangeRates() {
       const ratesDiv = document.getElementById("rates");
       let output = "<ul class='list-group'>";
-
       for (let symbol of currencySymbols) {
         try {
           const res = await fetch(`https://eodhd.com/api/real-time/${symbol}.FOREX?api_token=${eodhdToken}&fmt=json`);
@@ -262,14 +274,13 @@
           output += `<li class="list-group-item text-danger">${symbol}: Error</li>`;
         }
       }
-
       output += "</ul>";
       ratesDiv.innerHTML = output;
     }
 
-    // Auto-fetch on load
     window.onload = fetchExchangeRates;
-
   </script>
 </body>
 </html>
+
+

@@ -1,76 +1,190 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SADC SME Credit Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SADC Digital Currency – Official CBDC Portal</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 20px; }
-    .form-container { background: #fff; padding: 20px; max-width: 600px; margin: auto; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { color: #003366; text-align: center; }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
-    button { margin-top: 20px; background: #003366; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; cursor: pointer; }
-    button:hover { background: #0052a3; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f6f9;
+      color: #2d3436;
+    }
+    header {
+      background-color: #003366;
+      color: white;
+      padding: 20px 40px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0;
+    }
+    nav {
+      background-color: #00509e;
+      padding: 10px 40px;
+      display: flex;
+      gap: 20px;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px;
+    }
+    h2 {
+      color: #00509e;
+      margin-top: 40px;
+    }
+    ul {
+      margin-left: 20px;
+    }
+    .faq-section {
+      margin-top: 30px;
+    }
+    .faq-question {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-top: 20px;
+    }
+    .faq-answer {
+      color: #636e72;
+      margin-bottom: 10px;
+    }
+    .cta {
+      background-color: #dfe6e9;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 30px;
+    }
+    .cta a {
+      display: inline-block;
+      background-color: #00509e;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    footer {
+      background-color: #2d3436;
+      color: #b2bec3;
+      padding: 20px;
+      text-align: center;
+      font-size: 0.9em;
+    }
+    .highlight {
+      background: #e3f2fd;
+      border-left: 5px solid #1a73e8;
+      padding: 15px;
+      margin: 20px 0;
+    }
   </style>
 </head>
 <body>
 
-<nav>
-  <a href="index.html">Credit Data</a>
-  <a href="transactions.html">Transactions  Payments</a>
-  <a href="statsanalyzer.html"> STATS ANALYZER</a>
-  <a href="sadccbdc.html">SADC CBDC</a>
-  <a href="transactions.html">Wallet</a>
-  <a href="photochatmeetings.html">Online Meetings</a> 
-</nav>
-  <div class="form-container">
-    <h2>SME Credit Data Submission</h2>
-    <form id="creditForm">
-      <label for="name">Company Name</label>
-      <input type="text" id="name" required>
+<header>
+  <h1>Central Bank of SADC Digital Currency – Official CBDC Portal</h1>
+  <p>Trusted Digital Currency for Southern Africa</p>
+</header>
+<head>
+  <style>
+    nav a {
+      color: white;
+      text-decoration: none; /* Optional: Removes underline */
+    }
+    nav {
+      background-color: black; /* Optional: Add background color for contrast */
+    }
+  </style>
+</head>
+<body>
 
-      <label for="taxID">Tax Identification Number</label>
-      <input type="text" id="taxID" required>
+  <nav>
+    <a href="index.html">CBDC Portal</a> |
+    <a href="#tokenizedbond.html">Tokenized Bond Wallet</a> |
+    <a href="home.html">Home</a> |
+    <a href="nationaltreasurytransactions.html">Wallet</a>
+    <a href="p2p.html">Offline Payments</a> |
+  </nav>
+</body>
 
-      <label for="country">Country</label>
-      <input type="text" id="country" required>
+<div class="container">
 
-      <label for="financials">Financial Summary</label>
-      <textarea id="financials" required></textarea>
+  <section id="what">
+    <h2>What is SADC Digital Currency?</h2>
+    <p>The SADC Digital Currency is a secure and government-backed digital legal tender issued by the regional central banks of the Southern African Development Community. It is designed for everyday use by the general public, offering fast, safe, and reliable digital payments across borders.</p>
 
-      <label for="docURL">Document URL (PDF)</label>
-      <input type="url" id="docURL" required>
+    <div class="highlight">
+      <strong>Note:</strong> The SADC Digital Currency is not a cryptocurrency. It is a centralized digital version of fiat currency, fully regulated and backed 1:1 by sovereign assets.
+    </div>
+  </section>
 
-      <button type="submit">Submit Credit Record</button>
-    </form>
-    <div id="status"></div>
-  </div>
+  <section id="features">
+    <h2>Key Features</h2>
+    <ul>
+      <li>Legal tender, backed by participating central banks</li>
+      <li>24/7 availability and real-time transfers</li>
+      <li>Offline payment support in remote areas</li>
+      <li>Interoperable with all major commercial banks</li>
+      <li>Zero-fee personal transactions</li>
+      <li>Secure with biometric authentication</li>
+    </ul>
+  </section>
 
-  <script>
-    document.getElementById("creditForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const payload = {
-        name: document.getElementById("name").value,
-        taxID: document.getElementById("taxID").value,
-        country: document.getElementById("country").value,
-        financials: document.getElementById("financials").value,
-        docURL: document.getElementById("docURL").value
-      };
+  <section id="wallet">
+    <h2>Download the CBDC Wallet App</h2>
+    <p>The SADC Digital Currency is available via mobile apps from participating financial institutions and app stores. Use your national ID or bank account to sign up.</p>
+    <div class="cta">
+      <strong>Start using the digital currency today:</strong><br/>
+      <a href="#">Download for Android</a>
+      <a href="#">Download for iOS</a>
+    <p>NB Apps not Available to download yet , kindly use Website.Thank you</p>
+    </div>
+  </section>
 
-      document.getElementById("status").innerText = "Submitting to blockchain...";
+  <section id="faq">
+    <h2>Frequently Asked Questions (FAQs)</h2>
+    <div class="faq-section">
+      <div class="faq-question">1. Who can use the SADC Digital Currency?</div>
+      <div class="faq-answer">Any citizen or resident of a participating country with a national ID or mobile number can onboard via the wallet app.</div>
 
-      const res = await fetch("http://localhost:3000/api/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      <div class="faq-question">2. Is it a form of cryptocurrency?</div>
+      <div class="faq-answer">No. It is a centralized, government-backed digital currency, not a decentralized crypto asset.</div>
 
-      const result = await res.json();
-      document.getElementById("status").innerText = result.message || "Submitted successfully!";
-    });
-  </script>
+      <div class="faq-question">3. Do I need a bank account to use it?</div>
+      <div class="faq-answer">No. You can use your mobile phone and national ID to access the CBDC wallet directly, even without a bank account.</div>
+
+      <div class="faq-question">4. Is it safe to use?</div>
+      <div class="faq-answer">Yes. The CBDC is protected using government-grade security, including biometric login and AI-based fraud detection.</div>
+
+      <div class="faq-question">5. What can I use it for?</div>
+      <div class="faq-answer">You can use it for shopping, bills, person-to-person transfers, government disbursements, and more.</div>
+    </div>
+  </section>
+
+  <section id="help">
+    <h2>Need Help?</h2>
+    <p>Visit your nearest commercial bank or authorized CBDC partner for onboarding. You can also contact the SADC Digital Currency Help Desk:</p>
+    <ul>
+      <li>Email: muchbepvtltd@gmail.com</li>
+
+      <li>Phone: +27 762 842 492</li>
+
+      <li>Live Chat: Available 08.30AM –  05.30PM (Weekdays)</li>
+    </ul>
+  </section>
+
+</div>
+
+<footer>
+  &copy; 2025 SADC Digital Currency– Issued by the SADC Central Banks | Central Banks , Governments and Public CBDC Platform
+</footer>
+
 </body>
 </html>
-

@@ -1,0 +1,103 @@
+
+<head>
+  <meta charset="utf-8" />
+  <title>SADC Citizens CBDC Wallet</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;margin:20px}
+    input,button{padding:8px;margin:4px}
+    .box{border:1px solid #ddd;padding:12px;border-radius:8px;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <h1>SADC Citizens CBDC Wallet</h1>
+  <div class="box">
+    <h3>Register</h3>
+    <input id="r_name" placeholder="Full name"/><br/>
+    <input id="r_email" placeholder="Email"/><br/>
+    <input id="r_phone" placeholder="Phone"/><br/>
+    <input id="r_pass" placeholder="Password" type="password"/><br/>
+    <button onclick="register()">Register (credit 100 SADI)</button>
+  </div>
+
+  <div class="box">
+    <h3>Login</h3>
+    <input id="l_email" placeholder="Email"/><br/>
+    <input id="l_pass" placeholder="Password" type="password"/><br/>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="box">
+    <h3>Wallet</h3>
+    <div id="wallet_info">Not logged in</div>
+    <button onclick="refreshWallet()">Refresh Wallet</button>
+  </div>
+
+  <div class="box">
+    <h3>Convert SADI → Fiat</h3>
+    <input id="conv_amt" placeholder="Amount SADI (100)"/><br/>
+    <input id="conv_cur" placeholder="Target currency (USD / ZAR)"/><br/>
+    <button onclick="convert()">Convert</button>
+    <div id="conv_res"></div>
+  </div>
+
+  <div class="box">
+    <h3>Disburse to Bank (Korapay)</h3>
+    <input id="bank_acc" placeholder="Account number"/><br/>
+    <input id="bank_code" placeholder="Bank code"/><br/>
+    <input id="bank_amt" placeholder="Amount (in target currency)"/><br/>
+    <input id="bank_cur" placeholder="Currency (ZAR)"/><br/>
+    <button onclick="disburse()">Send</button>
+    <div id="disb_res"></div>
+  </div>
+
+  <script>
+    const apiBase = '';
+    function show(msg){ console.log(msg); alert(typeof msg === 'string' ? msg : JSON.stringify(msg)); }
+
+    async function register(){
+      const payload = { full_name: document.getElementById('r_name').value, email: document.getElementById('r_email').value, phone: document.getElementById('r_phone').value, password: document.getElementById('r_pass').value };
+      const r = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const j = await r.json();
+      show(j);
+    }
+
+    async function login(){
+      const payload = { email: document.getElementById('l_email').value, password: document.getElementById('l_pass').value };
+      const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const j = await r.json();
+      if (j.token) {
+        localStorage.setItem('token', j.token);
+        show('Logged in');
+        refreshWallet();
+      } else show(j);
+    }
+
+    async function refreshWallet(){
+      const token = localStorage.getItem('token');
+      if(!token) return show('Not logged in');
+      const r = await fetch('/api/wallet/me', { headers: { Authorization: 'Bearer ' + token }});
+      const j = await r.json();
+      document.getElementById('wallet_info').innerText = JSON.stringify(j, null, 2);
+    }
+
+    async function convert(){
+      const token = localStorage.getItem('token'); if(!token) return show('Not logged in');
+      const payload = { amount_sadi: Number(document.getElementById('conv_amt').value || 100), target_currency: document.getElementById('conv_cur').value || 'ZAR' };
+      const r = await fetch('/api/convert', { method:'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      const j = await r.json();
+      document.getElementById('conv_res').innerText = JSON.stringify(j,null,2);
+      refreshWallet();
+    }
+
+    async function disburse(){
+      const token = localStorage.getItem('token'); if(!token) return show('Not logged in');
+      const payload = { account_number: document.getElementById('bank_acc').value, bank_code: document.getElementById('bank_code').value, amount: Number(document.getElementById('bank_amt').value), currency: document.getElementById('bank_cur').value || 'ZAR' };
+      const r = await fetch('/api/disburse', { method:'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      const j = await r.json();
+      document.getElementById('disb_res').innerText = JSON.stringify(j,null,2);
+    }
+  </script>
+</body>
+</html>`);
+});

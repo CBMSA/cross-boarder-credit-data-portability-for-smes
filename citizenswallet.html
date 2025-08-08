@@ -377,6 +377,36 @@
       if (!name || !id || !wallet || !password) return alert("All fields required");
       if (users[id]) return alert("User already exists");
 
+    async function fetchConversions(balance) {
+      try {
+        const fxRes = await fetch(`https://eodhd.com/api/real-time/ZARUSD.FOREX?api_token=${apiKey}&fmt=json`);
+        const usdRate = (await fxRes.json()).close;
+        const usdValue = balance * usdRate;
+
+        const spyRes = await fetch(`https://eodhd.com/api/real-time/SPY.US?api_token=${apiKey}&fmt=json`);
+        const goldRes = await fetch(`https://eodhd.com/api/real-time/XAUUSD.FOREX?api_token=${apiKey}&fmt=json`);
+
+        document.getElementById("usdValue").innerText = `USD ${usdValue.toFixed(2)}`;
+        document.getElementById("spyValue").innerText = `${(usdValue / (await spyRes.json()).close).toFixed(4)} SPY`;
+        document.getElementById("goldValue").innerText = `${(usdValue / (await goldRes.json()).close).toFixed(4)} oz`;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function fetchExchangeRates() {
+      const currencies = ["USDZAR", "ZARUSD", "USDEUR", "USDGBP", "USDJPY", "USDCNY", "USDAED", "USDKES"];
+      const container = document.getElementById("rates");
+      container.innerHTML = "";
+      for (let code of currencies) {
+        const res = await fetch(`https://eodhd.com/api/real-time/${code}.FOREX?api_token=${apiKey}&fmt=json`);
+        const data = await res.json();
+        const el = document.createElement("p");
+        el.innerText = `${code}: ${data.close}`;
+        container.appendChild(el);
+      }
+    }
+
 </script>
 
 </body>

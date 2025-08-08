@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>SADC Citizens CBDC Wallet</title>
+  <title>SADC Citizens CBDC Wallet (Prototype)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     /* Reset some default styles */
@@ -124,21 +124,21 @@
   </style>
 </head>
 <body>
-  <h1>SADC Citizens CBDC Wallet</h1>
+  <h1>SADC Citizens CBDC Wallet (Prototype)</h1>
 
   <div class="box">
     <h3>Register</h3>
-    <input id="r_name" placeholder="Full name" type="text"/>
-    <input id="r_email" placeholder="Email" type="email"/>
-    <input id="r_phone" placeholder="Phone" type="text"/>
-    <input id="r_pass" placeholder="Password" type="password"/>
+    <input id="r_name" placeholder="Full name" type="text" />
+    <input id="r_email" placeholder="Email" type="email" />
+    <input id="r_phone" placeholder="Phone" type="text" />
+    <input id="r_pass" placeholder="Password" type="password" />
     <button onclick="register()">Register (credit 100 SADI)</button>
   </div>
 
   <div class="box">
     <h3>Login</h3>
-    <input id="l_email" placeholder="Email" type="email"/>
-    <input id="l_pass" placeholder="Password" type="password"/>
+    <input id="l_email" placeholder="Email" type="email" />
+    <input id="l_pass" placeholder="Password" type="password" />
     <button onclick="login()">Login</button>
   </div>
 
@@ -150,106 +150,214 @@
 
   <div class="box">
     <h3>Convert SADI → Fiat</h3>
-    <input id="conv_amt" placeholder="Amount SADI (100)" type="number" min="0"/>
-    <input id="conv_cur" placeholder="Target currency (USD / ZAR)" type="text" maxlength="3"/>
+    <input id="conv_amt" placeholder="Amount SADI (100)" type="number" min="0" />
+    <input id="conv_cur" placeholder="Target currency (USD / ZAR)" type="text" maxlength="3" />
     <button onclick="convert()">Convert</button>
     <div id="conv_res"></div>
   </div>
 
   <div class="box">
     <h3>Disburse to Bank (Korapay)</h3>
-    <input id="bank_acc" placeholder="Account number" type="text"/>
-    <input id="bank_code" placeholder="Bank code" type="text"/>
-    <input id="bank_amt" placeholder="Amount (in target currency)" type="number" min="0" step="0.01"/>
-    <input id="bank_cur" placeholder="Currency (ZAR)" type="text" maxlength="3"/>
+    <input id="bank_acc" placeholder="Account number" type="text" />
+    <input id="bank_code" placeholder="Bank code" type="text" />
+    <input id="bank_amt" placeholder="Amount (in target currency)" type="number" min="0" step="0.01" />
+    <input id="bank_cur" placeholder="Currency (ZAR)" type="text" maxlength="3" />
     <button onclick="disburse()">Send</button>
     <div id="disb_res"></div>
   </div>
 
-  <script>
-    const apiBase = '';
-    function show(msg){ console.log(msg); alert(typeof msg === 'string' ? msg : JSON.stringify(msg)); }
+<script>
+  // --- Prototype data storage in localStorage ---
 
-    async function register(){
-      const payload = {
-        full_name: document.getElementById('r_name').value,
-        email: document.getElementById('r_email').value,
-        phone: document.getElementById('r_phone').value,
-        password: document.getElementById('r_pass').value
-      };
-      const r = await fetch('/api/register', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json();
-      show(j);
+  // Users stored as array of objects [{ full_name, email, phone, password, balance }]
+  function getUsers() {
+    return JSON.parse(localStorage.getItem('users') || '[]');
+  }
+
+  function saveUsers(users) {
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+
+  // Currently logged in user email stored in localStorage
+  function getCurrentUserEmail() {
+    return localStorage.getItem('currentUserEmail');
+  }
+
+  function setCurrentUserEmail(email) {
+    localStorage.setItem('currentUserEmail', email);
+  }
+
+  function clearCurrentUserEmail() {
+    localStorage.removeItem('currentUserEmail');
+  }
+
+  // Register user
+  async function register() {
+    const full_name = document.getElementById('r_name').value.trim();
+    const email = document.getElementById('r_email').value.trim().toLowerCase();
+    const phone = document.getElementById('r_phone').value.trim();
+    const password = document.getElementById('r_pass').value;
+
+    if (!full_name || !email || !phone || !password) {
+      return alert('Please fill in all registration fields.');
     }
 
-    async function login(){
-      const payload = {
-        email: document.getElementById('l_email').value,
-        password: document.getElementById('l_pass').value
-      };
-      const r = await fetch('/api/login', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json();
-      if (j.token) {
-        localStorage.setItem('token', j.token);
-        show('Logged in');
-        refreshWallet();
-      } else show(j);
+    let users = getUsers();
+    if (users.find(u => u.email === email)) {
+      return alert('User with this email already exists.');
     }
 
-    async function refreshWallet(){
-      const token = localStorage.getItem('token');
-      if(!token) return show('Not logged in');
-      const r = await fetch('/api/wallet/me', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      const j = await r.json();
-      document.getElementById('wallet_info').innerText = JSON.stringify(j, null, 2);
+    // Add new user with initial balance 100 SADI
+    users.push({
+      full_name,
+      email,
+      phone,
+      password,
+      balance_sadi: 100,
+      conversion_history: [],
+      disbursement_history: []
+    });
+    saveUsers(users);
+
+    alert('Registered successfully! You have been credited with 100 SADI.');
+  }
+
+  // Login user
+  async function login() {
+    const email = document.getElementById('l_email').value.trim().toLowerCase();
+    const password = document.getElementById('l_pass').value;
+
+    if (!email || !password) {
+      return alert('Please enter email and password.');
     }
 
-    async function convert(){
-      const token = localStorage.getItem('token'); if(!token) return show('Not logged in');
-      const payload = {
-        amount_sadi: Number(document.getElementById('conv_amt').value || 100),
-        target_currency: document.getElementById('conv_cur').value || 'ZAR'
-      };
-      const r = await fetch('/api/convert', {
-        method:'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json();
-      document.getElementById('conv_res').innerText = JSON.stringify(j,null,2);
-      refreshWallet();
+    const users = getUsers();
+    const user = users.find(u => u.email === email && u.password === password);
+
+    if (!user) {
+      return alert('Invalid email or password.');
     }
 
-    async function disburse(){
-      const token = localStorage.getItem('token'); if(!token) return show('Not logged in');
-      const payload = {
-        account_number: document.getElementById('bank_acc').value,
-        bank_code: document.getElementById('bank_code').value,
-        amount: Number(document.getElementById('bank_amt').value),
-        currency: document.getElementById('bank_cur').value || 'ZAR'
-      };
-      const r = await fetch('/api/disburse', {
-        method:'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json();
-      document.getElementById('disb_res').innerText = JSON.stringify(j,null,2);
+    setCurrentUserEmail(email);
+    alert(`Welcome back, ${user.full_name}!`);
+    refreshWallet();
+  }
+
+  // Refresh wallet info display
+  async function refreshWallet() {
+    const email = getCurrentUserEmail();
+    if (!email) {
+      document.getElementById('wallet_info').innerText = 'Not logged in';
+      return alert('Please login first.');
     }
-  </script>
+    const users = getUsers();
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      document.getElementById('wallet_info').innerText = 'User not found';
+      return alert('User not found. Please login again.');
+    }
+
+    // Show wallet info (balance + last 5 conversions + disbursements)
+    let info = `Name: ${user.full_name}\nEmail: ${user.email}\nPhone: ${user.phone}\n\n`;
+    info += `Balance: ${user.balance_sadi.toFixed(2)} SADI\n\n`;
+
+    info += 'Last 5 Conversions:\n';
+    if (user.conversion_history.length === 0) info += '  None\n';
+    else {
+      user.conversion_history.slice(-5).reverse().forEach(c => {
+        info += `  ${c.amount_sadi} SADI → ${c.target_currency}: ${c.converted_amount.toFixed(2)}\n`;
+      });
+    }
+
+    info += '\nLast 5 Disbursements:\n';
+    if (user.disbursement_history.length === 0) info += '  None\n';
+    else {
+      user.disbursement_history.slice(-5).reverse().forEach(d => {
+        info += `  ${d.amount} ${d.currency} to ${d.account_number} (${d.bank_code})\n`;
+      });
+    }
+
+    document.getElementById('wallet_info').innerText = info;
+  }
+
+  // Convert SADI to fiat (mock conversion rate)
+  async function convert() {
+    const email = getCurrentUserEmail();
+    if (!email) return alert('Please login first.');
+
+    const amount_sadi = Number(document.getElementById('conv_amt').value);
+    const target_currency = document.getElementById('conv_cur').value.trim().toUpperCase();
+
+    if (isNaN(amount_sadi) || amount_sadi <= 0) return alert('Please enter a valid positive amount.');
+    if (!['USD','ZAR'].includes(target_currency)) return alert('Supported currencies: USD, ZAR');
+
+    const users = getUsers();
+    const user = users.find(u => u.email === email);
+
+    if (amount_sadi > user.balance_sadi) return alert('Insufficient SADI balance.');
+
+    // Mock conversion rates:
+    const rates = { USD: 0.07, ZAR: 1.1 }; // 1 SADI = 0.07 USD or 1.1 ZAR
+    const converted_amount = amount_sadi * rates[target_currency];
+
+    // Deduct SADI and record conversion
+    user.balance_sadi -= amount_sadi;
+    user.conversion_history.push({
+      amount_sadi,
+      target_currency,
+      converted_amount,
+      date: new Date().toISOString()
+    });
+
+    saveUsers(users);
+
+    document.getElementById('conv_res').innerText =
+      `Converted ${amount_sadi} SADI to ${converted_amount.toFixed(2)} ${target_currency}.`;
+    refreshWallet();
+  }
+
+  // Disburse fiat to bank (mock, no real API call)
+  async function disburse() {
+    const email = getCurrentUserEmail();
+    if (!email) return alert('Please login first.');
+
+    const account_number = document.getElementById('bank_acc').value.trim();
+    const bank_code = document.getElementById('bank_code').value.trim();
+    const amount = Number(document.getElementById('bank_amt').value);
+    const currency = (document.getElementById('bank_cur').value.trim() || 'ZAR').toUpperCase();
+
+    if (!account_number || !bank_code) return alert('Please enter bank account number and bank code.');
+    if (isNaN(amount) || amount <= 0) return alert('Please enter a valid positive amount.');
+    if (!['USD','ZAR'].includes(currency)) return alert('Supported currencies: USD, ZAR');
+
+    // For prototype, disbursement does NOT affect SADI balance (assumed already converted)
+
+    const users = getUsers();
+    const user = users.find(u => u.email === email);
+
+    // Record disbursement
+    user.disbursement_history.push({
+      account_number,
+      bank_code,
+      amount,
+      currency,
+      date: new Date().toISOString()
+    });
+    saveUsers(users);
+
+    document.getElementById('disb_res').innerText =
+      `Disbursed ${amount.toFixed(2)} ${currency} to ${account_number} (Bank code: ${bank_code}).`;
+    refreshWallet();
+  }
+
+  // Optional: Logout function to clear session
+  function logout() {
+    clearCurrentUserEmail();
+    document.getElementById('wallet_info').innerText = 'Not logged in';
+    alert('Logged out.');
+  }
+</script>
+
 </body>
 </html>
-
-
-
 

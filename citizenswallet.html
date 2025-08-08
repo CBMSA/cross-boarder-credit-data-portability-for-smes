@@ -126,11 +126,10 @@
 <body>
   <h1>SADC Citizens CBDC Wallet (Prototype)</h1>
 
-    <div id="exchange" class="mt-5">
-      <h4>Live Exchange Rates</h4>
-      <div id="rates">Loading...</div>
-    </div>
-
+  <div id="exchange" class="mt-5">
+    <h4>Live Exchange Rates</h4>
+    <div id="rates">Loading...</div>
+  </div>
 
   <div class="box">
     <h3>Register</h3>
@@ -173,9 +172,9 @@
   </div>
 
 <script>
-  // --- Prototype data storage in localStorage ---
+  const apiKey = '67b2d451e5b8a8.90504186';
 
-  // Users stored as array of objects [{ full_name, email, phone, password, balance }]
+  // LocalStorage helpers
   function getUsers() {
     return JSON.parse(localStorage.getItem('users') || '[]');
   }
@@ -184,7 +183,6 @@
     localStorage.setItem('users', JSON.stringify(users));
   }
 
-  // Currently logged in user email stored in localStorage
   function getCurrentUserEmail() {
     return localStorage.getItem('currentUserEmail');
   }
@@ -197,7 +195,7 @@
     localStorage.removeItem('currentUserEmail');
   }
 
-  // Register user
+  // Register
   async function register() {
     const full_name = document.getElementById('r_name').value.trim();
     const email = document.getElementById('r_email').value.trim().toLowerCase();
@@ -213,7 +211,6 @@
       return alert('User with this email already exists.');
     }
 
-    // Add new user with initial balance 100 SADI
     users.push({
       full_name,
       email,
@@ -228,7 +225,7 @@
     alert('Registered successfully! You have been credited with 100 SADI.');
   }
 
-  // Login user
+  // Login
   async function login() {
     const email = document.getElementById('l_email').value.trim().toLowerCase();
     const password = document.getElementById('l_pass').value;
@@ -249,7 +246,7 @@
     refreshWallet();
   }
 
-  // Refresh wallet info display
+  // Refresh wallet display
   async function refreshWallet() {
     const email = getCurrentUserEmail();
     if (!email) {
@@ -263,7 +260,6 @@
       return alert('User not found. Please login again.');
     }
 
-    // Show wallet info (balance + last 5 conversions + disbursements)
     let info = `Name: ${user.full_name}\nEmail: ${user.email}\nPhone: ${user.phone}\n\n`;
     info += `Balance: ${user.balance_sadi.toFixed(2)} SADI\n\n`;
 
@@ -286,7 +282,7 @@
     document.getElementById('wallet_info').innerText = info;
   }
 
-  // Convert SADI to fiat (mock conversion rate)
+  // Convert SADI to fiat with mock rates
   async function convert() {
     const email = getCurrentUserEmail();
     if (!email) return alert('Please login first.');
@@ -302,11 +298,9 @@
 
     if (amount_sadi > user.balance_sadi) return alert('Insufficient SADI balance.');
 
-    // Mock conversion rates:
-    const rates = { USD: 0.07, ZAR: 1.1 }; // 1 SADI = 0.07 USD or 1.1 ZAR
+    const rates = { USD: 0.07, ZAR: 1.1 }; // Mock rates
     const converted_amount = amount_sadi * rates[target_currency];
 
-    // Deduct SADI and record conversion
     user.balance_sadi -= amount_sadi;
     user.conversion_history.push({
       amount_sadi,
@@ -322,7 +316,7 @@
     refreshWallet();
   }
 
-  // Disburse fiat to bank (mock, no real API call)
+  // Disburse fiat to bank (mock)
   async function disburse() {
     const email = getCurrentUserEmail();
     if (!email) return alert('Please login first.');
@@ -336,12 +330,9 @@
     if (isNaN(amount) || amount <= 0) return alert('Please enter a valid positive amount.');
     if (!['USD','ZAR'].includes(currency)) return alert('Supported currencies: USD, ZAR');
 
-    // For prototype, disbursement does NOT affect SADI balance (assumed already converted)
-
     const users = getUsers();
     const user = users.find(u => u.email === email);
 
-    // Record disbursement
     user.disbursement_history.push({
       account_number,
       bank_code,
@@ -356,47 +347,12 @@
     refreshWallet();
   }
 
-  // Optional: Logout function to clear session
-  function logout() {
-    clearCurrentUserEmail();
-    document.getElementById('wallet_info').innerText = 'Not logged in';
-    alert('Logged out.');
-  }
-
-    let users = {};
-    let currentUser = null;
-    let txHistory = [];
-    const apiKey = '67b2d451e5b8a8.90504186';
-
-    function registerUser() {
-      const role = document.getElementById("role").value;
-      const name = document.getElementById("name").value;
-      const id = document.getElementById("idNumber").value;
-      const wallet = document.getElementById("walletAddress").value;
-      const password = document.getElementById("password").value;
-      if (!name || !id || !wallet || !password) return alert("All fields required");
-      if (users[id]) return alert("User already exists");
-
-    async function fetchConversions(balance) {
-      try {
-        const fxRes = await fetch(`https://eodhd.com/api/real-time/ZARUSD.FOREX?api_token=${apiKey}&fmt=json`);
-        const usdRate = (await fxRes.json()).close;
-        const usdValue = balance * usdRate;
-
-        const spyRes = await fetch(`https://eodhd.com/api/real-time/SPY.US?api_token=${apiKey}&fmt=json`);
-        const goldRes = await fetch(`https://eodhd.com/api/real-time/XAUUSD.FOREX?api_token=${apiKey}&fmt=json`);
-
-        document.getElementById("usdValue").innerText = `USD ${usdValue.toFixed(2)}`;
-        document.getElementById("spyValue").innerText = `${(usdValue / (await spyRes.json()).close).toFixed(4)} SPY`;
-        document.getElementById("goldValue").innerText = `${(usdValue / (await goldRes.json()).close).toFixed(4)} oz`;
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function fetchExchangeRates() {
-      const currencies = ["USDZAR", "ZARUSD", "USDEUR", "USDGBP", "USDJPY", "USDCNY", "USDAED", "USDKES"];
-      const container = document.getElementById("rates");
+  // Fetch exchange rates and update UI
+  async function fetchExchangeRates() {
+    const currencies = ["USDZAR", "ZARUSD", "USDEUR", "USDGBP", "USDJPY", "USDCNY", "USDAED", "USDKES"];
+    const container = document.getElementById("rates");
+    container.innerHTML = "Loading...";
+    try {
       container.innerHTML = "";
       for (let code of currencies) {
         const res = await fetch(`https://eodhd.com/api/real-time/${code}.FOREX?api_token=${apiKey}&fmt=json`);
@@ -405,10 +361,19 @@
         el.innerText = `${code}: ${data.close}`;
         container.appendChild(el);
       }
+    } catch (err) {
+      container.innerHTML = "Failed to load exchange rates.";
+      console.error(err);
     }
+  }
 
+  // Load exchange rates on page load
+  window.onload = () => {
+    fetchExchangeRates();
+  };
 </script>
 
 </body>
 </html>
+
 

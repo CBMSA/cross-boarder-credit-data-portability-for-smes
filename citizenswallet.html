@@ -362,6 +362,21 @@
     document.getElementById('wallet_info').innerText = 'Not logged in';
     alert('Logged out.');
   }
+
+    let users = {};
+    let currentUser = null;
+    let txHistory = [];
+    const apiKey = '67b2d451e5b8a8.90504186';
+
+    function registerUser() {
+      const role = document.getElementById("role").value;
+      const name = document.getElementById("name").value;
+      const id = document.getElementById("idNumber").value;
+      const wallet = document.getElementById("walletAddress").value;
+      const password = document.getElementById("password").value;
+      if (!name || !id || !wallet || !password) return alert("All fields required");
+      if (users[id]) return alert("User already exists");
+
 </script>
 
 </body>

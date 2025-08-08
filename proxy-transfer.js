@@ -497,3 +497,178 @@ app.get('/admin/audit', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Open Banking Aggregator (with Kora) listening on ${PORT}`));
 
+
+CITIZENS WALLET 
+
+
+
+// server.js
+import express from "express";
+import cors from "cors";
+import fetch from "node-fetch";
+import jwt from "jsonwebtoken";
+import mssql from "mssql";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// ====== CONFIG ======
+const JWT_SECRET = "change_this_secret";
+const KORAPAY_SECRET_KEY = "sk_test_xxxxx"; // replace with real
+const SADI_TO_USD_BASE = 1.5; // 100 SADI ≈ $1.5 example
+const sqlConfig = {
+  user: "YOUR_AZURE_SQL_USER",
+  password: "YOUR_AZURE_SQL_PASSWORD",
+  database: "YOUR_DB_NAME",
+  server: "YOUR_SERVER_NAME.database.windows.net",
+  pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
+  options: { encrypt: true, trustServerCertificate: false }
+};
+
+// ====== DB INIT ======
+async function initDB() {
+  const pool = await mssql.connect(sqlConfig);
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Users' AND xtype='U')
+    CREATE TABLE Users (
+      id INT IDENTITY PRIMARY KEY,
+      full_name NVARCHAR(255),
+      email NVARCHAR(255) UNIQUE,
+      phone NVARCHAR(50),
+      password NVARCHAR(255),
+      balance_sadi FLOAT DEFAULT 0
+    )
+  `);
+}
+initDB().catch(console.error);
+
+// ====== MIDDLEWARE ======
+function auth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: "No token" });
+  const token = header.split(" ")[1];
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    req.user = user;
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+// ====== ROUTES ======
+
+// Register
+app.post("/api/register", async (req, res) => {
+  const { full_name, email, phone, password } = req.body;
+  try {
+    const pool = await mssql.connect(sqlConfig);
+    await pool
+      .request()
+      .input("full_name", full_name)
+      .input("email", email)
+      .input("phone", phone)
+      .input("password", password) // NOTE: hash in production
+      .input("balance_sadi", 100)
+      .query(
+        "INSERT INTO Users (full_name,email,phone,password,balance_sadi) VALUES (@full_name,@email,@phone,@password,@balance_sadi)"
+      );
+    res.json({ success: true, credited: 100 });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Login
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  const pool = await mssql.connect(sqlConfig);
+  const result = await pool
+    .request()
+    .input("email", email)
+    .input("password", password)
+    .query(
+      "SELECT id, email FROM Users WHERE email=@email AND password=@password"
+    );
+  if (result.recordset.length) {
+    const token = jwt.sign(
+      { id: result.recordset[0].id, email },
+      JWT_SECRET
+    );
+    res.json({ token });
+  } else res.status(401).json({ error: "Invalid login" });
+});
+
+// Wallet info
+app.get("/api/wallet/me", auth, async (req, res) => {
+  const pool = await mssql.connect(sqlConfig);
+  const result = await pool
+    .request()
+    .input("id", req.user.id)
+    .query("SELECT full_name,email,balance_sadi FROM Users WHERE id=@id");
+  res.json(result.recordset[0]);
+});
+
+// Convert SADI → Fiat
+app.post("/api/convert", auth, async (req, res) => {
+  const { amount_sadi, target_currency } = req.body;
+  // fetch real exchange rate for USD → target
+  const fxRes = await fetch(
+    `https://api.exchangerate.host/latest?base=USD&symbols=${target_currency}`
+  );
+  const fx = await fxRes.json();
+  const usdValue = (amount_sadi / 100) * SADI_TO_USD_BASE;
+  const fiatValue = usdValue * (fx.rates[target_currency] || 1);
+
+  // deduct from wallet
+  const pool = await mssql.connect(sqlConfig);
+  await pool
+    .request()
+    .input("id", req.user.id)
+    .input("amt", amount_sadi)
+    .query("UPDATE Users SET balance_sadi = balance_sadi - @amt WHERE id=@id");
+
+  res.json({
+    amount_sadi,
+    usdValue,
+    fiatValue,
+    currency: target_currency,
+    rate: fx.rates[target_currency]
+  });
+});
+
+// Disburse via Korapay
+app.post("/api/disburse", auth, async (req, res) => {
+  const { account_number, bank_code, amount, currency } = req.body;
+  try {
+    const koraRes = await fetch("https://api.korapay.com/merchant/disburse", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${KORAPAY_SECRET_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        reference: "txn_" + Date.now(),
+        destination: {
+          type: "bank_account",
+          amount,
+          currency,
+          narration: "CBDC Withdrawal",
+          bank_account: {
+            bank: bank_code,
+            account: account_number
+          }
+        }
+      })
+    });
+    const j = await koraRes.json();
+    res.json(j);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ====== START ======
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Server running on port", PORT));

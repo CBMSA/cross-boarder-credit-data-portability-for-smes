@@ -1,69 +1,201 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SADI Wallet</title>
+    <title>SADIcoin Admin Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        #sidebar { min-width: 220px; height: 100vh; background: #343a40; color: #fff; }
+        #sidebar .nav-link { color: #fff; }
+        #sidebar .nav-link.active { background: #495057; }
+        #content { margin-left: 230px; padding: 20px; }
+        .dashboard-card { min-width: 200px; }
+    </style>
 </head>
 <body>
-    <h1>SADIcoin Wallet</h1>
+<div class="d-flex">
+    <nav id="sidebar" class="flex-column p-3">
+        <h3 class="mb-4">SADIcoin Admin</h3>
+        <a href="#" class="nav-link active" onclick="showPage('dashboard')">Dashboard</a>
+        <a href="#" class="nav-link" onclick="showPage('users')">Users</a>
+        <a href="#" class="nav-link" onclick="showPage('transactions')">Transactions</a>
+        <a href="#" class="nav-link" onclick="showPage('blocks')">Blocks</a>
+        <a href="#" class="nav-link" onclick="showPage('settings')">Settings</a>
+    </nav>
+    <div id="content" class="flex-grow-1">
+        <!-- Dashboard Page -->
+        <div id="dashboardPage">
+            <h2>Dashboard</h2>
+            <div class="d-flex gap-3 flex-wrap mb-4">
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Supply</h5>
+                        <p id="totalSupply" class="card-text">0</p>
+                    </div>
+                </div>
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Transactions</h5>
+                        <p id="totalTx" class="card-text">0</p>
+                    </div>
+                </div>
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Wallets</h5>
+                        <p id="totalWallets" class="card-text">0</p>
+                    </div>
+                </div>
+            </div>
+            <h4>Recent Activity</h4>
+            <ul id="recentActivity" class="list-group"></ul>
+        </div>
 
-    <h3>Register</h3>
-    <input id="name" placeholder="Full Name">
-    <input id="email" placeholder="Email">
-    <input id="password" placeholder="Password" type="password">
-    <input id="wallet" placeholder="Wallet Address">
-    <button onclick="register()">Register</button>
+        <!-- Users Page -->
+        <div id="usersPage" style="display:none;">
+            <h2>Users</h2>
+            <table class="table table-bordered">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Wallet</th><th>Balance</th><th>Status</th></tr>
+                </thead>
+                <tbody id="usersTable"></tbody>
+            </table>
+        </div>
 
-    <h3>Login</h3>
-    <input id="loginEmail" placeholder="Email">
-    <input id="loginPassword" placeholder="Password" type="password">
-    <button onclick="login()">Login</button>
+        <!-- Transactions Page -->
+        <div id="transactionsPage" style="display:none;">
+            <h2>Transactions</h2>
+            <table class="table table-bordered">
+                <thead>
+                    <tr><th>ID</th><th>Sender</th><th>Receiver</th><th>Amount</th><th>Status</th><th>Timestamp</th></tr>
+                </thead>
+                <tbody id="txTable"></tbody>
+            </table>
+        </div>
 
-    <h3>Send SADI</h3>
-    <input id="sender" placeholder="Sender Wallet">
-    <input id="receiver" placeholder="Receiver Wallet">
-    <input id="amount" placeholder="Amount">
-    <button onclick="send()">Send</button>
+        <!-- Blocks Page -->
+        <div id="blocksPage" style="display:none;">
+            <h2>Blocks</h2>
+            <table class="table table-bordered">
+                <thead>
+                    <tr><th>Block #</th><th>Hash</th><th>Tx Count</th><th>Timestamp</th></tr>
+                </thead>
+                <tbody id="blocksTable"></tbody>
+            </table>
+        </div>
 
-    <script>
-        async function register() {
-            let res = await fetch('http://localhost:5000/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    full_name: document.getElementById('name').value,
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value,
-                    wallet_address: document.getElementById('wallet').value
-                })
-            });
-            alert(await res.text());
-        }
-
-        async function login() {
-            let res = await fetch('http://localhost:5000/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: document.getElementById('loginEmail').value,
-                    password: document.getElementById('loginPassword').value
-                })
-            });
-            alert(await res.text());
-        }
-
-        async function send() {
-            let res = await fetch('http://localhost:5000/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sender_wallet: document.getElementById('sender').value,
-                    receiver_wallet: document.getElementById('receiver').value,
-                    amount: parseFloat(document.getElementById('amount').value)
-                })
-            });
-            alert(await res.text());
-        }
-    </script>
+        <!-- Settings Page -->
+        <div id="settingsPage" style="display:none;">
+            <h2>Settings</h2>
+            <button class="btn btn-danger mb-2" onclick="pauseNetwork()">Pause Network</button>
+            <button class="btn btn-secondary mb-2" onclick="showApiKey()">Show API Key</button>
+            <div id="apiKeyBox" style="display:none;">
+                <input type="text" class="form-control" value="YOUR_API_KEY_HERE" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    // Navigation
+    function showPage(page) {
+        ['dashboardPage','usersPage','transactionsPage','blocksPage','settingsPage'].forEach(p=>{
+            document.getElementById(p).style.display = (p === page+'Page') ? '' : 'none';
+        });
+        // Update active nav
+        Array.from(document.querySelectorAll('#sidebar .nav-link')).forEach(link => {
+            link.classList.remove('active');
+        });
+        let navs = {
+            dashboard:'Dashboard',
+            users:'Users',
+            transactions:'Transactions',
+            blocks:'Blocks',
+            settings:'Settings'
+        };
+        Array.from(document.querySelectorAll('#sidebar .nav-link')).forEach(link=>{
+            if(link.innerText===navs[page]) link.classList.add('active');
+        });
+    }
+    // Dashboard mock data
+    function loadDashboard() {
+        document.getElementById('totalSupply').innerText = "1,000,000 SADI";
+        document.getElementById('totalTx').innerText = "12,345";
+        document.getElementById('totalWallets').innerText = "567";
+        let activity = [
+            "User Alice sent 10 SADI to Bob",
+            "Block #12345 mined",
+            "User Eve registered new wallet"
+        ];
+        let ul = document.getElementById('recentActivity');
+        ul.innerHTML = '';
+        activity.forEach(a=>{
+            let li = document.createElement('li');
+            li.className = "list-group-item";
+            li.innerText = a;
+            ul.appendChild(li);
+        });
+    }
+    // Users mock data
+    function loadUsers() {
+        let users = [
+            {name:"Alice",email:"alice@email.com",wallet:"0xABC123",balance:100,status:"Active"},
+            {name:"Bob",email:"bob@email.com",wallet:"0xDEF456",balance:50,status:"Active"},
+            {name:"Eve",email:"eve@email.com",wallet:"0xGHI789",balance:0,status:"Frozen"}
+        ];
+        let tbody = document.getElementById('usersTable');
+        tbody.innerHTML = '';
+        users.forEach(u=>{
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td>${u.name}</td><td>${u.email}</td><td>${u.wallet}</td><td>${u.balance}</td>
+                <td>${u.status}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+    // Transactions mock data
+    function loadTxs() {
+        let txs = [
+            {id:"tx123",sender:"0xABC123",receiver:"0xDEF456",amount:10,status:"Confirmed",ts:"2025-08-11 15:00"},
+            {id:"tx124",sender:"0xDEF456",receiver:"0xGHI789",amount:5,status:"Pending",ts:"2025-08-11 15:05"},
+            {id:"tx125",sender:"0xGHI789",receiver:"0xABC123",amount:2,status:"Failed",ts:"2025-08-11 15:07"}
+        ];
+        let tbody = document.getElementById('txTable');
+        tbody.innerHTML = '';
+        txs.forEach(tx=>{
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td>${tx.id}</td><td>${tx.sender}</td><td>${tx.receiver}</td>
+                <td>${tx.amount}</td><td>${tx.status}</td><td>${tx.ts}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+    // Blocks mock data
+    function loadBlocks() {
+        let blocks = [
+            {num:12345,hash:"0xabcde12345",txc:3,ts:"2025-08-11 15:00"},
+            {num:12344,hash:"0xbcdef23456",txc:2,ts:"2025-08-11 14:55"},
+            {num:12343,hash:"0xcdef34567",txc:5,ts:"2025-08-11 14:50"}
+        ];
+        let tbody = document.getElementById('blocksTable');
+        tbody.innerHTML = '';
+        blocks.forEach(b=>{
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td>${b.num}</td><td>${b.hash}</td><td>${b.txc}</td><td>${b.ts}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+    // Settings
+    function pauseNetwork() {
+        alert("Network paused (mock)");
+    }
+    function showApiKey() {
+        document.getElementById('apiKeyBox').style.display = '';
+    }
+    // Initial load
+    window.onload = function() {
+        showPage('dashboard');
+        loadDashboard();
+        loadUsers();
+        loadTxs();
+        loadBlocks();
+    };
+</script>
 </body>
 </html>

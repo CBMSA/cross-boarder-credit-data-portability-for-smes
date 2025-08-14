@@ -1,236 +1,93 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>SADC Citizens CBDC Wallet (SADI)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <style>
-    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;margin:20px;background:#f9fafb;color:#333;line-height:1.6;}
-    h1{text-align:center;color:#0055aa;margin-bottom:24px;font-weight:700;}
-    .box{background:#fff;border:1px solid #ddd;padding:20px 24px 24px;border-radius:12px;margin-bottom:20px;max-width:480px;margin-left:auto;margin-right:auto;box-shadow:0 4px 10px rgba(0,0,0,.05);}
-    h3{margin-top:0;margin-bottom:12px;color:#004080;font-weight:600;border-bottom:2px solid #0055aa;padding-bottom:6px;}
-    input{width:100%;padding:10px 14px;margin:6px 0 12px;border:1.5px solid #bbb;border-radius:8px;font-size:1rem;}
-    input:focus{border-color:#0055aa;outline:none;box-shadow:0 0 6px #85baffaa;}
-    button{background:#0055aa;color:#fff;border:none;border-radius:8px;padding:12px 18px;cursor:pointer;font-size:1.1rem;font-weight:600;width:100%;margin-top:6px;}
-    button:hover{background:#003f7f;}
-    #wallet_info,#conv_res,#disb_res,#send_res{background:#eef6ff;border:1px solid #bbe0ff;padding:12px 16px;border-radius:8px;font-family:monospace;white-space:pre-wrap;color:#003366;margin-top:10px;min-height:50px;}
-    select{width:100%;padding:10px 14px;margin:6px 0 12px;border:1.5px solid #bbb;border-radius:8px;font-size:1rem;background:#fff;}
-    @media (max-width:520px){body{margin:10px}.box{max-width:100%;padding:16px 18px 18px}button{font-size:1rem;padding:10px 14px}}
-  </style>
+<meta charset="utf-8">
+<title>SADC Citizens CBDC Wallet (SADI)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;margin:20px;background:#f9fafb;color:#333;line-height:1.6;}
+h1{text-align:center;color:#0055aa;margin-bottom:24px;font-weight:700;}
+.box{background:#fff;border:1px solid #ddd;padding:20px 24px 24px;border-radius:12px;margin-bottom:20px;max-width:480px;margin-left:auto;margin-right:auto;box-shadow:0 4px 10px rgba(0,0,0,.05);}
+h3{margin-top:0;margin-bottom:12px;color:#004080;font-weight:600;border-bottom:2px solid #0055aa;padding-bottom:6px;}
+input,select{width:100%;padding:10px 14px;margin:6px 0 12px;border:1.5px solid #bbb;border-radius:8px;font-size:1rem;}
+input:focus,select:focus{border-color:#0055aa;outline:none;box-shadow:0 0 6px #85baffaa;}
+button{background:#0055aa;color:#fff;border:none;border-radius:8px;padding:12px 18px;cursor:pointer;font-size:1.1rem;font-weight:600;width:100%;margin-top:6px;}
+button:hover{background:#003f7f;}
+#wallet_info,#conv_res,#disb_res,#send_res{background:#eef6ff;border:1px solid #bbe0ff;padding:12px 16px;border-radius:8px;font-family:monospace;white-space:pre-wrap;color:#003366;margin-top:10px;min-height:50px;}
+@media (max-width:520px){body{margin:10px}.box{max-width:100%;padding:16px 18px 18px}button{font-size:1rem;padding:10px 14px}}
+</style>
 </head>
 <body>
-  <h1>SADC Citizens CBDC Wallet (SADI)</h1>
+<h1>SADC Citizens CBDC Wallet (SADI)</h1>
 
-  <div class="box">
-    <h3>Register</h3>
-    <input id="r_name" placeholder="Full name" type="text" />
-    <input id="r_email" placeholder="Email" type="email" />
-    <input id="r_phone" placeholder="Phone" type="text" />
-    <input id="r_pass" placeholder="Password" type="password" />
-    <button onclick="register()">Register (airdrop 100 SADI)</button>
-  </div>
+<div class="box">
+<h3>Register</h3>
+<input id="r_name" placeholder="Full name" type="text">
+<input id="r_email" placeholder="Email" type="email">
+<input id="r_phone" placeholder="Phone" type="text">
+<input id="r_pass" placeholder="Password" type="password">
+<button onclick="register()">Register (airdrop 100 SADI)</button>
+</div>
 
-  <div class="box">
-    <h3>Login</h3>
-    <input id="l_email" placeholder="Email" type="email" />
-    <input id="l_pass" placeholder="Password" type="password" />
-    <button onclick="login()">Login</button>
-  </div>
+<div class="box">
+<h3>Login</h3>
+<input id="l_email" placeholder="Email" type="email">
+<input id="l_pass" placeholder="Password" type="password">
+<button onclick="login()">Login</button>
+</div>
 
-  <div class="box">
-    <h3>Wallet</h3>
-    <div id="wallet_info">Not logged in</div>
-    <button onclick="loadWallet()">Refresh Wallet</button>
-  </div>
+<div class="box">
+<h3>Wallet</h3>
+<div id="wallet_info">Not logged in</div>
+<button onclick="loadWallet()">Refresh Wallet</button>
+</div>
 
-  <div class="box">
-    <h3>Send SADI</h3>
-    <input id="to_addr" placeholder="Recipient EVM address (0x...)" type="text" />
-    <input id="to_amt" placeholder="Amount (SADI)" type="number" step="0.000000000000000001" />
-    <button onclick="send()">Send</button>
-    <div id="send_res"></div>
-  </div>
+<div class="box">
+<h3>Send SADI</h3>
+<input id="to_addr" placeholder="Recipient EVM address (0x...)" type="text">
+<input id="to_amt" placeholder="Amount (SADI)" type="number" step="0.000000000000000001">
+<button onclick="send()">Send</button>
+<div id="send_res"></div>
+</div>
 
-  <div class="box">
-    <h3>Convert SADI → USD/ZAR</h3>
-    <input id="conv_amt" placeholder="Amount SADI" type="number" min="0" />
-    <input id="conv_cur" placeholder="Target currency (USD/ZAR)" type="text" maxlength="3" />
-    <button onclick="convert()">Convert</button>
-    <div id="conv_res"></div>
-  </div>
+<div class="box">
+<h3>Convert SADI → USD/ZAR</h3>
+<input id="conv_amt" placeholder="Amount SADI" type="number" min="0">
+<input id="conv_cur" placeholder="Target currency (USD/ZAR)" type="text" maxlength="3">
+<button onclick="convert()">Convert</button>
+<div id="conv_res"></div>
+</div>
 
-  <div class="box">
-    <h3>Disburse to Bank</h3>
-    <input id="bank_acc" placeholder="Account number" type="text" />
-    <input id="bank_code" placeholder="Bank code" type="text" />
-    <input id="bank_amt" placeholder="Amount" type="number" min="0" step="0.01" />
-    <input id="bank_cur" placeholder="Currency (USD/ZAR)" type="text" maxlength="3" />
-    <select id="provider">
-      <option value="stitch">Stitch</option>
-      <option value="nedbank">Nedbank</option>
-      <option value="korapay">Korapay</option>
-    </select>
-    <button onclick="disburse()">Send</button>
-    <div id="disb_res"></div>
-  </div>
+<div class="box">
+<h3>Disburse to Bank</h3>
+<input id="bank_acc" placeholder="Account number" type="text">
+<input id="bank_code" placeholder="Bank code" type="text">
+<input id="bank_amt" placeholder="Amount" type="number" min="0" step="0.01">
+<input id="bank_cur" placeholder="Currency (USD/ZAR)" type="text" maxlength="3">
+<select id="provider">
+<option value="stitch">Stitch</option>
+<option value="nedbank">Nedbank</option>
+<option value="korapay">Korapay</option>
+</select>
+<button onclick="disburse()">Send</button>
+<div id="disb_res"></div>
+</div>
 
 <script>
-  // --- CONFIGURE: set this to your deployed backend URL (Azure App Service) ---
-  const API = "https://your-api.example.com"; // <-- replace with your API
-  // -----------------------------------------------------------------------
-
-  // token persisted for session
-  let token = localStorage.getItem('sadi_token') || null;
-
-  // helper to do authorized fetch
-  async function apiFetch(path, opts = {}) {
-    opts.headers = opts.headers || {};
-    if (opts.body && !(opts.body instanceof FormData)) opts.headers['Content-Type'] = 'application/json';
-    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(API + path, opts);
-    const json = await res.json().catch(()=>null);
-    if (!res.ok) throw { status: res.status, body: json };
-    return json;
-  }
-
-  // Register
-  async function register() {
-    const fullName = document.getElementById('r_name').value.trim();
-    const email = document.getElementById('r_email').value.trim();
-    const phone = document.getElementById('r_phone').value.trim();
-    const password = document.getElementById('r_pass').value;
-    if (!fullName || !email || !phone || !password) return alert('Please fill all fields.');
-    try {
-      const res = await apiFetch('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ fullName, email, phone, password })
-      });
-      token = res.token;
-      localStorage.setItem('sadi_token', token);
-      alert('Registered — you are logged in. Wallet created and credited (if configured).');
-      await loadWallet();
-    } catch (e) {
-      alert(e.body?.error || e.body?.message || 'Registration failed');
-    }
-  }
-
-  // Login
-  async function login() {
-    const email = document.getElementById('l_email').value.trim();
-    const password = document.getElementById('l_pass').value;
-    if (!email || !password) return alert('Enter email and password.');
-    try {
-      const res = await apiFetch('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-      token = res.token;
-      localStorage.setItem('sadi_token', token);
-      alert('Login successful');
-      await loadWallet();
-    } catch (e) {
-      alert(e.body?.error || 'Login failed');
-    }
-  }
-
-  // Load wallet
-  async function loadWallet() {
-    const box = document.getElementById('wallet_info');
-    if (!token) { box.innerText = 'Not logged in'; return; }
-    try {
-      const j = await apiFetch('/api/wallet');
-      // j.balance is returned as bigint-string in wei (or as application-level number)
-      // Safe display: if it's a numeric string representing wei, convert by decimals setting on server
-      let balanceStr = j.balance;
-      // try to interpret as big integer string (wei)
-      try {
-        const decimals = BigInt(Number(j.decimals || 18));
-        const raw = BigInt(balanceStr);
-        const whole = raw / (10n ** decimals);
-        const frac = raw % (10n ** decimals);
-        const human = Number(whole) + Number(frac) / Number(10n ** decimals);
-        balanceStr = human.toFixed(6);
-      } catch (_) {
-        // fallback if already a number
-      }
-      box.innerText = `Address: ${j.address}\nBalance: ${balanceStr} SADI`;
-    } catch (e) {
-      box.innerText = 'Failed to load wallet';
-      console.error(e);
-      alert(e.body?.error || 'Could not fetch wallet. Check API URL and token.');
-    }
-  }
-
-  // Send SADI (on-chain transfer via backend hot-wallet)
-  async function send() {
-    if (!token) return alert('Please login first.');
-    const to = document.getElementById('to_addr').value.trim();
-    const amount = Number(document.getElementById('to_amt').value);
-    if (!to || !amount || amount <= 0) return alert('Enter recipient and positive amount.');
-    const outEl = document.getElementById('send_res');
-    outEl.innerText = 'Submitting...';
-    try {
-      const res = await apiFetch('/api/wallet/transfer', {
-        method: 'POST',
-        body: JSON.stringify({ to, amount })
-      });
-      outEl.innerText = `Submitted. Tx hash: ${res.txHash}`;
-      await loadWallet();
-    } catch (e) {
-      outEl.innerText = `Error: ${e.body?.error || JSON.stringify(e)}`;
-    }
-  }
-
-  // Convert SADI -> fiat (uses server-side oracle)
-  async function convert() {
-    if (!token) return alert('Please login first.');
-    const amountSadi = Number(document.getElementById('conv_amt').value);
-    const target = document.getElementById('conv_cur').value.trim().toUpperCase();
-    if (!amountSadi || amountSadi <= 0) return alert('Enter positive amount');
-    if (!['USD','ZAR'].includes(target)) return alert('Target currency must be USD or ZAR');
-    const out = document.getElementById('conv_res'); out.innerText = 'Converting...';
-    try {
-      const res = await apiFetch('/api/convert', {
-        method: 'POST',
-        body: JSON.stringify({ amountSadi, target })
-      });
-      out.innerText = `Converted: ${Number(res.converted || res.convertedAmount || res.amountOut).toFixed(2)} ${target}`;
-      await loadWallet();
-    } catch (e) {
-      out.innerText = `Error: ${e.body?.error || 'Conversion failed'}`;
-    }
-  }
-
-  // Disburse to bank via provider (stitch/nedbank/korapay)
-  async function disburse() {
-    if (!token) return alert('Please login first.');
-    const accountNo = document.getElementById('bank_acc').value.trim();
-    const bankCode  = document.getElementById('bank_code').value.trim();
-    const amount    = Number(document.getElementById('bank_amt').value);
-    const currency  = (document.getElementById('bank_cur').value.trim() || 'ZAR').toUpperCase();
-    const provider  = document.getElementById('provider').value;
-    if (!accountNo || !bankCode || !amount || amount <= 0) return alert('Fill all payout fields with valid values.');
-    const out = document.getElementById('disb_res'); out.innerText = 'Submitting disbursement...';
-    try {
-      const res = await apiFetch('/api/payouts/disburse', {
-        method: 'POST',
-        body: JSON.stringify({ accountNo, bankCode, amount, currency, provider })
-      });
-      out.innerText = `Ref: ${res.ref} | Status: ${res.status}`;
-    } catch (e) {
-      out.innerText = `Error: ${e.body?.error || 'Disbursement failed'}`;
-    }
-  }
-
-  // Auto-load wallet if token present
-  window.addEventListener('load', () => {
-    token = localStorage.getItem('sadi_token') || token;
-    if (token) loadWallet();
-  });
+const API="https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net";
+let token=localStorage.getItem("sadi_token")||null;
+async function apiFetch(e,t={}){t.headers=t.headers||{},t.body&&!(t.body instanceof FormData)&&(t.headers["Content-Type"]="application/json"),token&&(t.headers.Authorization=`Bearer ${token}`);const n=await fetch(API+e,t),a=await n.json().catch(()=>null);if(!n.ok)throw{status:n.status,body:a};return a}
+async function register(){const e=document.getElementById("r_name").value.trim(),t=document.getElementById("r_email").value.trim(),n=document.getElementById("r_phone").value.trim(),a=document.getElementById("r_pass").value;if(!e||!t||!n||!a)return alert("Please fill all fields.");try{const r=await apiFetch("/api/auth/register",{method:"POST",body:JSON.stringify({fullName:e,email:t,phone:n,password:a})});token=r.token,localStorage.setItem("sadi_token",token),alert("Registered — you are logged in. Wallet created and credited."),await loadWallet()}catch(r){alert(r.body?.error||r.body?.message||"Registration failed")}}
+async function login(){const e=document.getElementById("l_email").value.trim(),t=document.getElementById("l_pass").value;if(!e||!t)return alert("Enter email and password.");try{const n=await apiFetch("/api/auth/login",{method:"POST",body:JSON.stringify({email:e,password:t})});token=n.token,localStorage.setItem("sadi_token",token),alert("Login successful"),await loadWallet()}catch(n){alert(n.body?.error||"Login failed")}}
+async function loadWallet(){const e=document.getElementById("wallet_info");if(!token)return void(e.innerText="Not logged in");try{const t=await apiFetch("/api/wallet");let n=t.balance;try{const a=BigInt(Number(t.decimals||18)),r=BigInt(n),o=r/(10n**a),c=r%(10n**a),l=Number(o)+Number(c)/Number(10n**a);n=l.toFixed(6)}catch{}e.innerText=`Address: ${t.address}\nBalance: ${n} SADI`}catch(t){e.innerText="Failed to load wallet",console.error(t),alert(t.body?.error||"Could not fetch wallet. Check API URL and token.")}}
+async function send(){if(!token)return alert("Please login first.");const e=document.getElementById("to_addr").value.trim(),t=Number(document.getElementById("to_amt").value);if(!e||!t||t<=0)return alert("Enter recipient and positive amount.");const n=document.getElementById("send_res");n.innerText="Submitting...";try{const a=await apiFetch("/api/wallet/transfer",{method:"POST",body:JSON.stringify({to:e,amount:t})});n.innerText=`Submitted. Tx hash: ${a.txHash}`,await loadWallet()}catch(a){n.innerText=`Error: ${a.body?.error||JSON.stringify(a)}`}}
+async function convert(){if(!token)return alert("Please login first.");const e=Number(document.getElementById("conv_amt").value),t=document.getElementById("conv_cur").value.trim().toUpperCase();if(!e||e<=0)return alert("Enter positive amount");if(!["USD","ZAR"].includes(t))return alert("Target currency must be USD or ZAR");const n=document.getElementById("conv_res");n.innerText="Converting...";try{const a=await apiFetch("/api/convert",{method:"POST",body:JSON.stringify({amountSadi:e,target:t})});n.innerText=`Converted: ${Number(a.converted||a.convertedAmount||a.amountOut).toFixed(2)} ${t}`,await loadWallet()}catch(a){n.innerText=`Error: ${a.body?.error||"Conversion failed"}`}}
+async function disburse(){if(!token)return alert("Please login first.");const e=document.getElementById("bank_acc").value.trim(),t=document.getElementById("bank_code").value.trim(),n=Number(document.getElementById("bank_amt").value),a=(document.getElementById("bank_cur").value.trim()||"ZAR").toUpperCase(),r=document.getElementById("provider").value;if(!e||!t||!n||n<=0)return alert("Fill all payout fields with valid values.");const o=document.getElementById("disb_res");o.innerText="Submitting disbursement...";try{const c=await apiFetch("/api/payouts/disburse",{method:"POST",body:JSON.stringify({accountNo:e,bankCode:t,amount:n,currency:a,provider:r})});o.innerText=`Ref: ${c.ref} | Status: ${c.status}`}catch(c){o.innerText=`Error: ${c.body?.error||"Disbursement failed"}`}}
+window.addEventListener("load",()=>{token=localStorage.getItem("sadi_token")||token,token&&loadWallet()});
 </script>
 </body>
 </html>
-
-
 

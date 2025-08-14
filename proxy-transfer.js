@@ -1,4 +1,75 @@
 
+// Load environment variables
+require('dotenv').config();
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const sql = require('mssql');
+const axios = require('axios');
+const WebSocket = require('ws');
+
+const app = express();
+app.use(bodyParser.json());
+
+// Get environment variables
+const {
+  DB_USER,
+  DB_PASSWORD,
+  DB_SERVER,
+  DB_NAME,
+  JWT_SECRET
+} = process.env;
+
+// Warn for missing values instead of exiting
+let missingVars = [];
+if (!DB_USER) missingVars.push('DB_USER');
+if (!DB_PASSWORD) missingVars.push('DB_PASSWORD');
+if (!DB_SERVER) missingVars.push('DB_SERVER');
+if (!DB_NAME) missingVars.push('DB_NAME');
+if (!JWT_SECRET) missingVars.push('JWT_SECRET');
+
+if (missingVars.length > 0) {
+  console.warn(`⚠️ Warning: Missing environment variables: ${missingVars.join(', ')}`);
+  console.warn('Your app may not work properly until you set these in your .env file or hosting environment.');
+}
+
+// Database config
+const dbConfig = {
+  user: DB_USER || 'placeholder_user',
+  password: DB_PASSWORD || 'placeholder_password',
+  server: DB_SERVER || 'localhost',
+  database: DB_NAME || 'placeholder_db',
+  options: {
+    encrypt: true,
+    trustServerCertificate: true
+  }
+};
+
+// Example connection test
+(async () => {
+  try {
+    if (DB_USER && DB_PASSWORD && DB_SERVER && DB_NAME) {
+      await sql.connect(dbConfig);
+      console.log('✅ Database connected');
+    } else {
+      console.log('⏭️ Skipping DB connection (missing credentials)');
+    }
+  } catch (err) {
+    console.error('❌ Database connection error:', err.message);
+  }
+})();
+
+app.get('/', (req, res) => {
+  res.send('Proxy Transfer Service is running');
+});
+
+app.listen(3000, () => {
+  console.log('🚀 Server listening on port 3000');
+});
+
+
+
+
 // server.js  — SADC CBDC Backend (Production-Ready)
 // Node >= 18 (fetch available); if Node 16, install `node-fetch` and swap to axios where needed.
 

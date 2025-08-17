@@ -1,0 +1,303 @@
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CBDC Investment Pricing Calculator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root{
+      --brand:#0b69ff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --ok:#16a34a;
+      --bad:#b91c1c;
+      --ring:#93c5fd;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; padding:24px;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,Helvetica,sans-serif;
+      background:var(--bg); color:var(--ink);
+    }
+    .app{
+      max-width:980px; margin:0 auto; display:grid; gap:24px;
+      grid-template-columns: 1fr;
+    }
+    h1{margin:0; font-size:24px; color:#0b3b8b; text-align:center}
+    .cards{display:grid; gap:18px; grid-template-columns: repeat(auto-fit, minmax(280px,1fr));}
+    .card{
+      background:var(--card); border:1px solid #e2e8f0; border-radius:14px;
+      padding:18px; box-shadow:0 6px 16px rgba(2,6,23,.06);
+    }
+    .card h3{margin:0 0 10px; font-size:18px; color:#0b3b8b}
+    label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
+    input,select{
+      width:100%; padding:10px 12px; font-size:16px; border-radius:10px;
+      border:1.5px solid #cbd5e1; outline:none; background:#fff;
+    }
+    input:focus,select:focus{border-color:var(--brand); box-shadow:0 0 0 4px var(--ring)}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    button{
+      display:inline-flex; align-items:center; justify-content:center;
+      background:var(--brand); color:#fff; border:none; font-weight:600;
+      padding:12px 16px; width:100%; border-radius:10px; cursor:pointer;
+      transition:.15s background ease-in-out; margin-top:8px;
+    }
+    button:hover{background:#0a54cc}
+    .muted{color:var(--muted)}
+    .out{
+      background:#f1f5f9; border:1px dashed #94a3b8; padding:12px; border-radius:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:14px;
+      white-space:pre-wrap; word-break:break-word;
+    }
+    table{width:100%; border-collapse:collapse; font-size:14px}
+    th,td{padding:10px; border-bottom:1px solid #e2e8f0; text-align:right}
+    th:first-child,td:first-child{text-align:left}
+    .pill{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eff6ff; color:#1e40af}
+    .success{color:var(--ok)} .error{color:var(--bad)}
+    .small{font-size:12px}
+    footer{font-size:12px; color:var(--muted); text-align:center}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>CBDC Investment Pricing Calculator</h1>
+      <p class="muted" style="text-align:center;margin:6px 0 0">
+        Uses: <span class="pill">PV = FV / (1 + r/m)^(m·n)</span> • <span class="pill">Ask = (FV − PV)/FV</span>
+      </p>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <h3>Inputs</h3>
+        <div class="row">
+          <div>
+            <label>Future Value (FV) — amount to receive later (e.g., 10)</label>
+            <input id="fv" type="number" step="0.00000001" value="10">
+          </div>
+          <div>
+            <label>Annual Rate r (%) — e.g., 8.25</label>
+            <input id="rate" type="number" step="0.0001" value="8.25">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Years (n)</label>
+            <input id="years" type="number" step="0.0001" value="1">
+          </div>
+          <div>
+            <label>Compounding</label>
+            <select id="cmp">
+              <option value="1">Annual (m=1)</option>
+              <option value="2">Semiannual (m=2)</option>
+              <option value="4">Quarterly (m=4)</option>
+              <option value="12">Monthly (m=12)</option>
+              <option value="365">Daily (m=365)</option>
+              <option value="cont">Continuous (e^(−r·n))</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="btnCalc">Calculate</button>
+        <p class="small muted" style="margin:8px 0 0">
+          Example you gave: FV=10, r=8.25%, n=1, Annual → PV≈9.24; Ask=(10−9.24)/10=0.076.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Results</h3>
+        <div id="result" class="out">Enter inputs and press Calculate.</div>
+      </div>
+
+      <div class="card">
+        <h3>Scenario Table</h3>
+        <div class="row">
+          <div>
+            <label>Max Years for table</label>
+            <input id="maxYears" type="number" step="1" value="10">
+          </div>
+          <div>
+            <label>Generate</label>
+            <button id="btnTable">Generate Table</button>
+          </div>
+        </div>
+        <div style="overflow:auto; margin-top:8px">
+          <table id="tbl">
+            <thead>
+              <tr>
+                <th>Years (n)</th>
+                <th>Present Value (PV)</th>
+                <th>Ask = (FV−PV)/FV</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Reverse: Solve r given FV, PV, n</h3>
+        <div class="row">
+          <div>
+            <label>FV</label>
+            <input id="revFV" type="number" step="0.00000001" value="10">
+          </div>
+          <div>
+            <label>PV</label>
+            <input id="revPV" type="number" step="0.00000001" value="9.24">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Years (n)</label>
+            <input id="revN" type="number" step="0.0001" value="1">
+          </div>
+          <div>
+            <label>Compounding</label>
+            <select id="revCmp">
+              <option value="1">Annual</option>
+              <option value="2">Semiannual</option>
+              <option value="4">Quarterly</option>
+              <option value="12">Monthly</option>
+              <option value="365">Daily</option>
+              <option value="cont">Continuous</option>
+            </select>
+          </div>
+        </div>
+        <button id="btnSolve">Solve r (%)</button>
+        <div id="revOut" class="out">Supply FV, PV, n, compounding then Solve.</div>
+      </div>
+    </section>
+
+    <footer>
+      This calculator is for illustration; not financial advice. Roundings may differ slightly with extreme inputs.
+    </footer>
+  </div>
+
+  <script>
+    // Core pricing functions
+    function pvDiscrete(FV, r, n, m){
+      // r is decimal e.g. 0.0825; m compounding periods per year
+      return FV / Math.pow(1 + r/m, m*n);
+    }
+    function pvContinuous(FV, r, n){
+      return FV * Math.exp(-(r*n));
+    }
+    function askFromPv(FV, PV){
+      return (FV - PV) / FV; // decimal
+    }
+    function clamp2(x){ return Math.round(x * 100) / 100; }
+
+    function readInputs(){
+      const FV = Number(document.getElementById('fv').value);
+      const ratePct = Number(document.getElementById('rate').value);
+      const n = Number(document.getElementById('years').value);
+      const cmp = document.getElementById('cmp').value;
+      if (!isFinite(FV) || FV<=0) throw new Error('FV must be > 0');
+      if (!isFinite(ratePct)) throw new Error('Rate must be a number');
+      if (!isFinite(n) || n<=0) throw new Error('Years must be > 0');
+      return { FV, r: ratePct/100, n, cmp };
+    }
+
+    function calcOnce(){
+      const out = document.getElementById('result');
+      try{
+        const { FV, r, n, cmp } = readInputs();
+        const PV = (cmp === 'cont') ? pvContinuous(FV, r, n) : pvDiscrete(FV, r, n, Number(cmp));
+        const ask = askFromPv(FV, PV);
+
+        const lines = [
+          `Inputs: FV=${FV}, r=${(r*100).toFixed(4)}%, n=${n}, comp=${cmp==='cont'?'continuous':('m='+cmp)}`,
+          ``,
+          `Present Value (PV) = ${PV.toFixed(6)}`,
+          `Ask (decimal)      = ${(ask).toFixed(6)}`,
+          `Ask (percent)      = ${(ask*100).toFixed(3)}%`,
+          ``,
+          `Formulas:`,
+          `  PV = FV / (1 + r/m)^(m·n)   (discrete)`,
+          `  PV = FV · e^(−r·n)          (continuous)`,
+          `  Ask = (FV − PV) / FV`
+        ];
+        out.textContent = lines.join('\n');
+      }catch(e){
+        out.innerHTML = `<span class="error">Error:</span> ${e.message}`;
+      }
+    }
+
+    function buildTable(){
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = '';
+      try{
+        const { FV, r, n, cmp } = readInputs();
+        const maxN = Math.max(1, Math.min(50, Number(document.getElementById('maxYears').value) || 10));
+        for (let year = 1; year <= maxN; year++){
+          const PV = (cmp === 'cont') ? pvContinuous(FV, r, year) : pvDiscrete(FV, r, year, Number(cmp));
+          const ask = askFromPv(FV, PV);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="text-align:left">${year}</td>
+            <td>${PV.toFixed(6)}</td>
+            <td>${(ask*100).toFixed(3)}%</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }catch(e){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="3" style="text-align:left;color:#b91c1c">Table error: ${e.message}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // Reverse-solve rate from PV, FV, n, compounding
+    function solveRate(){
+      const out = document.getElementById('revOut');
+      const FV = Number(document.getElementById('revFV').value);
+      const PV = Number(document.getElementById('revPV').value);
+      const n  = Number(document.getElementById('revN').value);
+      const cmp = document.getElementById('revCmp').value;
+
+      try{
+        if (!(PV>0 && FV>0 && n>0)) throw new Error('PV, FV, n must be > 0');
+
+        let r; // decimal
+        if (cmp === 'cont'){
+          // PV = FV * e^(-r n) => r = -(1/n) * ln(PV/FV)
+          r = -(1/n) * Math.log(PV / FV);
+        } else {
+          const m = Number(cmp);
+          // PV = FV / (1 + r/m)^(m n)
+          // => (FV/PV)^(1/(m n)) - 1 = r/m  => r = m * ((FV/PV)^(1/(m n)) - 1)
+          r = m * ( Math.pow(FV/PV, 1/(m*n)) - 1 );
+        }
+
+        out.textContent = `Implied annual rate r = ${(r*100).toFixed(6)}%  (${r.toFixed(8)} in decimals)`;
+      }catch(e){
+        out.innerHTML = `<span class="error">Error:</span> ${e.message}`;
+      }
+    }
+
+    // Wire up
+    document.getElementById('btnCalc').addEventListener('click', calcOnce);
+    document.getElementById('btnTable').addEventListener('click', buildTable);
+    document.getElementById('btnSolve').addEventListener('click', solveRate);
+
+    // Auto-run once to show the example outcome
+    window.addEventListener('load', () => {
+      calcOnce();
+      buildTable();
+      // Preload reverse solver with your example
+      document.getElementById('revFV').value = 10;
+      document.getElementById('revPV').value = 9.24;
+      document.getElementById('revN').value  = 1;
+      document.getElementById('revCmp').value = '1';
+    });
+  </script>
+</body>
+</html>

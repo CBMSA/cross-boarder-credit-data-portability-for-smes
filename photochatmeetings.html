@@ -172,7 +172,10 @@
     }
 
     // 🔁 Live Exchange Rates from EODHD (using correct endpoint)
-    const eodhdToken = "67b2d451e5b8a8.90504186";  // Replace with your valid API key
+        let users = {};
+    let currentUser = null;
+    let txHistory = [];
+    const apiKey = '67b2d451e5b8a8.90504186';
     const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
 
     async function fetchExchangeRates() {

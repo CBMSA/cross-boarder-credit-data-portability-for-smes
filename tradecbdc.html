@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>CBDC Investment Platform</title>
+  <title>SadiCoin Investment Platform</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
@@ -24,16 +24,16 @@
       background:var(--bg);
       color:var(--ink)
     }
-    .app{max-width:980px;margin:0 auto;display:grid;gap:24px}
+    .app{max-width:1100px;margin:0 auto;display:grid;gap:24px}
     h1{margin:0;font-size:24px;color:#0b3b8b;text-align:center}
-    .cards{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    .cards{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
     .card{background:var(--card);border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 6px 16px rgba(2,6,23,.06)}
     .card h3{margin:0 0 10px;font-size:18px;color:#0b3b8b}
     label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
     input,select{width:100%;padding:10px 12px;font-size:16px;border-radius:10px;border:1.5px solid #cbd5e1;outline:none;background:#fff}
     input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 4px var(--ring)}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    button{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;border:none;font-weight:600;padding:12px 16px;width:100%;border-radius:10px;cursor:pointer;transition:.15s;background ease-in-out;margin-top:8px}
+    button{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;border:none;font-weight:600;padding:12px 16px;width:100%;border-radius:10px;cursor:pointer;transition:.15s background ease-in-out;margin-top:8px}
     button:hover{background:#0a54cc}
     .muted{color:var(--muted)}
     .out{background:#f1f5f9;border:1px dashed #94a3b8;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;white-space:pre-wrap;word-break:break-word}
@@ -42,14 +42,15 @@
     th:first-child,td:first-child{text-align:left}
     .success{color:var(--ok)} .error{color:var(--bad)}
     footer{font-size:12px;color:var(--muted);text-align:center}
+    .actions{display:grid;grid-template-columns:1fr 1fr; gap:12px}
   </style>
 </head>
 <body>
   <div class="app">
     <header>
-      <h1>CBDC Investment Platform</h1>
+      <h1>SadiCoin Investment Platform</h1>
       <p class="muted" style="text-align:center;margin:6px 0 0">
-        Deposit • Yield • Automatic Withdrawal at Maturity
+        Deposit • FX-Aware Yield • Auto Certificate
       </p>
     </header>
 
@@ -92,12 +93,71 @@
         <h3>Results</h3>
         <div id="result" class="out">Enter inputs and press Calculate.</div>
       </div>
+
+      <div class="card">
+        <h3>FX Settings</h3>
+        <div class="row">
+          <div>
+            <label>Base Currency (your cash)</label>
+            <select id="baseCcy">
+              <option>ZAR</option>
+              <option>USD</option>
+              <option>BWP</option>
+              <option>MZN</option>
+            </select>
+          </div>
+          <div>
+            <label>Investment Currency</label>
+            <select id="invCcy">
+              <option>USD</option>
+              <option>ZAR</option>
+              <option>BWP</option>
+              <option>MZN</option>
+              <option>SADICOIN</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Spot Rate (Base per 1 Investment)</label>
+            <input id="spot" type="number" step="0.0001" placeholder="e.g. 18.50">
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="btnFetchFx">Fetch FX (fiat only)</button>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Entry Spread % (buy)</label>
+            <input id="spreadIn" type="number" step="0.01" value="0.50">
+          </div>
+          <div>
+            <label>Exit Spread % (sell)</label>
+            <input id="spreadOut" type="number" step="0.01" value="0.50">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Expected FX Change over Term %</label>
+            <input id="fxDrift" type="number" step="0.01" value="0">
+          </div>
+          <div>
+            <label>Show FX-Adjusted Summary</label>
+            <button id="btnFxPreview">Preview FX Impact</button>
+          </div>
+        </div>
+        <div id="fxPreview" class="out">Set currencies and click Preview.</div>
+      </div>
     </section>
 
-    <!-- New Section: Investment Simulation with Bank Details -->
+    <!-- Investment Simulation -->
     <section class="cards">
       <div class="card">
-        <h3>Bank Account Details</h3>
+        <h3>Bank & Investor Details</h3>
+        <label>Investor Name</label>
+        <input id="investorName" type="text" placeholder="Enter investor name">
+
         <label>Bank Name</label>
         <input id="bankName" type="text" placeholder="e.g. Nedbank">
 
@@ -122,10 +182,10 @@
 
         <label>Maturity Period</label>
         <select id="maturityOption">
-          <option value="365">1 Year (Daily Interest)</option>
-          <option value="180">6 Months (Monthly Interest)</option>
-          <option value="90">3 Months (Monthly Interest)</option>
-          <option value="30">1 Month (Daily Interest)</option>
+          <option value="365">1 Year (Annual payouts)</option>
+          <option value="180">6 Months (Monthly payouts)</option>
+          <option value="90">3 Months (Monthly payouts)</option>
+          <option value="30">1 Month (Daily payouts)</option>
           <option value="custom">Custom (enter days)</option>
         </select>
         <input id="customMaturity" type="number" placeholder="Enter custom days" style="display:none">
@@ -133,24 +193,53 @@
         <label>Annual Rate (%)</label>
         <input id="depRate" type="number" step="0.01" value="8.25">
 
-        <button id="btnDeposit">Deposit Investment</button>
+        <div class="actions">
+          <button id="btnDeposit">Deposit Investment</button>
+          <button id="downloadTx">Download Transactions CSV</button>
+        </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="grid-column:1/-1">
         <h3>Transaction Log</h3>
-        <div style="overflow:auto;max-height:300px">
+        <div style="overflow:auto;max-height:260px">
           <table id="txTable">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Date</th>
-                <th>Deposit</th>
-                <th>Maturity Value</th>
-                <th>Yield</th>
-                <th>Payment Frequency</th>
+                <th>Investor</th>
+                <th>Deposit (Base)</th>
+                <th>Base→Inv Spot</th>
+                <th>Entry/Exit Spreads</th>
+                <th>Maturity (days)</th>
+                <th>Rate %</th>
+                <th>Maturity Value (Inv)</th>
+                <th>FX @ Maturity</th>
+                <th>Projected Value (Base)</th>
+                <th>Net P&L</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column:1/-1">
+        <h3>Amortization Schedule (last transaction)</h3>
+        <div style="overflow:auto;max-height:320px">
+          <table id="amortTable">
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Period #</th>
+                <th>Frequency</th>
+                <th>Interest</th>
+                <th>Cumulative Interest</th>
+                <th>Total Value</th>
+              </tr>
+            </thead>
+            <tbody id="amortBody"></tbody>
           </table>
         </div>
       </div>
@@ -162,87 +251,257 @@
     </footer>
   </div>
 
-  <script>
-    // --- Pricing functions ---
-    function calcFutureValue(P, r, days){
-      return P * Math.pow((1 + r/365), days);
-    }
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    // --- Calculator ---
+  <script>
+    // ----------------- Helpers & State -----------------
+    let txCount = 0;
+    const txBody = document.querySelector('#txTable tbody');
+    const amortBody = document.getElementById('amortBody');
+    const maturityOption = document.getElementById('maturityOption');
+    const customMaturity = document.getElementById('customMaturity');
+
+    const transactions = []; // store objects for CSV & certificates
+
+    maturityOption.addEventListener('change', ()=>{
+      customMaturity.style.display = maturityOption.value === 'custom' ? 'block' : 'none';
+    });
+
+    // Calculator (top card)
     function calcOnce(){
       const FV = +document.getElementById('fv').value;
       const r = +document.getElementById('rate').value / 100;
       const n = +document.getElementById('years').value;
       const PV = FV / Math.pow(1 + r, n);
-      const ask = (FV - PV) / FV;
-      document.getElementById('result').textContent =
-        `PV=${PV.toFixed(4)} | Ask=${(ask*100).toFixed(2)}%`;
+      const ask = (FV - PV) / FV; // discount rate
+      document.getElementById('result').textContent = `PV=${PV.toFixed(4)} | Ask=${(ask*100).toFixed(2)}%`;
     }
     document.getElementById('btnCalc').addEventListener('click', calcOnce);
 
-    // --- Investment Simulation ---
-    const txBody = document.querySelector('#txTable tbody');
-    const maturityOption = document.getElementById("maturityOption");
-    const customMaturity = document.getElementById("customMaturity");
+    // Core yield model with payouts (non-compounding payouts per period)
+    function paymentModel(deposit, annualRate, days){
+      const r = annualRate/100;
+      let freq = 'Annual', periods = 1, perRate = r, perLabel = 'Yearly';
+      if(days <= 31){ freq = 'Daily'; periods = Math.max(1, Math.round(days)); perRate = r/365; perLabel = 'Daily'; }
+      else if(days <= 180){ freq = 'Monthly'; periods = Math.max(1, Math.round(days/30)); perRate = r/12; perLabel = 'Monthly'; }
+      else { freq = 'Annual'; periods = Math.max(1, Math.round(days/365)); perRate = r; perLabel = 'Annual'; }
 
-    maturityOption.addEventListener("change", ()=>{
-      if(maturityOption.value === "custom"){
-        customMaturity.style.display = "block";
-      } else {
-        customMaturity.style.display = "none";
+      const perInterest = deposit * perRate; // payout each period
+      const totalInterest = perInterest * periods;
+      const maturityValue = deposit + totalInterest; // no compounding on payouts
+
+      return { freq, periods, perRate, perInterest, totalInterest, maturityValue, perLabel };
+    }
+
+    // Build amortization rows for the last transaction
+    function renderAmortization(tx){
+      amortBody.innerHTML = '';
+      let cum = 0;
+      for(let i=1; i<=tx.periods; i++){
+        cum += tx.perInterest;
+        const total = tx.deposit + cum;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${tx.id}</td>
+          <td>${i}</td>
+          <td>${tx.perLabel}</td>
+          <td>${tx.perInterest.toFixed(2)}</td>
+          <td>${cum.toFixed(2)}</td>
+          <td>${total.toFixed(2)}</td>
+        `;
+        amortBody.appendChild(tr);
       }
-    });
+    }
 
-    function addTransaction(deposit, days, rate){
-      const r = rate/100;
-      const FV = calcFutureValue(deposit, r, days);
-      const yieldAmt = FV - deposit;
+    // Add transaction
+    function addTransaction(deposit, days, rate, investor){
+      txCount++;
+      const id = `TX${String(txCount).padStart(5,'0')}`;
+      const date = new Date();
+      const dateStr = date.toLocaleDateString();
 
-      // Determine payment frequency
-      let paymentFreq = "Annual";
-      let paymentAmount = 0;
-      if (days <= 30) {
-        paymentFreq = "Daily";
-        paymentAmount = (deposit * r / 365).toFixed(2);
-      } else if (days <= 180) {
-        paymentFreq = "Monthly";
-        paymentAmount = (deposit * r / 12).toFixed(2);
-      } else if (days >= 365) {
-        paymentFreq = "Annual";
-        paymentAmount = (deposit * r).toFixed(2);
-      }
-
-      const bankName = document.getElementById("bankName").value || "N/A";
-      const accountNumber = document.getElementById("accountNumber").value || "****";
+      const model = paymentModel(deposit, rate, days);
+      const bankName = document.getElementById('bankName').value || 'N/A';
+      const accountNumber = document.getElementById('accountNumber').value || '****';
 
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${new Date().toLocaleDateString()}</td>
+        <td>${id}</td>
+        <td>${dateStr}</td>
+        <td>${investor || 'Investor'}</td>
         <td>${deposit.toFixed(2)}</td>
-        <td>${FV.toFixed(2)}</td>
-        <td class="success">${yieldAmt.toFixed(2)}</td>
-        <td>${paymentFreq} ($${paymentAmount})</td>
+        <td>${days}</td>
+        <td>${(+rate).toFixed(2)}</td>
+        <td>${model.maturityValue.toFixed(2)}</td>
+        <td class="success">${model.totalInterest.toFixed(2)}</td>
         <td class="success">Yield sent to ${bankName} Acc ****${accountNumber.slice(-4)}</td>
       `;
       txBody.appendChild(row);
+
+      const tx = {
+        id, investor, deposit, days, rate: +rate, date: dateStr,
+        maturityValue: model.maturityValue, totalInterest: model.totalInterest,
+        perLabel: model.perLabel, periods: model.periods, perInterest: model.perInterest
+      };
+      transactions.push(tx);
+
+      renderAmortization(tx); // show schedule below table
+      autoDownloadCSV();     // auto download after each deposit
+      generateCertificatePDF(tx); // build certificate
     }
 
+    // Events
     document.getElementById('btnDeposit').addEventListener('click', ()=>{
       const dep = +document.getElementById('depositAmt').value;
       const rate = +document.getElementById('depRate').value;
-      let days = 0;
-
-      if(maturityOption.value === "custom"){
-        days = +customMaturity.value;
-      } else {
-        days = +maturityOption.value;
-      }
-
-      if(dep>0 && days>0){
-        addTransaction(dep, days, rate);
-      }
+      const investor = document.getElementById('investorName').value || 'Investor';
+      let days = maturityOption.value === 'custom' ? +customMaturity.value : +maturityOption.value;
+      if(dep>0 && days>0){ addTransaction(dep, days, rate, investor); }
     });
+
+    // CSV download (manual button)
+    document.getElementById('downloadTx').addEventListener('click', downloadCSV);
+
+    function buildCSV(){
+      let csv = 'ID,Date,Investor,Deposit,MaturityDays,Rate,MaturityValue,Yield,Status\n';
+      const rows = txBody.querySelectorAll('tr');
+      rows.forEach(r=>{
+        const cols = Array.from(r.children).map(td=>(''+td.textContent).replace(/,/g,'').trim());
+        csv += cols.join(',') + '\n';
+      });
+      return csv;
+    }
+
+    function downloadCSV(){
+      const csv = buildCSV();
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'transactions.csv'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function autoDownloadCSV(){
+      // Auto-download after each deposit
+      downloadCSV();
+    }
+
+    // ----------------- Certificate (jsPDF) -----------------
+    function generateCertificatePDF(tx){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:'a4' });
+
+      const W = doc.internal.pageSize.getWidth();
+      const H = doc.internal.pageSize.getHeight();
+
+      // Border & header band
+      doc.setDrawColor(11,105,255);
+      doc.setLineWidth(2);
+      doc.rect(36, 36, W-72, H-72);
+      doc.setFillColor(240,248,255);
+      doc.rect(36, 36, W-72, 80, 'F');
+
+      // Title
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(22);
+      doc.setTextColor(11, 59, 139);
+      doc.text('SadiCoin Investment Certificate', W/2, 88, {align:'center'});
+
+      // Subheading
+      doc.setFontSize(11);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(40);
+      doc.text('Central Banking Services • CBDC Department', W/2, 108, {align:'center'});
+
+      // Watermark
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({opacity:0.08}));
+      doc.setFontSize(120);
+      doc.setTextColor(11,105,255);
+      doc.text('SADC', W/2, H/2+40, {align:'center', angle: -20});
+      doc.restoreGraphicsState();
+
+      // Hologram-style security seal (vector faux hologram)
+      const cx = W-140, cy = 110, R = 48;
+      for(let i=0;i<12;i++){
+        const hue = 15 + i*25; // varying hue-like effect
+        const r = R - i*3.2;
+        const col = hsvToRgb(hue/360, 0.8, 1);
+        doc.setDrawColor(col.r, col.g, col.b);
+        doc.setLineWidth(1);
+        doc.circle(cx, cy, Math.max(6,r));
+      }
+      doc.setFontSize(10);
+      doc.setTextColor(60);
+      doc.text('SADC CENTRAL BANK', cx, cy+4, {align:'center'});
+
+      // Body content
+      const left = 64, top = 160, lh = 22;
+      doc.setTextColor(15);
+      doc.setFontSize(12);
+
+      // Compute discount rate (ask) based on zero-coupon notion: ask = (FV - PV)/FV
+      const FV = tx.maturityValue;
+      const PV = tx.deposit;
+      const ask = (FV - PV)/FV; // fraction
+
+      const issue = tx.date;
+      const mDate = new Date(); mDate.setDate(mDate.getDate() + tx.days);
+
+      const rows = [
+        ['Transaction ID', tx.id],
+        ['Investor Name', tx.investor || 'Investor'],
+        ['Amount Invested', formatMoney(tx.deposit)],
+        ['Maturity Period', `${tx.days} days (${tx.perLabel} payouts)`],
+        ['Annual Rate', `${tx.rate.toFixed(2)}%`],
+        ['Projected Yield', formatMoney(tx.totalInterest)],
+        ['Projected Value at Maturity', formatMoney(tx.maturityValue)],
+        ['Discount Rate (Ask)', `${(ask*100).toFixed(2)}%`],
+        ['Issuer', 'CBS CBDC Department'],
+        ['Date of Issue', issue],
+        ['Date of Maturity', mDate.toLocaleDateString()]
+      ];
+
+      rows.forEach((r, i)=>{
+        doc.setFont('helvetica','bold');
+        doc.text(r[0]+':', left, top + i*lh);
+        doc.setFont('helvetica','normal');
+        doc.text(String(r[1]), left+210, top + i*lh);
+      });
+
+      // Footer note
+      doc.setFontSize(9);
+      doc.setTextColor(90);
+      doc.text('This certificate is a simulated document for demonstration purposes only and does not constitute financial advice.', left, H-80);
+
+      doc.save(`CBDC_Certificate_${tx.id}.pdf`);
+    }
+
+    // small utils for certificate visuals
+    function hsvToRgb(h, s, v){
+      let r, g, b;
+      let i = Math.floor(h * 6);
+      let f = h * 6 - i;
+      let p = v * (1 - s);
+      let q = v * (1 - f * s);
+      let t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+      }
+      return { r: Math.round(r*255), g: Math.round(g*255), b: Math.round(b*255)};
+    }
+
+    function formatMoney(x){
+      return Number(x).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
   </script>
 </body>
 </html>
+
 

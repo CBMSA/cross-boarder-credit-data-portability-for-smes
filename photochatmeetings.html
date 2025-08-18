@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,17 +67,17 @@
     <a href="index.html" class="btn">Home</a> |
     <a href="photo-chatbusiness.html" class="btn">Chat Business</a> |
     <a href="sadccbdc.html" class="btn">Treasures Portal</a> |
-    <a href="tradecbdc.html" class="btn">Tokenized Trading</a>
-    <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>
-   <a href="citizenswallet.html" class="btn">Citizens Wallet</a>
-  <a href="trade.html" class="btn"> SADI Trading</a>
+    <a href="tradecbdc.html" class="btn">Tokenized Trading</a> |
+    <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a> |
+    <a href="citizenswallet.html" class="btn">Citizens Wallet</a> |
+    <a href="trade.html" class="btn">SADI Trading</a>
 
     <div id="exchange" class="mt-5">
       <h4>Live Exchange Rates</h4>
       <div id="rates">Loading...</div>
     </div>
 
-    <    <!-- Meeting Join/Create -->
+    <!-- Meeting Join/Create -->
     <div class="controls">
       <input type="text" id="meetingId" class="form-control" placeholder="Enter or create Meeting ID">
       <button onclick="startMeeting()" class="btn btn-primary mt-2">Start/Join Meeting</button>
@@ -105,8 +104,8 @@
       <button onclick="stopRecording()" class="btn btn-danger">Stop</button>
       <audio id="audioPlayback" controls></audio>
     </div>
+  </div>
 
-    
   <script>
     let localStream;
     let mediaRecorder;
@@ -172,22 +171,7 @@
       if (fullRecorder) fullRecorder.stop();
     }
 
-    document.getElementById('subscriptionForm').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const proof = document.getElementById('proof').value;
-
-      const res = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, proof })
-      });
-      const data = await res.json();
-      document.getElementById('formResponse').innerText = data.message || 'Submitted';
-    });
-
-    // 🔁 Live Exchange Rates from EODHD
+    // 🔁 Live Exchange Rates from EODHD (using correct endpoint)
     const eodhdToken = "67b2d451e5b8a8.90504186";  // Replace with your valid API key
     const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
 
@@ -196,7 +180,7 @@
       let output = "<ul class='list-group'>";
       for (let symbol of currencySymbols) {
         try {
-          const res = await fetch(`https://eodhd.com/api/real-time/${symbol}.FOREX?api_token=${eodhdToken}&fmt=json`);
+          const res = await fetch(`https://eodhd.com/api/live/${symbol}.FOREX?api_token=${eodhdToken}&fmt=json`);
           const data = await res.json();
           const rate = data.close || data.price;
           output += `<li class="list-group-item"><strong>${symbol}</strong>: ${rate}</li>`;
@@ -212,5 +196,3 @@
   </script>
 </body>
 </html>
-
-

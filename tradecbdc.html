@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,7 +33,7 @@
     input,select{width:100%;padding:10px 12px;font-size:16px;border-radius:10px;border:1.5px solid #cbd5e1;outline:none;background:#fff}
     input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 4px var(--ring)}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    button{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;border:none;font-weight:600;padding:12px 16px;width:100%;border-radius:10px;cursor:pointer;transition:.15s background ease-in-out;margin-top:8px}
+    button{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;border:none;font-weight:600;padding:12px 16px;width:100%;border-radius:10px;cursor:pointer;transition:.15s;background ease-in-out;margin-top:8px}
     button:hover{background:#0a54cc}
     .muted{color:var(--muted)}
     .out{background:#f1f5f9;border:1px dashed #94a3b8;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;white-space:pre-wrap;word-break:break-word}
@@ -46,231 +45,207 @@
   </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>CBDC Investment Platform</h1>
-    <p class="muted" style="text-align:center;margin:6px 0 0">
-      Deposit • Yield • Automatic Withdrawal at Maturity
-    </p>
-  </header>
+  <div class="app">
+    <header>
+      <h1>CBDC Investment Platform</h1>
+      <p class="muted" style="text-align:center;margin:6px 0 0">
+        Deposit • Yield • Automatic Withdrawal at Maturity
+      </p>
+    </header>
 
-  <!-- Investment Calculator -->
-  <section class="cards">
-    <div class="card">
-      <h3>Inputs</h3>
-      <div class="row">
-        <div>
-          <label>Future Value (FV)</label>
-          <input id="fv" type="number" step="0.01" value="10">
+    <!-- Investment Calculator -->
+    <section class="cards">
+      <div class="card">
+        <h3>Inputs</h3>
+        <div class="row">
+          <div>
+            <label>Future Value (FV)</label>
+            <input id="fv" type="number" step="0.01" value="10">
+          </div>
+          <div>
+            <label>Annual Rate (%)</label>
+            <input id="rate" type="number" step="0.01" value="8.25">
+          </div>
         </div>
-        <div>
-          <label>Annual Rate (%)</label>
-          <input id="rate" type="number" step="0.01" value="8.25">
+        <div class="row">
+          <div>
+            <label>Years (n)</label>
+            <input id="years" type="number" step="0.01" value="1">
+          </div>
+          <div>
+            <label>Compounding</label>
+            <select id="cmp">
+              <option value="1">Annual</option>
+              <option value="2">Semiannual</option>
+              <option value="4">Quarterly</option>
+              <option value="12">Monthly</option>
+              <option value="365">Daily</option>
+              <option value="cont">Continuous</option>
+            </select>
+          </div>
+        </div>
+        <button id="btnCalc">Calculate</button>
+        <p class="small muted">Example: FV=10, r=8.25%, n=1 → PV≈9.24; Ask≈0.076</p>
+      </div>
+
+      <div class="card">
+        <h3>Results</h3>
+        <div id="result" class="out">Enter inputs and press Calculate.</div>
+      </div>
+    </section>
+
+    <!-- New Section: Investment Simulation with Bank Details -->
+    <section class="cards">
+      <div class="card">
+        <h3>Bank Account Details</h3>
+        <label>Bank Name</label>
+        <input id="bankName" type="text" placeholder="e.g. Nedbank">
+
+        <label>Account Number</label>
+        <input id="accountNumber" type="text" placeholder="Enter account number">
+
+        <label>Branch Code</label>
+        <input id="branchCode" type="text" placeholder="Enter branch code">
+
+        <label>Account Type</label>
+        <select id="accountType">
+          <option value="savings">Savings</option>
+          <option value="cheque">Cheque</option>
+          <option value="business">Business</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <h3>Deposit & Investment</h3>
+        <label>Deposit Amount</label>
+        <input id="depositAmt" type="number" step="0.01" value="1000">
+
+        <label>Maturity Period</label>
+        <select id="maturityOption">
+          <option value="365">1 Year (Daily Interest)</option>
+          <option value="180">6 Months (Monthly Interest)</option>
+          <option value="90">3 Months (Monthly Interest)</option>
+          <option value="30">1 Month (Daily Interest)</option>
+          <option value="custom">Custom (enter days)</option>
+        </select>
+        <input id="customMaturity" type="number" placeholder="Enter custom days" style="display:none">
+
+        <label>Annual Rate (%)</label>
+        <input id="depRate" type="number" step="0.01" value="8.25">
+
+        <button id="btnDeposit">Deposit Investment</button>
+      </div>
+
+      <div class="card">
+        <h3>Transaction Log</h3>
+        <div style="overflow:auto;max-height:300px">
+          <table id="txTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Deposit</th>
+                <th>Maturity Value</th>
+                <th>Yield</th>
+                <th>Payment Frequency</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
-      <div class="row">
-        <div>
-          <label>Years (n)</label>
-          <input id="years" type="number" step="0.01" value="1">
-        </div>
-        <div>
-          <label>Compounding</label>
-          <select id="cmp">
-            <option value="1">Annual</option>
-            <option value="2">Semiannual</option>
-            <option value="4">Quarterly</option>
-            <option value="12">Monthly</option>
-            <option value="365">Daily</option>
-            <option value="cont">Continuous</option>
-          </select>
-        </div>
-      </div>
-      <button id="btnCalc">Calculate</button>
-      <p class="small muted">Example: FV=10, r=8.25%, n=1 → PV≈9.24; Ask≈0.076</p>
-    </div>
+    </section>
 
-    <div class="card">
-      <h3>Results</h3>
-      <div id="result" class="out">Enter inputs and press Calculate.</div>
-    </div>
-  </section>
+    <footer>
+      This platform simulates CBDC deposits with yield withdrawal at maturity.
+      <br>Not financial advice.
+    </footer>
+  </div>
 
-  <!-- Investment Simulation -->
-  <section class="cards">
-    <div class="card">
-      <h3>Bank Account Details</h3>
-      <label>Investor Name</label>
-      <input id="investorName" type="text" placeholder="Enter your name">
-
-      <label>Bank Name</label>
-      <input id="bankName" type="text" placeholder="e.g. Nedbank">
-
-      <label>Account Number</label>
-      <input id="accountNumber" type="text" placeholder="Enter account number">
-
-      <label>Branch Code</label>
-      <input id="branchCode" type="text" placeholder="Enter branch code">
-
-      <label>Account Type</label>
-      <select id="accountType">
-        <option value="savings">Savings</option>
-        <option value="cheque">Cheque</option>
-        <option value="business">Business</option>
-      </select>
-    </div>
-
-    <div class="card">
-      <h3>Deposit & Investment</h3>
-      <label>Deposit Amount</label>
-      <input id="depositAmt" type="number" step="0.01" value="1000">
-
-      <label>Maturity Period</label>
-      <select id="maturityOption">
-        <option value="365">1 Year (Daily Payout)</option>
-        <option value="180">6 Months</option>
-        <option value="90">3 Months</option>
-        <option value="30">1 Month</option>
-        <option value="custom">Custom (enter days)</option>
-      </select>
-      <input id="customMaturity" type="number" placeholder="Enter custom days" style="display:none">
-
-      <label>Annual Rate (%)</label>
-      <input id="depRate" type="number" step="0.01" value="8.25">
-
-      <button id="btnDeposit">Deposit Investment</button>
-    </div>
-
-    <div class="card">
-      <h3>Transaction Log</h3>
-      <div style="overflow:auto;max-height:300px">
-        <table id="txTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Date</th>
-              <th>Deposit</th>
-              <th>Maturity Value</th>
-              <th>Yield</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <button id="downloadTx">Download Transactions CSV</button>
-
-  <footer>
-    This platform simulates CBDC deposits with yield withdrawal at maturity.<br>Not financial advice.
-  </footer>
-</div>
-
-<!-- jsPDF CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<script>
-  let txCount = 0;
-  const txBody = document.querySelector('#txTable tbody');
-  const maturityOption = document.getElementById("maturityOption");
-  const customMaturity = document.getElementById("customMaturity");
-
-  maturityOption.addEventListener("change", ()=>{
-    customMaturity.style.display = maturityOption.value==="custom"?"block":"none";
-  });
-
-  function futureValue(P, r, days){
-    return P * Math.pow((1 + r/365), days);
-  }
-
-  function calcOnce(){
-    const FV = +document.getElementById('fv').value;
-    const r = +document.getElementById('rate').value / 100;
-    const n = +document.getElementById('years').value;
-    const PV = FV / Math.pow(1 + r, n);
-    const ask = (FV - PV) / FV;
-    document.getElementById('result').textContent =
-      `PV=${PV.toFixed(4)} | Ask=${(ask*100).toFixed(2)}%`;
-  }
-  document.getElementById('btnCalc').addEventListener('click', calcOnce);
-
-  function addTransaction(deposit, days, rate, investor){
-    const r = rate/100;
-    const FV = futureValue(deposit, r, days);
-    const yieldAmt = FV - deposit;
-    txCount++;
-    const id = `TX${String(txCount).padStart(5,'0')}`;
-    const date = new Date().toLocaleDateString();
-    const bankName = document.getElementById("bankName").value || "N/A";
-    const accountNumber = document.getElementById("accountNumber").value || "****";
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${id}</td>
-      <td>${date}</td>
-      <td>${deposit.toFixed(2)}</td>
-      <td>${FV.toFixed(2)}</td>
-      <td class="success">${yieldAmt.toFixed(2)}</td>
-      <td class="success">Yield sent to ${bankName} Acc ****${accountNumber.slice(-4)}</td>
-    `;
-    txBody.appendChild(row);
-
-    // Generate Investment Certificate PDF
-    generateCertificatePDF({id, investor, deposit, days, yieldAmt, rate, date});
-  }
-
-  document.getElementById('btnDeposit').addEventListener('click', ()=>{
-    const dep = +document.getElementById('depositAmt').value;
-    const rate = +document.getElementById('depRate').value;
-    const investor = document.getElementById('investorName').value || "Investor";
-    let days = maturityOption.value==="custom"?+customMaturity.value:+maturityOption.value;
-
-    if(dep>0 && days>0){
-      addTransaction(dep, days, rate, investor);
+  <script>
+    // --- Pricing functions ---
+    function calcFutureValue(P, r, days){
+      return P * Math.pow((1 + r/365), days);
     }
-  });
 
-  // Download CSV
-  document.getElementById('downloadTx').addEventListener('click', ()=>{
-    let csv = "ID,Date,Deposit,Maturity Value,Yield,Status\n";
-    txBody.querySelectorAll('tr').forEach(row=>{
-      const cols = Array.from(row.children).map(td=>td.textContent.replace(/,/g,''));
-      csv += cols.join(",")+"\n";
+    // --- Calculator ---
+    function calcOnce(){
+      const FV = +document.getElementById('fv').value;
+      const r = +document.getElementById('rate').value / 100;
+      const n = +document.getElementById('years').value;
+      const PV = FV / Math.pow(1 + r, n);
+      const ask = (FV - PV) / FV;
+      document.getElementById('result').textContent =
+        `PV=${PV.toFixed(4)} | Ask=${(ask*100).toFixed(2)}%`;
+    }
+    document.getElementById('btnCalc').addEventListener('click', calcOnce);
+
+    // --- Investment Simulation ---
+    const txBody = document.querySelector('#txTable tbody');
+    const maturityOption = document.getElementById("maturityOption");
+    const customMaturity = document.getElementById("customMaturity");
+
+    maturityOption.addEventListener("change", ()=>{
+      if(maturityOption.value === "custom"){
+        customMaturity.style.display = "block";
+      } else {
+        customMaturity.style.display = "none";
+      }
     });
-    const blob = new Blob([csv], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = "transactions.csv"; a.click();
-    URL.revokeObjectURL(url);
-  });
 
-  // Generate PDF Certificate
-  function generateCertificatePDF(tx){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    function addTransaction(deposit, days, rate){
+      const r = rate/100;
+      const FV = calcFutureValue(deposit, r, days);
+      const yieldAmt = FV - deposit;
 
-    doc.setFontSize(16);
-    doc.text("CBDC Investment Certificate", 105, 20, null, null, "center");
-    doc.setFontSize(12);
-    doc.text(`Transaction ID: ${tx.id}`, 20, 40);
-    doc.text(`Investor Name: ${tx.investor}`, 20, 50);
-    doc.text(`Amount Invested: ${tx.deposit.toFixed(2)}`, 20, 60);
-    doc.text(`Maturity Period (days): ${tx.days}`, 20, 70);
-    doc.text(`Yield: ${tx.yieldAmt.toFixed(2)}`, 20, 80);
-    doc.text(`Discount Rate (Ask): ${tx.rate.toFixed(2)}%`, 20, 90);
-    doc.text(`Issuer: CBS CBDC Department`, 20, 100);
-    doc.text(`Date of Issue: ${tx.date}`, 20, 110);
-    const maturityDate = new Date();
-    maturityDate.setDate(maturityDate.getDate() + tx.days);
-    doc.text(`Date of Maturity: ${maturityDate.toLocaleDateString()}`, 20, 120);
+      // Determine payment frequency
+      let paymentFreq = "Annual";
+      let paymentAmount = 0;
+      if (days <= 30) {
+        paymentFreq = "Daily";
+        paymentAmount = (deposit * r / 365).toFixed(2);
+      } else if (days <= 180) {
+        paymentFreq = "Monthly";
+        paymentAmount = (deposit * r / 12).toFixed(2);
+      } else if (days >= 365) {
+        paymentFreq = "Annual";
+        paymentAmount = (deposit * r).toFixed(2);
+      }
 
-    // Placeholder for SADC logo hologram
-    doc.addImage('https://upload.wikimedia.org/wikipedia/commons/1/12/SADC_logo.png', 'PNG', 150, 20, 40, 40);
+      const bankName = document.getElementById("bankName").value || "N/A";
+      const accountNumber = document.getElementById("accountNumber").value || "****";
 
-    doc.save(`CBDC_Certificate_${tx.id}.pdf`);
-  }
-</script>
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${new Date().toLocaleDateString()}</td>
+        <td>${deposit.toFixed(2)}</td>
+        <td>${FV.toFixed(2)}</td>
+        <td class="success">${yieldAmt.toFixed(2)}</td>
+        <td>${paymentFreq} ($${paymentAmount})</td>
+        <td class="success">Yield sent to ${bankName} Acc ****${accountNumber.slice(-4)}</td>
+      `;
+      txBody.appendChild(row);
+    }
+
+    document.getElementById('btnDeposit').addEventListener('click', ()=>{
+      const dep = +document.getElementById('depositAmt').value;
+      const rate = +document.getElementById('depRate').value;
+      let days = 0;
+
+      if(maturityOption.value === "custom"){
+        days = +customMaturity.value;
+      } else {
+        days = +maturityOption.value;
+      }
+
+      if(dep>0 && days>0){
+        addTransaction(dep, days, rate);
+      }
+    });
+  </script>
 </body>
 </html>
+
+
+{"updates":[{"pattern":".*","multiple":false,"replacement":"<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="utf-8" />\n  <title>CBDC Investment Platform</title>\n  <meta name="viewport" content="width=device-width,initial-scale=1" />\n  <style>\n    :root{\n      --brand:#0b69ff;\n      --ink:#0f172a;\n      --muted:#64748b;\n      --bg:#f8fafc;\n      --card:#ffffff;\n      --ok:#16a34a;\n      --bad:#b91c1c;\n      --ring:#93c5fd;\n    }\n    *{box-sizing:border-box}\n    html,body{height:100%}\n    body{\n      margin:0;\n      padding:24px;\n      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,Helvetica,sans-serif;\n      background:var(--bg);\n      color:var(--ink)\n    }\n    .app{max-width:1100px;margin:0 auto;display:grid;gap:24px}\n    h1{margin:0;font-size:24px;color:#0b3b8b;text-align:center}\n    .cards{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}\n    .card{background:var(--card);border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 6px 16px rgba(2,6,23,.06)}\n    .card h3{margin:0 0 10px;font-size:18px;color:#0b3b8b}\n    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}\n    input,select{width:100%;padding:10px 12px;font-size:16px;border-radius:10px;border:1.5px solid #cbd5e1;outline:none;background:#fff}\n    input:focus,select:focus{border-color:var(--brand);
 

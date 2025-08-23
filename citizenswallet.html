@@ -1,12 +1,14 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>SADC Citizens CBDC Wallet (SADI)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net https://cdn.moonpay.com https://unpkg.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://unpkg.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://unpkg.com/@moonpay/moonpay-js"></script>
 <style>
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;margin:20px;background:#f9fafb;color:#333;line-height:1.6;}
 h1{text-align:center;color:#0055aa;margin-bottom:24px;font-weight:700;}
@@ -76,10 +78,21 @@ button:hover{background:#003f7f;}
 <div id="disb_res"></div>
 </div>
 
+<!-- 🌐 MoonPay Swap Integration -->
+<div class="box">
+<h3>Swap via MoonPay</h3>
+<input id="swap_from" placeholder="From currency (btc, eth, usdt)" type="text">
+<input id="swap_to" placeholder="To currency (eth, btc, usdc)" type="text">
+<input id="swap_amt" placeholder="Amount" type="number" min="0.0001" step="0.0001">
+<button onclick="openSwap()">Swap Now</button>
+</div>
+
 <script>
 const API="https://proxy-transfer-fac3dgcpf8fkehem.canadacentral-01.azurewebsites.net";
 let token=localStorage.getItem("sadi_token")||null;
+
 async function apiFetch(e,t={}){t.headers=t.headers||{},t.body&&!(t.body instanceof FormData)&&(t.headers["Content-Type"]="application/json"),token&&(t.headers.Authorization=`Bearer ${token}`);const n=await fetch(API+e,t),a=await n.json().catch(()=>null);if(!n.ok)throw{status:n.status,body:a};return a}
+
 async function register(){const e=document.getElementById("r_name").value.trim(),t=document.getElementById("r_email").value.trim(),n=document.getElementById("r_phone").value.trim(),a=document.getElementById("r_pass").value;if(!e||!t||!n||!a)return alert("Please fill all fields.");try{const r=await apiFetch("/api/auth/register",{method:"POST",body:JSON.stringify({fullName:e,email:t,phone:n,password:a})});token=r.token,localStorage.setItem("sadi_token",token),alert("Registered — you are logged in. Wallet created and credited."),await loadWallet()}catch(r){alert(r.body?.error||r.body?.message||"Registration failed")}}
 async function login(){const e=document.getElementById("l_email").value.trim(),t=document.getElementById("l_pass").value;if(!e||!t)return alert("Enter email and password.");try{const n=await apiFetch("/api/auth/login",{method:"POST",body:JSON.stringify({email:e,password:t})});token=n.token,localStorage.setItem("sadi_token",token),alert("Login successful"),await loadWallet()}catch(n){alert(n.body?.error||"Login failed")}}
 async function loadWallet(){const e=document.getElementById("wallet_info");if(!token)return void(e.innerText="Not logged in");try{const t=await apiFetch("/api/wallet");let n=t.balance;try{const a=BigInt(Number(t.decimals||18)),r=BigInt(n),o=r/(10n**a),c=r%(10n**a),l=Number(o)+Number(c)/Number(10n**a);n=l.toFixed(6)}catch{}e.innerText=`Address: ${t.address}\nBalance: ${n} SADI`}catch(t){e.innerText="Failed to load wallet",console.error(t),alert(t.body?.error||"Could not fetch wallet. Check API URL and token.")}}
@@ -87,7 +100,35 @@ async function send(){if(!token)return alert("Please login first.");const e=docu
 async function convert(){if(!token)return alert("Please login first.");const e=Number(document.getElementById("conv_amt").value),t=document.getElementById("conv_cur").value.trim().toUpperCase();if(!e||e<=0)return alert("Enter positive amount");if(!["USD","ZAR"].includes(t))return alert("Target currency must be USD or ZAR");const n=document.getElementById("conv_res");n.innerText="Converting...";try{const a=await apiFetch("/api/convert",{method:"POST",body:JSON.stringify({amountSadi:e,target:t})});n.innerText=`Converted: ${Number(a.converted||a.convertedAmount||a.amountOut).toFixed(2)} ${t}`,await loadWallet()}catch(a){n.innerText=`Error: ${a.body?.error||"Conversion failed"}`}}
 async function disburse(){if(!token)return alert("Please login first.");const e=document.getElementById("bank_acc").value.trim(),t=document.getElementById("bank_code").value.trim(),n=Number(document.getElementById("bank_amt").value),a=(document.getElementById("bank_cur").value.trim()||"ZAR").toUpperCase(),r=document.getElementById("provider").value;if(!e||!t||!n||n<=0)return alert("Fill all payout fields with valid values.");const o=document.getElementById("disb_res");o.innerText="Submitting disbursement...";try{const c=await apiFetch("/api/payouts/disburse",{method:"POST",body:JSON.stringify({accountNo:e,bankCode:t,amount:n,currency:a,provider:r})});o.innerText=`Ref: ${c.ref} | Status: ${c.status}`}catch(c){o.innerText=`Error: ${c.body?.error||"Disbursement failed"}`}}
 window.addEventListener("load",()=>{token=localStorage.getItem("sadi_token")||token,token&&loadWallet()});
+
+// 🌐 MoonPay Swap Handler
+async function openSwap(){
+  const from=document.getElementById("swap_from").value.trim().toLowerCase();
+  const to=document.getElementById("swap_to").value.trim().toLowerCase();
+  const amt=document.getElementById("swap_amt").value;
+  if(!from||!to||!amt) return alert("Enter from, to, and amount.");
+  try{
+    const moonPay=await loadMoonPay();
+    const moonPaySdk=moonPay({
+      flow:'swap',
+      environment:'sandbox', // change to 'production' later
+      variant:'overlay',
+      params:{
+        apiKey:'pk_live_OUYBz1syIA4A3AdJ47IQr0Rkx6dCWB4k', // your publishable key
+        baseCurrencyCode:from,
+        baseCurrencyAmount:amt,
+        defaultCurrencyCode:to,
+        theme:'dark'
+      }
+    });
+    moonPaySdk.show();
+  }catch(err){
+    console.error("MoonPay init failed:",err);
+    alert("MoonPay swap could not be launched.");
+  }
+}
 </script>
 </body>
 </html>
+
 

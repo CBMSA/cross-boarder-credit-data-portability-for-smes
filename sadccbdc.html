@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,14 +26,15 @@
     <a href="#login" class="btn">Login</a>
     <a href="#transactions" class="btn">Transactions</a>
     <a href="#exchange" class="btn">Exchange Rates</a>
-  <a href="index.html" class="btn">Home</a>|
-  <a href="photochatmeetings.html"class="btn">Chat Business</a>|
-  <a href="sadccbdc.html" class="btn">Treasures PORTAL </a>|
-  <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>|
+    <a href="index.html" class="btn">Home</a>|
+    <a href="photochatmeetings.html"class="btn">Chat Business</a>|
+    <a href="sadccbdc.html" class="btn">Treasures PORTAL </a>|
+    <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>|
     <a href="tokenizedbond.html">Tokenized Bond Wallet</a> |  
-  <a href="sad banknotes.html">Our Banknotes and coins</a>
+    <a href="sad banknotes.html">Our Banknotes and coins</a>
   </nav>
 
+  <!-- Registration -->
   <div id="register">
     <h4>Account Registration</h4>
     <select id="role" class="form-control mb-2">
@@ -48,6 +50,7 @@
     <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
   </div>
 
+  <!-- Login -->
   <div id="login" class="mt-5">
     <h4>Login</h4>
     <input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
@@ -56,6 +59,7 @@
     <p id="loginError" class="text-danger"></p>
   </div>
 
+  <!-- Transactions -->
   <div id="transactions" class="mt-5" style="display:none;">
     <h4>Send SADICOIN</h4>
     <p>Balance: <span id="balance">SADICOIN 0</span></p>
@@ -75,20 +79,32 @@
     </div>
   </div>
 
-  <!-- CoinMarketCap Price Section -->
+  <!-- MoonPay Swap -->
+  <div id="swap" class="mt-5">
+    <h4>Swap SADICOIN</h4>
+    <div class="mb-2">
+      <input type="text" id="swap_from" class="form-control mb-2" placeholder="From Currency (e.g., SADI)">
+      <input type="text" id="swap_to" class="form-control mb-2" placeholder="To Currency (e.g., USD)">
+      <input type="number" id="swap_amt" class="form-control mb-2" placeholder="Amount">
+      <button class="btn btn-warning w-100" onclick="openSwap()">Swap via MoonPay</button>
+    </div>
+  </div>
+
+  <!-- CoinMarketCap Price -->
   <div class="card p-3 mb-4">
     <h6>Market Price (via CoinMarketCap)</h6>
     <button class="btn btn-outline-primary w-100 mb-2" onclick="getMarketPrice()">Get SADICoin/ZAR</button>
     <div id="cmcPriceResult" class="text-primary fw-bold text-center"></div>
   </div>
 
+  <!-- Live Exchange Rates -->
   <div id="exchange" class="mt-5">
     <h4>Live Exchange Rates</h4>
     <div id="rates"></div>
   </div>
 
   <footer class="mt-5 text-center">
-    <p>&copy; 2025 SCB - SADC Central Banks. All rights reserved. Licensed and regulated by CBM SARB.</p>
+    <p>&copy; 2025 SCB - SadiCoin. All rights reserved. Licensed and regulated by SCB.</p>
   </footer>
 
   <script>
@@ -106,14 +122,7 @@
       if (!name || !id || !wallet || !password) return alert("All fields required");
       if (users[id]) return alert("User already exists");
 
-      users[id] = {
-        id,
-        name,
-        role,
-        wallet,
-        password,
-        balance: 1000000
-      };
+      users[id] = { id, name, role, wallet, password, balance: 1000000 };
       alert("Registered. Login to continue.");
     }
 
@@ -170,7 +179,7 @@
     }
 
     async function fetchExchangeRates() {
-      const currencies = ["USDZAR", "ZARUSD", "USDEUR", "USDGBP", "USDJPY", "USDCNY", "USDAED", "USDKES"];
+      const currencies = ["USDZAR","ZARUSD","USDEUR","USDGBP","USDJPY","USDCNY","USDAED","USDKES"];
       const container = document.getElementById("rates");
       container.innerHTML = "";
       for (let code of currencies) {
@@ -186,34 +195,90 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       doc.text("SADC Wallet Transaction History", 10, 10);
-      txHistory.forEach((tx, i) => {
-        doc.text(`${i + 1}. ID: ${tx.id}, Amount: ${tx.amount}, Tax: ${tx.tax}, To: ${tx.to}`, 10, 20 + (i * 10));
+      txHistory.forEach((tx,i)=>{
+        doc.text(`${i+1}. ID: ${tx.id}, Amount: ${tx.amount}, Tax: ${tx.tax}, To: ${tx.to}`,10,20+(i*10));
       });
       doc.save("SADC_Transactions.pdf");
     }
 
     function getMarketPrice() {
-      const cmcKey = '0b53aa75-9da6-41c8-bbba-eb33bf350d3a';
-      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR', {
-        method: 'GET',
-        headers: {
-          'X-CMC_PRO_API_KEY': cmcKey
+      const cmcKey='0b53aa75-9da6-41c8-bbba-eb33bf350d3a';
+      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR',{
+        method:'GET',
+        headers:{'X-CMC_PRO_API_KEY':cmcKey}
+      })
+      .then(response=>response.json())
+      .then(data=>{
+        if(data?.data?.quote?.ZAR){
+          const price=data.data.quote.ZAR.price.toFixed(2);
+          document.getElementById('cmcPriceResult').innerText=`1 SADICOIN = ZAR ${price}`;
+        }else{
+          document.getElementById('cmcPriceResult').innerText='Price fetch failed.';
         }
       })
-      .then(response => response.json())
-      .then(data => {
-        if(data && data.data && data.data.quote && data.data.quote.ZAR) {
-          const price = data.data.quote.ZAR.price.toFixed(2);
-          document.getElementById('cmcPriceResult').innerText = `1 SADICOIN = ZAR ${price}`;
-        } else {
-          document.getElementById('cmcPriceResult').innerText = 'Price fetch failed.';
-        }
-      })
-      .catch(err => {
-        document.getElementById('cmcPriceResult').innerText = 'Error contacting CoinMarketCap.';
+      .catch(err=>{
+        document.getElementById('cmcPriceResult').innerText='Error contacting CoinMarketCap.';
         console.error(err);
       });
     }
+
+    // 🌐 Load MoonPay SDK
+    async function loadMoonPay() {
+      if(window.MoonPay) return window.MoonPay;
+      return new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src="https://buy.moonpay.com/js/sdk/latest.js";
+        script.onload=()=>resolve(window.MoonPay);
+        script.onerror=reject;
+        document.body.appendChild(script);
+      });
+    }
+
+    // 🌐 MoonPay Swap Handler
+    async function openSwap(){
+      const from=document.getElementById("swap_from").value.trim().toUpperCase();
+      const to=document.getElementById("swap_to").value.trim().toUpperCase();
+      const amt=document.getElementById("swap_amt").value;
+      if(!from||!to||!amt) return alert("Enter from, to, and amount.");
+
+      try{
+        const MoonPaySDK=await loadMoonPay();
+        const moonPayInstance=new MoonPaySDK({
+          flow:'swap',
+          environment:'sandbox', // change to 'production' later
+          variant:'overlay',
+          params:{
+            apiKey:'pk_live_OUYBz1syIA4A3AdJ47IQr0Rkx6dCWB4k', // replace with your publishable key
+            baseCurrencyCode:from,
+            baseCurrencyAmount:amt,
+            defaultCurrencyCode:to,
+            theme:'dark'
+          }
+        });
+        moonPayInstance.show();
+
+        // 🔹 Simulation of real-time balance update (replace with webhook in production)
+        setTimeout(()=>{
+          const received=(to==="SADI")?amt:amt*0.95; // mock conversion
+          moonPayWebhookCallback({fromCurrency:from,toCurrency:to,amount:amt,receivedAmount:received.toFixed(2)});
+        },5000);
+
+      }catch(err){
+        console.error("MoonPay init failed:",err);
+        alert("MoonPay swap could not be launched.");
+      }
+    }
+
+    // Simulated webhook callback
+    function moonPayWebhookCallback(tx){
+      if(!currentUser) return;
+      if(tx.toCurrency==="SADI") currentUser.balance+=parseFloat(tx.receivedAmount);
+      if(tx.fromCurrency==="SADI") currentUser.balance-=parseFloat(tx.amount);
+      document.getElementById("balance").innerText=`SADICOIN ${currentUser.balance.toLocaleString()}`;
+      fetchConversions(currentUser.balance);
+      alert(`Swap Successful! ${tx.fromCurrency} → ${tx.toCurrency}: ${tx.receivedAmount} received`);
+    }
+
   </script>
 </body>
 </html>

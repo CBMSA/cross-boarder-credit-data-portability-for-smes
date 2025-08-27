@@ -71,3 +71,145 @@
   </script>
 </body>
 </html>
+
+<!-- Save this as index.html or similar -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SadiCoin Investment Platform</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      --brand: #0b69ff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --ok: #16a34a;
+      --bad: #b91c1c;
+      --ring: #93c5fd;
+    }
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .app { max-width: 1100px; margin: 0 auto; display: grid; gap: 24px }
+    h1 { margin: 0; font-size: 24px; color: #0b3b8b; text-align: center }
+    .cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) }
+    .card {
+      background: var(--card); border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 18px; box-shadow: 0 6px 16px rgba(2, 6, 23, .06)
+    }
+    .card h3 { margin: 0 0 10px; font-size: 18px; color: #0b3b8b }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 6px }
+    input, select {
+      width: 100%; padding: 10px 12px; font-size: 16px;
+      border-radius: 10px; border: 1.5px solid #cbd5e1;
+      outline: none; background: #fff;
+    }
+    input:focus, select:focus {
+      border-color: var(--brand); box-shadow: 0 0 0 4px var(--ring)
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+    button {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--brand); color: #fff; border: none; font-weight: 600;
+      padding: 12px 16px; width: 100%; border-radius: 10px;
+      cursor: pointer; transition: .15s background ease-in-out; margin-top: 8px
+    }
+    button:hover { background: #0a54cc }
+    .muted { color: var(--muted) }
+    .out {
+      background: #f1f5f9; border: 1px dashed #94a3b8;
+      padding: 12px; border-radius: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 14px; white-space: pre-wrap; word-break: break-word;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px }
+    th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right }
+    th:first-child, td:first-child { text-align: left }
+    .success { color: var(--ok) }
+    .error { color: var(--bad) }
+    footer { font-size: 12px; color: var(--muted); text-align: center }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>SadiCoin Investment Platform</h1>
+      <p class="muted" style="text-align:center;margin:6px 0 0">
+        Deposit • FX-Aware Yield • Auto Certificate
+      </p>
+    </header>
+
+    <section class="cards">
+      <!-- ... [Your existing cards go here, unchanged] ... -->
+
+      <!-- 🆕 Alpaca Broker API Card -->
+      <div class="card">
+        <h3>Alpaca Broker API</h3>
+        <label>API Key</label>
+        <input id="alpacaKey" type="text" placeholder="Enter API Key">
+        <label>API Secret</label>
+        <input id="alpacaSecret" type="password" placeholder="Enter API Secret">
+        <button id="btnFetchAlpaca">Fetch Account Info</button>
+        <div id="alpacaOutput" class="out">Connect to Alpaca sandbox to see account details.</div>
+      </div>
+    </section>
+
+    <footer>
+      This platform simulates CBDC deposits with yield withdrawal at maturity.
+      <br>Not financial advice.
+    </footer>
+  </div>
+
+  <script>
+    // ✅ Alpaca API Integration
+    document.getElementById('btnFetchAlpaca').addEventListener('click', async () => {
+      const key = document.getElementById('alpacaKey').value.trim();
+      const secret = document.getElementById('alpacaSecret').value.trim();
+      const output = document.getElementById('alpacaOutput');
+
+      if (!key || !secret) {
+        output.textContent = 'Please enter both API key and secret.';
+        return;
+      }
+
+      try {
+        const res = await fetch('https://broker-api.sandbox.alpaca.markets/v1/accounts', {
+          method: 'GET',
+          headers: {
+            'APCA-API-KEY-ID': key,
+            'APCA-API-SECRET-KEY': secret
+          }
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          output.textContent = `Error: ${res.status} ${err}`;
+          return;
+        }
+
+        const data = await res.json();
+        const first = Array.isArray(data) ? data[0] : data;
+
+        output.textContent = `
+Account ID: ${first.id}
+Status: ${first.status}
+Cash: ${first.cash}
+Currency: ${first.currency}
+Created At: ${first.created_at}
+        `.trim();
+      } catch (e) {
+        output.textContent = 'Error fetching Alpaca data: ' + e.message;
+      }
+    });
+  </script>
+</body>
+</html>

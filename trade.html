@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -86,116 +87,80 @@
         <!-- Settings Page -->
         <div id="settingsPage" style="display:none;">
             <h2>Settings</h2>
+            <label>API Key</label>
+            <input id="apiKey" type="text" class="form-control mb-2" placeholder="Enter API Key">
+            <label>API Secret</label>
+            <input id="apiSecret" type="password" class="form-control mb-2" placeholder="Enter API Secret">
             <button class="btn btn-danger mb-2" onclick="pauseNetwork()">Pause Network</button>
             <button class="btn btn-secondary mb-2" onclick="showApiKey()">Show API Key</button>
             <div id="apiKeyBox" style="display:none;">
-                <input type="text" class="form-control" value="YOUR_API_KEY_HERE" readonly>
+                <input type="text" class="form-control" readonly>
             </div>
         </div>
     </div>
 </div>
 <script>
+    const API_BASE = "https://broker-api.sandbox.alpaca.markets"; // Example sandbox
+
+    function getAuthHeaders() {
+        const key = document.getElementById('apiKey').value.trim();
+        const secret = document.getElementById('apiSecret').value.trim();
+        return {
+            'APCA-API-KEY-ID': key,
+            'APCA-API-SECRET-KEY': secret
+        };
+    }
+
     // Navigation
     function showPage(page) {
         ['dashboardPage','usersPage','transactionsPage','blocksPage','settingsPage'].forEach(p=>{
             document.getElementById(p).style.display = (p === page+'Page') ? '' : 'none';
         });
-        // Update active nav
         Array.from(document.querySelectorAll('#sidebar .nav-link')).forEach(link => {
             link.classList.remove('active');
         });
-        let navs = {
-            dashboard:'Dashboard',
-            users:'Users',
-            transactions:'Transactions',
-            blocks:'Blocks',
-            settings:'Settings'
-        };
+        let navs = {dashboard:'Dashboard', users:'Users', transactions:'Transactions', blocks:'Blocks', settings:'Settings'};
         Array.from(document.querySelectorAll('#sidebar .nav-link')).forEach(link=>{
             if(link.innerText===navs[page]) link.classList.add('active');
         });
     }
-    // Dashboard mock data
-    function loadDashboard() {
-        document.getElementById('totalSupply').innerText = "1,000,000 SADI";
-        document.getElementById('totalTx').innerText = "12,345";
-        document.getElementById('totalWallets').innerText = "567";
-        let activity = [
-            "User Alice sent 10 SADI to Bob",
-            "Block #12345 mined",
-            "User Eve registered new wallet"
-        ];
-        let ul = document.getElementById('recentActivity');
-        ul.innerHTML = '';
-        activity.forEach(a=>{
-            let li = document.createElement('li');
-            li.className = "list-group-item";
-            li.innerText = a;
-            ul.appendChild(li);
-        });
+
+    // Example: Fetch account info with API keys
+    async function loadDashboard() {
+        try {
+            const res = await fetch(`${API_BASE}/v1/accounts`, {
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+
+            document.getElementById('totalSupply').innerText = "Sandbox";
+            document.getElementById('totalTx').innerText = data.status;
+            document.getElementById('totalWallets').innerText = data.account_number;
+
+            let ul = document.getElementById('recentActivity');
+            ul.innerHTML = `<li class="list-group-item">ID: ${data.id}</li>`;
+        } catch (err) {
+            console.error(err);
+            alert("Failed to fetch account: " + err);
+        }
     }
-    // Users mock data
-    function loadUsers() {
-        let users = [
-            {name:"Alice",email:"alice@email.com",wallet:"0xABC123",balance:100,status:"Active"},
-            {name:"Bob",email:"bob@email.com",wallet:"0xDEF456",balance:50,status:"Active"},
-            {name:"Eve",email:"eve@email.com",wallet:"0xGHI789",balance:0,status:"Frozen"}
-        ];
-        let tbody = document.getElementById('usersTable');
-        tbody.innerHTML = '';
-        users.forEach(u=>{
-            let tr = document.createElement('tr');
-            tr.innerHTML = `<td>${u.name}</td><td>${u.email}</td><td>${u.wallet}</td><td>${u.balance}</td>
-                <td>${u.status}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
-    // Transactions mock data
-    function loadTxs() {
-        let txs = [
-            {id:"tx123",sender:"0xABC123",receiver:"0xDEF456",amount:10,status:"Confirmed",ts:"2025-08-11 15:00"},
-            {id:"tx124",sender:"0xDEF456",receiver:"0xGHI789",amount:5,status:"Pending",ts:"2025-08-11 15:05"},
-            {id:"tx125",sender:"0xGHI789",receiver:"0xABC123",amount:2,status:"Failed",ts:"2025-08-11 15:07"}
-        ];
-        let tbody = document.getElementById('txTable');
-        tbody.innerHTML = '';
-        txs.forEach(tx=>{
-            let tr = document.createElement('tr');
-            tr.innerHTML = `<td>${tx.id}</td><td>${tx.sender}</td><td>${tx.receiver}</td>
-                <td>${tx.amount}</td><td>${tx.status}</td><td>${tx.ts}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
-    // Blocks mock data
-    function loadBlocks() {
-        let blocks = [
-            {num:12345,hash:"0xabcde12345",txc:3,ts:"2025-08-11 15:00"},
-            {num:12344,hash:"0xbcdef23456",txc:2,ts:"2025-08-11 14:55"},
-            {num:12343,hash:"0xcdef34567",txc:5,ts:"2025-08-11 14:50"}
-        ];
-        let tbody = document.getElementById('blocksTable');
-        tbody.innerHTML = '';
-        blocks.forEach(b=>{
-            let tr = document.createElement('tr');
-            tr.innerHTML = `<td>${b.num}</td><td>${b.hash}</td><td>${b.txc}</td><td>${b.ts}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
+
     // Settings
     function pauseNetwork() {
-        alert("Network paused (mock)");
+        alert("Network paused (API call would go here)");
     }
     function showApiKey() {
         document.getElementById('apiKeyBox').style.display = '';
+        document.querySelector('#apiKeyBox input').value = document.getElementById('apiKey').value;
     }
+
     // Initial load
     window.onload = function() {
         showPage('dashboard');
         loadDashboard();
-        loadUsers();
-        loadTxs();
-        loadBlocks();
     };
 </script>
 </body>
 </html>
+
+

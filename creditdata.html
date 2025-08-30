@@ -1,28 +1,46 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SADC SME Credit Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SADC SME Credit Portal + IMF Debt Projections</title>
+
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
     body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 20px; }
-    .form-container { background: #fff; padding: 20px; max-width: 600px; margin: auto; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { color: #003366; text-align: center; }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
-    button { margin-top: 20px; background: #003366; color: white; padding: 12px; border: none; border-radius: 5px; width: 100%; cursor: pointer; }
-    button:hover { background: #0052a3; }
+    nav a { margin-right: 15px; text-decoration: none; color: #003366; font-weight: bold; }
+    .form-container { background: #fff; padding: 20px; max-width: 950px; margin: 20px auto; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.08); }
+    h2 { color: #003366; text-align: center; margin: 0 0 8px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display:block; margin-top:10px; font-weight:600; color:#234; }
+    input, textarea, select { width:100%; padding:8px; margin-top:6px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box; }
+    textarea { min-height:90px; }
+    button { margin-top:14px; background:#003366; color:#fff; padding:10px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:700; }
+    button.secondary { background:#0b69ff; }
+    .row { display:flex; gap:10px; }
+    .small { font-size:12px; color:#666; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+    th,td { border:1px solid #e6edf3; padding:6px 8px; text-align:right; }
+    th:first-child, td:first-child { text-align:left; }
+    .out { background:#fafbfd; padding:10px; border-radius:6px; border:1px dashed #e3eefc; white-space:pre-wrap; }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .center { text-align:center; }
   </style>
 </head>
 <body>
+  <nav>
+    <a href="#">Credit Data</a>
+    <a href="#">Transactions</a>
+    <a href="#">STATS ANALYZER</a>
+    <a href="#">SADC CBDC</a>
+    <a href="#">Online Meetings</a>
+  </nav>
 
-<nav>
-  <a href="index.html">Credit Data</a>
-  <a href="transactions.html">Transactions  Payments</a>
-  <a href="statsanalyzer.html"> STATS ANALYZER</a>
-  <a href="sadccbdc.html">SADC CBDC</>
-  <a href="photochatmeetings.html">Online Meetings</a> 
-</nav>
+  <!-- SME Credit Form -->
   <div class="form-container">
     <h2>SME Credit Data Submission</h2>
     <form id="creditForm">
@@ -43,34 +61,263 @@
 
       <button type="submit">Submit Credit Record</button>
     </form>
-    <div id="status"></div>
+    <div id="status" class="small"></div>
   </div>
 
-  <script>
-    document.getElementById("creditForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const payload = {
-        name: document.getElementById("name").value,
-        taxID: document.getElementById("taxID").value,
-        country: document.getElementById("country").value,
-        financials: document.getElementById("financials").value,
-        docURL: document.getElementById("docURL").value
-      };
+  <!-- Debt Projection -->
+  <div class="form-container" id="debtPanel">
+    <h2>IMF-style Debt Projection (multi-year)</h2>
 
-      document.getElementById("status").innerText = "Submitting to blockchain...";
+    <div class="grid">
+      <div>
+        <label>Starting Debt (t=0)</label>
+        <input id="debt0" type="number" step="0.01" value="1000000000">
 
+        <label>GDP (current)</label>
+        <input id="gdp0" type="number" step="0.01" value="5000000000">
+
+        <label>Nominal Interest Rate (%)</label>
+        <input id="i_nom" type="number" step="0.0001" value="5.00">
+
+        <label>Nominal GDP Growth Rate (%)</label>
+        <input id="g_nom" type="number" step="0.0001" value="3.00">
+
+        <label>Inflation Rate (%)</label>
+        <input id="inflation" type="number" step="0.0001" value="2.00">
+      </div>
+
+      <div>
+        <label>Primary Balance (annual; positive = surplus)</label>
+        <input id="primaryBal" type="number" step="0.01" value="-20000000">
+
+        <label>Overall Balance (annual)</label>
+        <input id="overallBal" type="number" step="0.01" value="-50000000">
+
+        <label>Amortizations (mode)</label>
+        <select id="amortMode">
+          <option value="absolute">Absolute annual amount</option>
+          <option value="pctDebt">Percent of debt (beginning of year)</option>
+        </select>
+
+        <label id="amortLabel">Amortization Amount (abs)</label>
+        <input id="amortInput" type="number" step="0.01" value="30000000">
+
+        <label>Projection Years</label>
+        <input id="years" type="number" min="1" max="50" value="10">
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="btnProject">Run Projection</button>
+      <button id="btnDownloadPDF" class="secondary">Download PDF</button>
+      <button id="btnDownloadXML" class="secondary">Download XML</button>
+      <button id="btnClear" class="secondary">Clear Results</button>
+    </div>
+
+    <div id="summary" class="out" style="margin-top:12px">Run projection to see results here.</div>
+    <div id="tableWrapper" style="margin-top:12px; overflow:auto;"></div>
+  </div>
+
+<script>
+  // Helper formatting
+  function fmt(num){ return (typeof num === 'number' && isFinite(num)) ? num.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '-'; }
+
+  // SME form submit
+  document.getElementById("creditForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      name: document.getElementById("name").value,
+      taxID: document.getElementById("taxID").value,
+      country: document.getElementById("country").value,
+      financials: document.getElementById("financials").value,
+      docURL: document.getElementById("docURL").value
+    };
+    document.getElementById("status").innerText = "Submitting... (demo)";
+    try {
       const res = await fetch("http://localhost:3000/api/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payload)
+      });
+      const js = await res.json();
+      document.getElementById("status").innerText = js.message || "Submitted (demo).";
+    } catch(err){
+      document.getElementById("status").innerText = "Backend not available; record kept locally in demo only.";
+    }
+  });
+
+  // UI: amortization label swap
+  const amortMode = document.getElementById('amortMode');
+  const amortLabel = document.getElementById('amortLabel');
+  amortMode.addEventListener('change', ()=> {
+    if(amortMode.value === 'absolute') amortLabel.textContent = 'Amortization Amount (abs)';
+    else amortLabel.textContent = 'Amortization Rate (% of debt)';
+    document.getElementById('amortInput').value = amortMode.value === 'absolute' ? 30000000 : 5.0;
+  });
+
+  // Main projection routine
+  let lastProjection = null;
+  document.getElementById('btnProject').addEventListener('click', runProjection);
+
+  function runProjection(){
+    const debt0 = Number(document.getElementById('debt0').value) || 0;
+    const gdp0  = Number(document.getElementById('gdp0').value) || 0;
+    const i_nom = Number(document.getElementById('i_nom').value) / 100;
+    const g_nom = Number(document.getElementById('g_nom').value) / 100;
+    const inflation = Number(document.getElementById('inflation').value) / 100;
+    const primaryBal = Number(document.getElementById('primaryBal').value) || 0;
+    const overallBal = Number(document.getElementById('overallBal').value) || 0;
+    const amortModeVal = document.getElementById('amortMode').value;
+    const amortInput = Number(document.getElementById('amortInput').value) || 0;
+    const years = Math.max(1, Math.min(50, parseInt(document.getElementById('years').value) || 10));
+
+    const realCost = (i_nom - inflation) / (1 + inflation);
+
+    const rows = [];
+    let debt_prev = debt0;
+    let gdp_prev = gdp0;
+
+    for(let t=1; t<=years; t++){
+      let amort;
+      if(amortModeVal === 'absolute'){
+        amort = amortInput;
+      } else {
+        const pct = amortInput / 100.0;
+        amort = debt_prev * pct;
+      }
+
+      const interestPayments = debt_prev * i_nom;
+      const GFN_simple = amort - overallBal;
+      const GFN_full = amort + interestPayments - overallBal;
+      const debt_after = debt_prev * ((1 + i_nom) / (1 + g_nom)) - primaryBal;
+      const gdp_after = gdp_prev * (1 + g_nom);
+      const gfnGDP = (GFN_full / gdp_after) * 100;
+      const realCostYear = realCost;
+
+      rows.push({
+        year: t,
+        debt_begin: debt_prev,
+        amort: amort,
+        interest: interestPayments,
+        overall_balance: overallBal,
+        GFN_simple: GFN_simple,
+        GFN_full: GFN_full,
+        gdp_begin: gdp_prev,
+        gdp_end: gdp_after,
+        debt_end: debt_after,
+        gfnGDP: gfnGDP,
+        realCost: realCostYear
       });
 
-      const result = await res.json();
-      document.getElementById("status").innerText = result.message || "Submitted successfully!";
+      debt_prev = debt_after;
+      gdp_prev = gdp_after;
+    }
+
+    lastProjection = { meta: { debt0, gdp0, i_nom, g_nom, inflation, primaryBal, overallBal, amortModeVal, amortInput, years, realCost }, rows };
+    renderResults(lastProjection);
+  }
+
+  function renderResults(proj){
+    const meta = proj.meta;
+    const rows = proj.rows;
+    const last = rows[rows.length-1];
+
+    const summaryText =
+      `Projection length: ${meta.years} years\n` +
+      `Start debt: ${fmt(meta.debt0)} | Start GDP: ${fmt(meta.gdp0)}\n` +
+      `Nominal interest: ${(meta.i_nom*100).toFixed(3)}% | Nominal GDP growth: ${(meta.g_nom*100).toFixed(3)}%\n` +
+      `Inflation: ${(meta.inflation*100).toFixed(3)}% | Real cost of debt: ${(meta.realCost*100).toFixed(3)}%\n\n` +
+      `Debt after ${meta.years} years: ${fmt(last.debt_end)}\n` +
+      `GFN (last year, full) : ${fmt(last.GFN_full)} | GFN/GDP (last year): ${last.gfnGDP.toFixed(3)}%`;
+
+    document.getElementById('summary').textContent = summaryText;
+
+    let html = '<table><thead><tr><th>Year</th><th>Debt (begin)</th><th>Amort</th><th>Interest</th><th>Overall Bal</th><th>GFN simple</th><th>GFN full</th><th>GDP (begin)</th><th>GDP (end)</th><th>Debt (end)</th><th>GFN/GDP %</th><th>Real Cost %</th></tr></thead><tbody>';
+    rows.forEach(r=>{
+      html += `<tr>
+        <td>${r.year}</td>
+        <td>${fmt(r.debt_begin)}</td>
+        <td>${fmt(r.amort)}</td>
+        <td>${fmt(r.interest)}</td>
+        <td>${fmt(r.overall_balance)}</td>
+        <td>${fmt(r.GFN_simple)}</td>
+        <td>${fmt(r.GFN_full)}</td>
+        <td>${fmt(r.gdp_begin)}</td>
+        <td>${fmt(r.gdp_end)}</td>
+        <td>${fmt(r.debt_end)}</td>
+        <td>${r.gfnGDP.toFixed(3)}</td>
+        <td>${(r.realCost*100).toFixed(3)}</td>
+      </tr>`;
     });
-  </script>
-</body>
-</html>
+    html += '</tbody></table>';
+    document.getElementById('tableWrapper').innerHTML = html;
+  }
+
+  // PDF export
+  document.getElementById('btnDownloadPDF').addEventListener('click', async ()=>{
+    if(!lastProjection){ alert('Run projection first'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({unit:'pt', format:'a4'});
+    const W = doc.internal.pageSize.getWidth(); let y = 40;
+
+    doc.setFontSize(16); doc.text('SADC IMF-style Debt Projection', 40, y); y += 20;
+    doc.setFontSize(10);
+    const meta = lastProjection.meta;
+    doc.text(`Start debt: ${fmt(meta.debt0)}  Start GDP: ${fmt(meta.gdp0)}`, 40, y); y+=14;
+    doc.text(`Nominal i: ${(meta.i_nom*100).toFixed(3)}%  Nominal g: ${(meta.g_nom*100).toFixed(3)}%  Inflation: ${(meta.inflation*100).toFixed(3)}%`, 40, y); y+=18;
+
+    doc.setFontSize(9);
+    const headers = ['Year','Debt Beg','Amort','Interest','Overall Bal','GFN Full','GDP Beg','GDP End','Debt End','GFN/GDP%','Real Cost %'];
+    const colWidths = [40,80,70,70,80,80,80,80,80,60,60];
+    let x = 40;
+    headers.forEach((h, i) => { doc.text(String(h), x, y); x+=colWidths[i]||60; });
+    y+=12;
+
+    for(const r of lastProjection.rows){
+      x=40;
+      const vals = [r.year, fmt(r.debt_begin), fmt(r.amort), fmt(r.interest), fmt(r.overall_balance), fmt(r.GFN_full), fmt(r.gdp_begin), fmt(r.gdp_end), fmt(r.debt_end), r.gfnGDP.toFixed(3), (r.realCost*100).toFixed(3)];
+      for(let i=0;i<vals.length;i++){ doc.text(String(vals[i]), x, y); x+=colWidths[i]||60; }
+      y+=12;
+      if(y>doc.internal.pageSize.getHeight()-60){ doc.addPage(); y=40; }
+    }
+
+    const filename = `DebtProjection_${new Date().toISOString().slice(0,10)}.pdf`;
+    doc.save(filename);
+  });
+
+  // XML export
+  document.getElementById('btnDownloadXML').addEventListener('click', ()=>{
+    if(!lastProjection){ alert('Run projection first'); return; }
+    const meta = lastProjection.meta;
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += `<DebtProjection years="${meta.years}" generated="${new Date().toISOString()}">\n`;
+    xml += `  <Meta>\n`;
+    xml += `    <StartDebt>${meta.debt0}</StartDebt>\n`;
+    xml += `    <StartGDP>${meta.gdp0}</StartGDP>\n`;
+    xml += `    <NominalInterest>${meta.i_nom}</NominalInterest>\n`;
+    xml += `    <NominalGrowth>${meta.g_nom}</NominalGrowth>\n`;
+    xml += `    <Inflation>${meta.inflation}</Inflation>\n`;
+    xml += `    <PrimaryBalance>${meta.primaryBal}</PrimaryBalance>\n`;
+    xml += `  </Meta>\n`;
+    xml += `  <Rows>\n`;
+    lastProjection.rows.forEach(r=>{
+      xml += `    <Year index="${r.year}">\n`;
+      xml += `      <DebtBegin>${r.debt_begin}</DebtBegin>\n`;
+      xml += `      <Amortizations>${r.amort}</Amortizations>\n`;
+      xml += `      <Interest>${r.interest}</Interest>\n`;
+      xml += `      <OverallBalance>${r.overall_balance}</OverallBalance>\n`;
+      xml += `      <GFNFull>${r.GFN_full}</GFNFull>\n`;
+      xml += `      <GFNSimple>${r.GFN_simple}</GFNSimple>\n`;
+      xml += `      <GDPBegin>${r.gdp_begin}</GDPBegin>\n`;
+      xml += `      <GDPEnd>${r.gdp_end}</GDPEnd>\n`;
+      xml += `      <DebtEnd>${r.debt_end}</DebtEnd>\n`;
+      xml += `      <GFNtoGDP>${r.gfnGDP}</GFNtoGDP>\n`;
+      xml += `      <RealCost>${r.realCost}</RealCost>\n`;
+      xml += `    </Year>\n`;
+    });
+    xml += `  </Rows>\n</DebtProjection>\n`;
+
+    const blob = new Blob([xml], { type
+
+
 
 
 

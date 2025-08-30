@@ -72,144 +72,405 @@
 </body>
 </html>
 
-<!-- Save this as index.html or similar -->
-<!DOCTYPE html>
+
+
+
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>SadiCoin Investment Platform</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SADC CBDC — Web Platform (MVP)</title>
+
+  <!-- Tailwind CDN for quick styling (good for MVP). Remove or replace with build-time Tailwind in production. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Axios (for API calls) -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
   <style>
-    :root {
-      --brand: #0b69ff;
-      --ink: #0f172a;
-      --muted: #64748b;
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --ok: #16a34a;
-      --bad: #b91c1c;
-      --ring: #93c5fd;
-    }
-    * { box-sizing: border-box }
-    html, body { height: 100% }
-    body {
-      margin: 0;
-      padding: 24px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, Helvetica, sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-    }
-    .app { max-width: 1100px; margin: 0 auto; display: grid; gap: 24px }
-    h1 { margin: 0; font-size: 24px; color: #0b3b8b; text-align: center }
-    .cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) }
-    .card {
-      background: var(--card); border: 1px solid #e2e8f0; border-radius: 14px;
-      padding: 18px; box-shadow: 0 6px 16px rgba(2, 6, 23, .06)
-    }
-    .card h3 { margin: 0 0 10px; font-size: 18px; color: #0b3b8b }
-    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 6px }
-    input, select {
-      width: 100%; padding: 10px 12px; font-size: 16px;
-      border-radius: 10px; border: 1.5px solid #cbd5e1;
-      outline: none; background: #fff;
-    }
-    input:focus, select:focus {
-      border-color: var(--brand); box-shadow: 0 0 0 4px var(--ring)
-    }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
-    button {
-      display: inline-flex; align-items: center; justify-content: center;
-      background: var(--brand); color: #fff; border: none; font-weight: 600;
-      padding: 12px 16px; width: 100%; border-radius: 10px;
-      cursor: pointer; transition: .15s background ease-in-out; margin-top: 8px
-    }
-    button:hover { background: #0a54cc }
-    .muted { color: var(--muted) }
-    .out {
-      background: #f1f5f9; border: 1px dashed #94a3b8;
-      padding: 12px; border-radius: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 14px; white-space: pre-wrap; word-break: break-word;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 14px }
-    th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right }
-    th:first-child, td:first-child { text-align: left }
-    .success { color: var(--ok) }
-    .error { color: var(--bad) }
-    footer { font-size: 12px; color: var(--muted); text-align: center }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+    /* Small safe defaults */
+    html,body,#app { height: 100%; }
   </style>
 </head>
-<body>
-  <div class="app">
-    <header>
-      <h1>SadiCoin Investment Platform</h1>
-      <p class="muted" style="text-align:center;margin:6px 0 0">
-        Deposit • FX-Aware Yield • Auto Certificate
-      </p>
+<body class="bg-gray-50">
+  <div id="app" class="min-h-screen p-6">
+    <header class="max-w-6xl mx-auto flex items-center justify-between py-4">
+      <div>
+        <h1 class="text-2xl font-bold">SADC Digital Reserve — Web Platform (MVP)</h1>
+        <p class="text-sm text-gray-600">Web-only — Wallet, CBDC issuance, transfer, trading stub & activity.</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-right">
+          <div class="text-xs text-gray-500">Account</div>
+          <div id="account" class="text-sm">Not connected</div>
+          <div class="text-xs text-gray-500">Balance</div>
+          <div id="balance" class="text-sm font-mono">0 SADC</div>
+        </div>
+        <button id="connectBtn" class="px-4 py-2 bg-sky-600 text-white rounded shadow-sm hover:opacity-90">Connect Wallet</button>
+      </div>
     </header>
 
-    <section class="cards">
-      <!-- ... [Your existing cards go here, unchanged] ... -->
+    <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+      <!-- Issue & Transfer -->
+      <section class="col-span-1 md:col-span-1 bg-white p-4 rounded shadow">
+        <h2 class="font-semibold">Issue CBDC (Admin)</h2>
+        <p class="text-xs text-gray-500">Admin-only action. Calls backend mint endpoint.</p>
 
-      <!-- 🆕 Alpaca Broker API Card -->
-      <div class="card">
-        <h3>Alpaca Broker API</h3>
-        <label>API Key</label>
-        <input id="alpacaKey" type="text" placeholder="CKW2NXQOB2547L87IEE1">
-        <label>API Secret</label>
-        <input id="alpacaSecret" type="password" placeholder="8xoSsh1PX8E2tT6bsVjziw46kBKy21wGyItK1fQK">
-        <button id="btnFetchAlpaca">Fetch Account Info</button>
-        <div id="alpacaOutput" class="out">Connect to Alpaca sandbox to see account details.</div>
-      </div>
-    </section>
+        <form id="issueForm" class="mt-3 space-y-3">
+          <div>
+            <label class="text-sm block">Recipient address / internal account</label>
+            <input id="issueRecipient" class="w-full border rounded p-2" placeholder="0x... or internal acct id" />
+          </div>
+          <div>
+            <label class="text-sm block">Amount</label>
+            <input id="issueAmount" value="1000" class="w-full border rounded p-2" />
+          </div>
+          <div class="flex gap-2">
+            <button class="px-4 py-2 bg-green-600 text-white rounded" type="submit">Issue</button>
+            <button id="resetIssue" type="button" class="px-4 py-2 border rounded">Reset</button>
+          </div>
+        </form>
 
-    <footer>
-      This platform simulates CBDC deposits with yield withdrawal at maturity.
-      <br>Not financial advice.
+        <hr class="my-4" />
+
+        <h2 class="font-semibold">Transfer CBDC</h2>
+        <form id="transferForm" class="mt-3 space-y-3">
+          <div>
+            <label class="text-sm block">To</label>
+            <input id="transferRecipient" class="w-full border rounded p-2" placeholder="0x... or internal acct id"/>
+          </div>
+          <div>
+            <label class="text-sm block">Amount</label>
+            <input id="transferAmount" value="0" class="w-full border rounded p-2" />
+          </div>
+          <div class="flex gap-2">
+            <button class="px-4 py-2 bg-blue-600 text-white rounded" type="submit">Send</button>
+            <button id="resetTransfer" type="button" class="px-4 py-2 border rounded">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Trading hub -->
+      <section class="col-span-1 md:col-span-1 bg-white p-4 rounded shadow">
+        <h2 class="font-semibold">Trading / Investment Hub (Stub)</h2>
+        <p class="text-sm text-gray-500">Connect to broker API or internal DEX backend. This form calls backend trade endpoint.</p>
+
+        <form id="tradeForm" class="mt-3 space-y-3">
+          <div>
+            <label class="text-sm block">Symbol</label>
+            <input id="tradeSymbol" value="ZARUSD" class="w-full border rounded p-2" />
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1">
+              <label class="text-sm block">Amount</label>
+              <input id="tradeAmount" value="100" class="w-full border rounded p-2" />
+            </div>
+            <div class="w-32">
+              <label class="text-sm block">Side</label>
+              <select id="tradeSide" class="w-full border rounded p-2">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button class="px-4 py-2 bg-indigo-600 text-white rounded" type="submit">Place Trade</button>
+            <button id="resetTrade" type="button" class="px-4 py-2 border rounded">Reset</button>
+          </div>
+        </form>
+
+        <div class="mt-4">
+          <h3 class="font-medium">Quick actions</h3>
+          <div class="flex gap-2 mt-2">
+            <button id="fetchMarket" class="px-3 py-2 border rounded">Fetch Market Data</button>
+            <button id="fetchLiquidity" class="px-3 py-2 border rounded">Liquidity</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Activity & Logs -->
+      <aside class="col-span-1 md:col-span-1 bg-white p-4 rounded shadow">
+        <h2 class="font-semibold">Activity & Transactions</h2>
+
+        <div id="messageArea" class="mt-3"></div>
+
+        <div id="txList" class="max-h-72 overflow-auto mt-2 border rounded p-2 bg-gray-50">
+          <div class="text-sm text-gray-500">No transactions yet.</div>
+        </div>
+
+        <div class="mt-3">
+          <h3 class="font-medium">Export / Reports</h3>
+          <div class="flex gap-2 mt-2">
+            <button id="genReport" class="px-3 py-2 border rounded">Generate Report</button>
+            <button id="feesSnapshot" class="px-3 py-2 border rounded">Fees</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="max-w-6xl mx-auto text-center mt-6 text-sm text-gray-500">
+      © SADC CBDC MVP — demo. Configure BACKEND_URL below before use.
     </footer>
   </div>
 
   <script>
-    // ✅ Alpaca API Integration
-    document.getElementById('btnFetchAlpaca').addEventListener('click', async () => {
-      const key = document.getElementById('alpacaKey').value.trim();
-      const secret = document.getElementById('alpacaSecret').value.trim();
-      const output = document.getElementById('alpacaOutput');
+    /**************************************************************
+     * Configuration
+     * - Set BACKEND_URL to your backend host (no trailing slash)
+     *   Example: const BACKEND_URL = "http://localhost:5000"
+     **************************************************************/
+    const BACKEND_URL = "http://localhost:5000"; // <- change this to your actual backend
 
-      if (!key || !secret) {
-        output.textContent = 'Please enter both API key and secret.';
+    // App state
+    let currentAccount = null;
+    let pollInterval = null;
+
+    // DOM refs
+    const connectBtn = document.getElementById('connectBtn');
+    const accountEl = document.getElementById('account');
+    const balanceEl = document.getElementById('balance');
+    const txList = document.getElementById('txList');
+    const messageArea = document.getElementById('messageArea');
+
+    // Utility
+    function showMessage(text, type = 'info') {
+      messageArea.innerHTML = `<div class="p-2 ${type==='error'?'bg-red-50 border-red-200':'bg-yellow-50 border-yellow-200'} rounded text-sm">${text}</div>`;
+      setTimeout(()=>{ if(messageArea.firstChild) messageArea.firstChild.remove(); }, 7000);
+    }
+
+    // Wallet connect
+    async function connectWallet() {
+      if (!window.ethereum) {
+        showMessage('No Web3 provider detected. Install MetaMask or use a web3-enabled browser.', 'error');
         return;
       }
-
       try {
-        const res = await fetch('https://broker-api.sandbox.alpaca.markets/v1/accounts', {
-          method: 'GET',
-          headers: {
-            'APCA-API-KEY-ID': key,
-            'APCA-API-SECRET-KEY': secret
-          }
-        });
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        currentAccount = accounts[0];
+        accountEl.textContent = currentAccount;
+        connectBtn.textContent = 'Wallet connected';
+        // initial fetch
+        await fetchBalance();
+        await loadTxs();
+        startPolling();
+        // listen for account changes
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+      } catch (err) {
+        console.error(err);
+        showMessage('Wallet connection failed', 'error');
+      }
+    }
 
-        if (!res.ok) {
-          const err = await res.text();
-          output.textContent = `Error: ${res.status} ${err}`;
-          return;
-        }
+    function handleAccountsChanged(accounts) {
+      if (accounts.length === 0) {
+        currentAccount = null;
+        accountEl.textContent = 'Not connected';
+        balanceEl.textContent = '0 SADC';
+        stopPolling();
+      } else {
+        currentAccount = accounts[0];
+        accountEl.textContent = currentAccount;
+        fetchBalance();
+        loadTxs();
+      }
+    }
 
-        const data = await res.json();
-        const first = Array.isArray(data) ? data[0] : data;
+    async function fetchBalance() {
+      if (!currentAccount) return;
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/balance`, { params: { account: currentAccount }});
+        const bal = res.data.balance ?? '0';
+        balanceEl.textContent = `${bal} SADC`;
+      } catch (err) {
+        console.warn('Balance fetch failed', err);
+        balanceEl.textContent = '0 SADC';
+      }
+    }
 
-        output.textContent = `
-Account ID: ${first.id}
-Status: ${first.status}
-Cash: ${first.cash}
-Currency: ${first.currency}
-Created At: ${first.created_at}
-        `.trim();
-      } catch (e) {
-        output.textContent = 'Error fetching Alpaca data: ' + e.message;
+    // Load transactions for account
+    async function loadTxs() {
+      if (!currentAccount) return;
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/txs`, { params: { account: currentAccount }});
+        const txs = res.data.txs ?? [];
+        renderTxs(txs);
+      } catch (err) {
+        console.warn('tx load failed', err);
+      }
+    }
+
+    function renderTxs(txs) {
+      if (!txs || txs.length === 0) {
+        txList.innerHTML = `<div class="text-sm text-gray-500">No transactions yet.</div>`;
+        return;
+      }
+      txList.innerHTML = txs.map(t => {
+        const time = new Date(t.time).toLocaleString();
+        return `<div class="p-2 border-b text-sm">
+                  <div class="font-medium">${escapeHtml(t.type)} — ${escapeHtml(String(t.amount))}</div>
+                  <div class="text-xs text-gray-500">From: ${escapeHtml(t.from)} → To: ${escapeHtml(t.to)}</div>
+                  <div class="text-xs text-gray-400">${time}</div>
+                </div>`;
+      }).join('');
+    }
+
+    // Issue CBDC
+    document.getElementById('issueForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentAccount) { showMessage('Connect wallet first', 'error'); return; }
+      const recipient = document.getElementById('issueRecipient').value.trim();
+      const amount = document.getElementById('issueAmount').value.trim();
+      if (!recipient || !amount) { showMessage('Recipient and amount required', 'error'); return; }
+      try {
+        const res = await axios.post(`${BACKEND_URL}/api/issue`, { recipient, amount, issuedBy: currentAccount });
+        showMessage(res.data.message ?? 'Issued');
+        await fetchBalance();
+        await loadTxs();
+      } catch (err) {
+        console.error(err);
+        showMessage('Issue failed', 'error');
       }
     });
+
+    // Transfer CBDC
+    document.getElementById('transferForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentAccount) { showMessage('Connect wallet first', 'error'); return; }
+      const to = document.getElementById('transferRecipient').value.trim();
+      const amount = document.getElementById('transferAmount').value.trim();
+      if (!to || !amount) { showMessage('Recipient and amount required', 'error'); return; }
+      try {
+        const res = await axios.post(`${BACKEND_URL}/api/transfer`, { from: currentAccount, to, amount });
+        showMessage(res.data.message ?? 'Transfer submitted');
+        await fetchBalance();
+        await loadTxs();
+      } catch (err) {
+        console.error(err);
+        const msg = err?.response?.data?.message ?? 'Transfer failed';
+        showMessage(msg, 'error');
+      }
+    });
+
+    // Trade stub
+    document.getElementById('tradeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentAccount) { showMessage('Connect wallet first', 'error'); return; }
+      const symbol = document.getElementById('tradeSymbol').value.trim();
+      const amount = document.getElementById('tradeAmount').value.trim();
+      const side = document.getElementById('tradeSide').value;
+      if (!symbol || !amount) { showMessage('Symbol and amount required', 'error'); return; }
+      try {
+        const res = await axios.post(`${BACKEND_URL}/api/trade`, { account: currentAccount, symbol, amount, side });
+        showMessage(res.data.message ?? 'Trade placed');
+        await loadTxs();
+      } catch (err) {
+        console.error(err);
+        showMessage('Trade failed', 'error');
+      }
+    });
+
+    // Quick actions
+    document.getElementById('fetchMarket').addEventListener('click', async () => {
+      try {
+        await axios.get(`${BACKEND_URL}/api/market-data`);
+        showMessage('Fetched market data');
+      } catch (err) {
+        console.warn(err);
+        showMessage('Market fetch failed', 'error');
+      }
+    });
+    document.getElementById('fetchLiquidity').addEventListener('click', async () => {
+      try {
+        await axios.get(`${BACKEND_URL}/api/liquidity`);
+        showMessage('Liquidity snapshot fetched');
+      } catch (err) {
+        console.warn(err);
+        showMessage('Liquidity fetch failed', 'error');
+      }
+    });
+
+    // Reports
+    document.getElementById('genReport').addEventListener('click', async () => {
+      try {
+        await axios.get(`${BACKEND_URL}/api/report`);
+        showMessage('Report generated (backend)');
+      } catch (err) {
+        console.warn(err);
+        showMessage('Report generation failed', 'error');
+      }
+    });
+    document.getElementById('feesSnapshot').addEventListener('click', async () => {
+      try {
+        await axios.get(`${BACKEND_URL}/api/fees`);
+        showMessage('Fees snapshot fetched');
+      } catch (err) {
+        console.warn(err);
+        showMessage('Fees fetch failed', 'error');
+      }
+    });
+
+    // Helpers: reset buttons
+    document.getElementById('resetIssue').addEventListener('click', () => {
+      document.getElementById('issueRecipient').value = '';
+      document.getElementById('issueAmount').value = '1000';
+    });
+    document.getElementById('resetTransfer').addEventListener('click', () => {
+      document.getElementById('transferRecipient').value = '';
+      document.getElementById('transferAmount').value = '0';
+    });
+    document.getElementById('resetTrade').addEventListener('click', () => {
+      document.getElementById('tradeSymbol').value = 'ZARUSD';
+      document.getElementById('tradeAmount').value = '100';
+      document.getElementById('tradeSide').value = 'buy';
+    });
+
+    // Polling
+    function startPolling() {
+      stopPolling();
+      pollInterval = setInterval(() => {
+        fetchBalance();
+        loadTxs();
+      }, 15000);
+    }
+    function stopPolling() {
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    }
+
+    // Sanitize
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/[&<>"']/g, function(m) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];
+      });
+    }
+
+    // Connect button
+    connectBtn.addEventListener('click', connectWallet);
+
+    // Auto-check: if already connected
+    (async function init() {
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts && accounts.length > 0) {
+            currentAccount = accounts[0];
+            accountEl.textContent = currentAccount;
+            connectBtn.textContent = 'Wallet connected';
+            await fetchBalance();
+            await loadTxs();
+            startPolling();
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+          }
+        } catch (err) {
+          console.warn('init check failed', err);
+        }
+      }
+    })();
   </script>
 </body>
 </html>
+
+
+
+

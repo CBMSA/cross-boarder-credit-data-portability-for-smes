@@ -1,394 +1,190 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>SadiCoin Investment & ETF Platform</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<style>
-  :root{
-    --brand:#0b69ff;
-    --ink:#0f172a;
-    --muted:#64748b;
-    --bg:#f8fafc;
-    --card:#ffffff;
-    --ok:#16a34a;
-    --bad:#b91c1c;
-    --ring:#93c5fd;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    padding:24px;
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,Helvetica,sans-serif;
-    background:var(--bg);
-    color:var(--ink)
-  }
-  .app{max-width:1200px;margin:0 auto;display:grid;gap:24px}
-  h1{margin:0;font-size:24px;color:#0b3b8b;text-align:center}
-  .cards{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-  .card{background:var(--card);border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 6px 16px rgba(2,6,23,.06)}
-  .card h3{margin:0 0 10px;font-size:18px;color:#0b3b8b}
-  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
-  input,select{width:100%;padding:10px 12px;font-size:16px;border-radius:10px;border:1.5px solid #cbd5e1;outline:none;background:#fff}
-  input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 4px var(--ring)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  button{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;border:none;font-weight:600;padding:12px 16px;width:100%;border-radius:10px;cursor:pointer;transition:.15s background ease-in-out;margin-top:8px}
-  button:hover{background:#0a54cc}
-  .muted{color:var(--muted)}
-  .out{background:#f1f5f9;border:1px dashed #94a3b8;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;white-space:pre-wrap;word-break:break-word}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:right}
-  th:first-child,td:first-child{text-align:left}
-  .success{color:var(--ok)} .error{color:var(--bad)}
-  footer{font-size:12px;color:var(--muted);text-align:center}
-  .actions{display:grid;grid-template-columns:1fr 1fr; gap:12px}
-</style>
+  <meta charset="UTF-8">
+  <title>SadiCoin Investment Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; }
+    h1 { text-align: center; color: #222; }
+    h2 { margin-top: 30px; }
+    .section { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label { display: block; margin-top: 10px; }
+    input, select, button { padding: 6px; margin-top: 5px; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #2c7be5; color: white; cursor: pointer; }
+    button:hover { background: #1a5ec8; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #eee; }
+    .result-box { padding: 10px; background: #eef; margin-top: 10px; border-radius: 5px; }
+  </style>
 </head>
 <body>
-<div class="app">
-<header>
-<h1>SadiCoin Investment & ETF Platform</h1>
-<p class="muted" style="text-align:center;margin:6px 0 0">Deposit • FX-Aware Yield • Auto Certificate • ETF Trading</p>
-</header>
 
-<!-- Investment Calculator -->
-<section class="cards">
-  <div class="card">
-    <h3>Investment Inputs</h3>
-    <div class="row">
-      <div>
-        <label>Future Value (FV)</label>
-        <input id="fv" type="number" step="0.01" value="10">
-      </div>
-      <div>
-        <label>Annual Rate (%)</label>
-        <input id="rate" type="number" step="0.01" value="8.25">
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>Years (n)</label>
-        <input id="years" type="number" step="0.01" value="1">
-      </div>
-      <div>
-        <label>Compounding</label>
-        <select id="cmp">
-          <option value="1">Annual</option>
-          <option value="2">Semiannual</option>
-          <option value="4">Quarterly</option>
-          <option value="12">Monthly</option>
-          <option value="365">Daily</option>
-          <option value="cont">Continuous</option>
-        </select>
-      </div>
-    </div>
-    <button id="btnCalc">Calculate</button>
-    <p class="small muted">Example: FV=10, r=8.25%, n=1 → PV≈9.24; Ask≈0.076</p>
-  </div>
+  <h1>💰 SadiCoin Investment Platform</h1>
 
-  <div class="card">
-    <h3>Results</h3>
-    <div id="result" class="out">Enter inputs and press Calculate.</div>
-  </div>
+  <!-- Investment Calculator -->
+  <div class="section">
+    <h2>Investment Calculator</h2>
+    <label>Future Value (FV)</label>
+    <input type="number" id="fv" placeholder="Enter FV">
 
-  <div class="card">
-    <h3>FX Settings</h3>
-    <div class="row">
-      <div>
-        <label>Base Currency (your cash)</label>
-        <select id="baseCcy">
-          <option>ZAR</option>
-          <option>USD</option>
-          <option>BWP</option>
-          <option>MZN</option>
-        </select>
-      </div>
-      <div>
-        <label>Investment Currency</label>
-        <select id="invCcy">
-          <option>USD</option>
-          <option>ZAR</option>
-          <option>BWP</option>
-          <option>MZN</option>
-          <option>SADICOIN</option>
-        </select>
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>Spot Rate (Base per 1 Investment)</label>
-        <input id="spot" type="number" step="0.0001" placeholder="e.g. 18.50">
-      </div>
-      <div>
-        <label>&nbsp;</label>
-        <button id="btnFetchFx">Fetch FX (fiat only)</button>
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>Entry Spread % (buy)</label>
-        <input id="spreadIn" type="number" step="0.01" value="0.50">
-      </div>
-      <div>
-        <label>Exit Spread % (sell)</label>
-        <input id="spreadOut" type="number" step="0.01" value="0.50">
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>Expected FX Change over Term %</label>
-        <input id="fxDrift" type="number" step="0.01" value="0">
-      </div>
-      <div>
-        <label>Show FX-Adjusted Summary</label>
-        <button id="btnFxPreview">Preview FX Impact</button>
-      </div>
-    </div>
-    <div id="fxPreview" class="out">Set currencies and click Preview.</div>
-  </div>
-</section>
-
-<!-- Investor & Deposit -->
-<section class="cards">
-  <div class="card">
-    <h3>Bank & Investor Details</h3>
-    <label>Investor Name</label>
-    <input id="investorName" type="text" placeholder="Enter investor name">
-    <label>Bank Name</label>
-    <input id="bankName" type="text" placeholder="e.g. Nedbank">
-    <label>Account Number</label>
-    <input id="accountNumber" type="text" placeholder="Enter account number">
-    <label>Branch Code</label>
-    <input id="branchCode" type="text" placeholder="Enter branch code">
-    <label>Account Type</label>
-    <select id="accountType">
-      <option value="savings">Savings</option>
-      <option value="cheque">Cheque</option>
-      <option value="business">Business</option>
-    </select>
-  </div>
-
-  <div class="card">
-    <h3>Deposit & Investment</h3>
-    <label>Deposit Amount</label>
-    <input id="depositAmt" type="number" step="0.01" value="1000">
-    <label>Maturity Period</label>
-    <select id="maturityOption">
-      <option value="365">1 Year (Annual payouts)</option>
-      <option value="180">6 Months (Monthly payouts)</option>
-      <option value="90">3 Months (Monthly payouts)</option>
-      <option value="30">1 Month (Daily payouts)</option>
-      <option value="custom">Custom (enter days)</option>
-    </select>
-    <input id="customMaturity" type="number" placeholder="Enter custom days" style="display:none">
     <label>Annual Rate (%)</label>
-    <input id="depRate" type="number" step="0.01" value="8.25">
-    <div class="actions">
-      <button id="btnDeposit">Deposit Investment</button>
-      <button id="downloadTx">Download Transactions CSV</button>
-    </div>
+    <input type="number" id="rate" placeholder="Enter rate">
+
+    <label>Years (n)</label>
+    <input type="number" id="years" placeholder="Enter years">
+
+    <label>Compounding</label>
+    <select id="compounding">
+      <option value="1">Annual</option>
+      <option value="2">Semiannual</option>
+      <option value="4">Quarterly</option>
+      <option value="12">Monthly</option>
+      <option value="365">Daily</option>
+    </select>
+
+    <button onclick="calculatePV()">Calculate</button>
+    <div id="calcResult" class="result-box">Result will appear here.</div>
   </div>
 
-  <div class="card" style="grid-column:1/-1">
-    <h3>Transaction Log</h3>
-    <div style="overflow:auto;max-height:260px">
-      <table id="txTable">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Date</th>
-            <th>Investor</th>
-            <th>Deposit (Base)</th>
-            <th>Base→Inv Spot</th>
-            <th>Entry/Exit Spreads</th>
-            <th>Maturity (days)</th>
-            <th>Rate %</th>
-            <th>Maturity Value (Inv)</th>
-            <th>FX @ Maturity</th>
-            <th>Projected Value (Base)</th>
-            <th>Net P&L</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+  <!-- FX Settings -->
+  <div class="section">
+    <h2>FX Settings</h2>
+    <label>Base Currency (your cash)</label>
+    <select id="baseCurrency">
+      <option>ZAR</option><option>USD</option><option>BWP</option><option>MZN</option>
+    </select>
+
+    <label>Investment Currency</label>
+    <select id="invCurrency">
+      <option>USD</option><option>ZAR</option><option>BWP</option><option>MZN</option><option>SADICOIN</option>
+    </select>
+
+    <label>Spot Rate (Base per 1 Investment)</label>
+    <input type="number" id="spotRate" placeholder="e.g. 18 for ZAR/USD">
+
+    <label>Entry Spread % (buy)</label>
+    <input type="number" id="entrySpread" placeholder="e.g. 0.5">
+
+    <label>Exit Spread % (sell)</label>
+    <input type="number" id="exitSpread" placeholder="e.g. 0.5">
+
+    <label>Expected FX Change over Term %</label>
+    <input type="number" id="fxChange" placeholder="e.g. 2">
+
+    <button onclick="previewFX()">Preview FX Impact</button>
+    <div id="fxResult" class="result-box">FX results will appear here.</div>
   </div>
 
-  <div class="card" style="grid-column:1/-1">
-    <h3>Amortization Schedule (last transaction)</h3>
-    <div style="overflow:auto;max-height:320px">
-      <table id="amortTable">
-        <thead>
-          <tr>
-            <th>Txn ID</th>
-            <th>Period #</th>
-            <th>Frequency</th>
-            <th>Interest</th>
-            <th>Cumulative Interest</th>
-            <th>Total Value</th>
-          </tr>
-        </thead>
-        <tbody id="amortBody"></tbody>
-      </table>
-    </div>
+  <!-- Deposit & Investment -->
+  <div class="section">
+    <h2>Deposit & Investment</h2>
+    <label>Investor Name</label>
+    <input type="text" id="investorName">
+
+    <label>Bank Name</label>
+    <input type="text" id="bankName">
+
+    <label>Account Number</label>
+    <input type="text" id="accountNum">
+
+    <label>Deposit Amount</label>
+    <input type="number" id="depositAmt" placeholder="Enter amount">
+
+    <label>Annual Rate (%)</label>
+    <input type="number" id="depRate" placeholder="e.g. 8.25">
+
+    <label>Maturity Period (days)</label>
+    <input type="number" id="maturityDays" placeholder="e.g. 365">
+
+    <button onclick="addTransaction()">Deposit Investment</button>
   </div>
 
-  <!-- ETF Trading -->
-  <div class="card" style="grid-column:1/-1">
-    <h3>ETF Trading (Real-Time)</h3>
-    <div class="row">
-      <div>
-        <label>ETF Symbol</label>
-        <input id="etfSymbol" type="text" placeholder="e.g. SPY">
-      </div>
-      <div>
-        <label>Investment Amount (USD)</label>
-        <input id="etfAmount" type="number" step="0.01" value="1000">
-      </div>
-    </div>
-    <div class="row">
-      <button id="btnBuyETF">Buy ETF</button>
-      <button id="btnSellETF">Sell ETF</button>
-    </div>
-    <div id="etfResult" class="out">Enter ETF symbol and amount.</div>
+  <!-- Transaction Log -->
+  <div class="section">
+    <h2>Transaction Log</h2>
+    <table id="txnTable">
+      <thead>
+        <tr>
+          <th>ID</th><th>Date</th><th>Investor</th><th>Deposit</th>
+          <th>Spot</th><th>Rate%</th><th>Maturity</th><th>Value</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
-</section>
 
-<footer>
-This platform simulates CBDC deposits & ETF trades with FX conversions. <br>
-Not financial advice.
-</footer>
+  <script>
+    let txnId = 1;
 
-<!-- jsPDF CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    function calculatePV() {
+      let FV = parseFloat(document.getElementById("fv").value);
+      let r = parseFloat(document.getElementById("rate").value)/100;
+      let n = parseFloat(document.getElementById("years").value);
+      let m = parseInt(document.getElementById("compounding").value);
 
-<script>
-let txCount = 0;
-const txBody = document.querySelector('#txTable tbody');
-const amortBody = document.getElementById('amortBody');
-const maturityOption = document.getElementById('maturityOption');
-const customMaturity = document.getElementById('customMaturity');
-const transactions = [];
+      if (isNaN(FV) || isNaN(r) || isNaN(n)) {
+        document.getElementById("calcResult").innerHTML = "⚠ Please enter all values.";
+        return;
+      }
 
-maturityOption.addEventListener('change', ()=>{
-  customMaturity.style.display = maturityOption.value === 'custom' ? 'block' : 'none';
-});
+      let PV = FV / Math.pow(1 + r/m, m*n);
+      document.getElementById("calcResult").innerHTML =
+        `Present Value (PV): <b>${PV.toFixed(2)}</b>`;
+    }
 
-// Investment Calculator
-function calcOnce(){
-  const FV = +document.getElementById('fv').value;
-  const r = +document.getElementById('rate').value / 100;
-  const n = +document.getElementById('years').value;
-  const PV = FV / Math.pow(1 + r, n);
-  const ask = (FV - PV) / FV;
-  document.getElementById('result').textContent = `PV=${PV.toFixed(4)} | Ask=${(ask*100).toFixed(2)}%`;
-}
-document.getElementById('btnCalc').addEventListener('click', calcOnce);
+    function previewFX() {
+      let spot = parseFloat(document.getElementById("spotRate").value);
+      let entry = parseFloat(document.getElementById("entrySpread").value)/100 || 0;
+      let exit = parseFloat(document.getElementById("exitSpread").value)/100 || 0;
+      let change = parseFloat(document.getElementById("fxChange").value)/100 || 0;
 
-// Yield Model
-function paymentModel(deposit, annualRate, days){
-  const r = annualRate/100;
-  let freq='Annual', periods=1, perRate=r, perLabel='Yearly';
-  if(days<=31){freq='Daily'; periods=Math.max(1,Math.round(days)); perRate=r/365; perLabel='Daily'}
-  else if(days<=180){freq='Monthly'; periods=Math.max(1,Math.round(days/30)); perRate=r/12; perLabel='Monthly'}
-  else{freq='Annual'; periods=Math.max(1,Math.round(days/365)); perRate=r; perLabel='Annual'}
-  const perInterest = deposit*perRate;
-  const totalInterest = perInterest*periods;
-  const maturityValue = deposit + totalInterest;
-  return { freq, periods, perRate, perInterest, totalInterest, maturityValue, perLabel };
-}
+      if (isNaN(spot)) {
+        document.getElementById("fxResult").innerHTML = "⚠ Enter a spot rate.";
+        return;
+      }
 
-// Amortization
-function renderAmortization(tx){
-  amortBody.innerHTML='';
-  let cum=0;
-  for(let i=1;i<=tx.periods;i++){
-    cum+=tx.perInterest;
-    const total=tx.deposit+cum;
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${tx.id}</td><td>${i}</td><td>${tx.perLabel}</td><td>${tx.perInterest.toFixed(2)}</td><td>${cum.toFixed(2)}</td><td>${total.toFixed(2)}</td>`;
-    amortBody.appendChild(tr);
-  }
-}
+      let effectiveBuy = spot * (1 + entry);
+      let projectedSell = spot * (1 + change) * (1 - exit);
 
-// Add Deposit Transaction
-function addTransaction(deposit, days, rate, investor){
-  txCount++;
-  const id=`TX${String(txCount).padStart(5,'0')}`;
-  const date=new Date().toLocaleDateString();
-  const model=paymentModel(deposit, rate, days);
-  const bankName = document.getElementById('bankName').value || 'N/A';
-  const accountNumber = document.getElementById('accountNumber').value || '****';
+      document.getElementById("fxResult").innerHTML =
+        `Buy at: ${effectiveBuy.toFixed(4)} | 
+         Projected Sell: ${projectedSell.toFixed(4)} `;
+    }
 
-  const row=document.createElement('tr');
-  row.innerHTML=`
-    <td>${id}</td>
-    <td>${date}</td>
-    <td>${investor||'Investor'}</td>
-    <td>${deposit.toFixed(2)}</td>
-    <td>${days}</td>
-    <td>${(+rate).toFixed(2)}</td>
-    <td>${model.maturityValue.toFixed(2)}</td>
-    <td class="success">${model.totalInterest.toFixed(2)}</td>
-    <td class="success">Yield sent to ${bankName} Acc ****${accountNumber.slice(-4)}</td>`;
-  txBody.appendChild(row);
+    function addTransaction() {
+      let name = document.getElementById("investorName").value;
+      let deposit = parseFloat(document.getElementById("depositAmt").value);
+      let rate = parseFloat(document.getElementById("depRate").value)/100;
+      let days = parseInt(document.getElementById("maturityDays").value);
+      let spot = parseFloat(document.getElementById("spotRate").value);
 
-  const tx={id, investor, deposit, days, rate:+rate, date,
-    maturityValue:model.maturityValue, totalInterest:model.totalInterest,
-    perLabel:model.perLabel, periods:model.periods, perInterest:model.perInterest};
-  transactions.push(tx);
-  renderAmortization(tx);
-  autoDownloadCSV();
-}
+      if (!name || isNaN(deposit) || isNaN(rate) || isNaN(days)) {
+        alert("Please fill all required fields.");
+        return;
+      }
 
-document.getElementById('btnDeposit').addEventListener('click', ()=>{
-  const dep=+document.getElementById('depositAmt').value;
-  const rate=+document.getElementById('depRate').value;
-  const investor=document.getElementById('investorName').value||'Investor';
-  const days=maturityOption.value==='custom'?+customMaturity.value:+maturityOption.value;
-  if(dep>0 && days>0){ addTransaction(dep, days, rate, investor); }
-});
+      let maturityValue = deposit * (1 + rate * (days/365));
+      let status = "Active";
 
-// CSV
-function buildCSV(){
-  let csv='ID,Date,Investor,Deposit,MaturityDays,Rate,MaturityValue,Yield,Status\n';
-  txBody.querySelectorAll('tr').forEach(r=>{
-    csv+=Array.from(r.children).map(td=>(''+td.textContent).replace(/,/g,'').trim()).join(',')+'\n';
-  });
-  return csv;
-}
-function downloadCSV(){
-  const blob=new Blob([buildCSV()], {type:'text/csv'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='transactions.csv'; a.click();
-  URL.revokeObjectURL(url);
-}
-document.getElementById('downloadTx').addEventListener('click', downloadCSV);
-function autoDownloadCSV(){ downloadCSV(); }
+      let row = `<tr>
+        <td>${txnId++}</td>
+        <td>${new Date().toLocaleDateString()}</td>
+        <td>${name}</td>
+        <td>${deposit}</td>
+        <td>${spot || "-"}</td>
+        <td>${(rate*100).toFixed(2)}</td>
+        <td>${days}</td>
+        <td>${maturityValue.toFixed(2)}</td>
+        <td>${status}</td>
+      </tr>`;
 
-// Utils
-function formatMoney(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+      document.querySelector("#txnTable tbody").innerHTML += row;
+    }
+  </script>
 
-// ---------------- ETF Trading ----------------
-const ALPACA_KEY = 'YOUR_ALPACA_KEY';
-const ALPACA_SECRET = 'YOUR_ALPACA_SECRET';
-const ALPACA_BASE = 'https://data.alpaca.markets/v2/stocks';
-
-async function getETFPrice(symbol){
-  try{
-    const resp=await fetch(`${ALPACA_BASE}/${symbol}/quotes/latest`,{
-      headers:{'APCA-API-KEY-ID':ALPACA_KEY,'APCA-API-SECRET-KEY':ALPACA_SECRET}
-    });
-    const data=await resp.json();
-    return data?.quote?.ap||data?.quote?.bp||0;
-  }catch(err){console.error(err); return 0;}
-}
-
-async function addETFTransaction(type){
-  const symbol=document
+</body>
+</html>
 

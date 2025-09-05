@@ -1,3 +1,95 @@
+Map custom domains to this Static Web App. Free SSL/TLS certificates are automatically provided for custom domains. Learn more
+Filter by name...
+Name
+Status
+Type
+Action
+Expiry Date (UTC)
+ashy-glacier-07f0b951e.1.azurestaticapps.net
+Validated
+Auto-generated
+www.sacreserve.africa
+Validated
+Custom domain
+2026-03-05 01:59:59                                                                                                                Domain
+sacreserve.africa
+
+Connect Domain
+Overview
+DNS
+Registration Settings
+Products
+Activity Log
+
+DNS Records
+
+Forwarding
+
+Nameservers
+
+Hostnames
+
+DNSSEC
+Add a new record
+DNS records
+ define how your domain behaves, like showing your website content and delivering your email.
+
+
+Add New Record
+Easily verify domain ownership
+Need to verify ownership of your domain to connect to an external service? We've made it easier than ever.
+
+
+Verify Domain Ownership
+Create MX records
+Quickly create MX records to connect your domain with email services.
+
+
+Create Now
+
+Filters
+
+Actions
+Type
+Name
+Data
+TTL
+Delete
+Edit
+
+a	@	WebsiteBuilder Site	1 Hour		
+
+ns	@	ns47.domaincontrol.com.	1 Hour	
+Can't delete
+Can't edit
+
+ns	@	ns48.domaincontrol.com.	1 Hour	
+Can't delete
+Can't edit
+
+cname	www	sacreserve.africa.	1 Hour		
+
+cname	_domainconnect	_domainconnect.gd.domaincontrol.com.	1 Hour		
+
+soa	@	Primary nameserver: ns47.domaincontrol.com.	1 Hour		
+
+txt	@	ashy-glacier-07f0b951e.1.azurestaticapps.net	1 Hour		
+
+txt	@	_fx8l8stklkyb7iexnmtc8kc4xebvmej	1/2 Hour		
+
+txt	_dmarc	v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net;	1 Hour		
+Set up your free social media subdomain!
+Your domain comes with free, customizable subdomains  such as facebook.sacreserve.africa to link to your social media page.
+Improved SEO
+where did i do wrong                                  
+
+
+
+
+
+
+
+
 # 🌍 SADC SME Credit Data Portability Platform
 
 ## 🎯 Challenge 2 — SWIFT Hackathon 2025

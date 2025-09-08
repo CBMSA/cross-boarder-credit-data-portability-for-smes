@@ -1,3 +1,205 @@
+can you please write a backend for these html files 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PhotoChat Meeting Platform</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding: 2rem;
+      background-color: #f4f4f4;
+    }
+    .logo {
+      max-height: 80px;
+      margin-bottom: 1rem;
+    }
+    .video-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    video {
+      width: 300px;
+      height: 200px;
+      border: 2px solid #333;
+    }
+    .controls, .presentation, .voice-message, .chat-box {
+      margin-top: 20px;
+    }
+    #meetingLink {
+      margin-top: 10px;
+      font-weight: bold;
+      word-break: break-word;
+    }
+    .chat-box {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: white;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .chat-input {
+      display: flex;
+      margin-top: 10px;
+    }
+    .chat-input input {
+      flex: 1;
+      margin-right: 10px;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    #chatbot-response {
+      font-style: italic;
+      color: #007BFF;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="Photo Chat Logo" class="logo">
+    <h2>📷 PhotoChat Video Conference</h2>
+    <a href="index.html" class="btn">Home</a> |
+    <a href="photo-chatbusiness.html" class="btn">Chat Business</a> |
+    <a href="sadccbdc.html" class="btn">Treasures Portal</a> |
+    <a href="tradecbdc.html" class="btn">Tokenized Trading</a> |
+    <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a> |
+    <a href="citizenswallet.html" class="btn">Citizens Wallet</a> |
+    <a href="trade.html" class="btn">SADI Trading</a>
+
+   <div id="exchange" class="mt-5">
+    <h4>Live Exchange Rates</h4>
+    <div id="rates">Loading...</div>
+  </div>
+
+
+    <!-- Meeting Join/Create -->
+    <div class="controls">
+      <input type="text" id="meetingId" class="form-control" placeholder="Enter or create Meeting ID">
+      <button onclick="startMeeting()" class="btn btn-primary mt-2">Start/Join Meeting</button>
+      <div id="meetingLink"></div>
+    </div>
+
+    <!-- Video Conference -->
+    <div class="video-container mt-4" id="videoContainer">
+      <video id="localVideo" autoplay muted></video>
+      <video id="remoteVideo" autoplay></video>
+    </div>
+
+    <!-- Presentation Upload -->
+    <div class="presentation">
+      <h4>Upload Presentation</h4>
+      <input type="file" accept="application/pdf,.ppt,.pptx" onchange="uploadPresentation(event)">
+      <iframe id="presentationViewer" style="width: 100%; height: 400px; border: 1px solid gray;"></iframe>
+    </div>
+
+    <!-- Voice Message -->
+    <div class="voice-message">
+      <h4>Send Voice Message (Internet-Free Mode)</h4>
+      <button onclick="startRecording()" class="btn btn-secondary">Start</button>
+      <button onclick="stopRecording()" class="btn btn-danger">Stop</button>
+      <audio id="audioPlayback" controls></audio>
+    </div>
+  </div>
+
+  <script>
+    let localStream;
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordingChunks = [];
+    let fullRecorder;
+
+    async function startMeeting() {
+      const meetingId = document.getElementById('meetingId').value || generateMeetingId();
+      document.getElementById('meetingId').value = meetingId;
+
+      const link = `${window.location.origin}/meet/${meetingId}`;
+      document.getElementById('meetingLink').innerHTML = `Meeting Link: <a href="${link}" target="_blank">${link}</a>`;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      document.getElementById('localVideo').srcObject = stream;
+      localStream = stream;
+
+      fullRecorder = new MediaRecorder(stream);
+      fullRecorder.ondataavailable = e => recordingChunks.push(e.data);
+      fullRecorder.onstop = () => {
+        const blob = new Blob(recordingChunks, { type: 'video/webm' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'meeting-recording.webm';
+        a.click();
+      };
+      fullRecorder.start();
+
+      // WebRTC signaling would go here
+    }
+
+    function generateMeetingId() {
+      return 'meet-' + Math.random().toString(36).substring(2, 10);
+    }
+
+    function uploadPresentation(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          document.getElementById('presentationViewer').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function startRecording() {
+      if (!localStream) return alert('Start the meeting first.');
+      mediaRecorder = new MediaRecorder(localStream);
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/mp3' });
+        const url = URL.createObjectURL(blob);
+        document.getElementById('audioPlayback').src = url;
+      };
+      audioChunks = [];
+      mediaRecorder.start();
+    }
+
+    function stopRecording() {
+      if (mediaRecorder) mediaRecorder.stop();
+      if (fullRecorder) fullRecorder.stop();
+    }
+
+        // 🔁 Live Exchange Rates from EODHD
+    const eodhdToken = "67b2d451e5b8a8.90504186";  // <- Replace this with your real API key
+    const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
+
+    async function fetchExchangeRates() {
+      const ratesDiv = document.getElementById("rates");
+      let output = "<ul class='list-group'>";
+      for (let symbol of currencySymbols) {
+        try {
+          const res = await fetch(`https://eodhd.com/api/live/${symbol}.FOREX?api_token=${eodhdToken}&fmt=json`);
+          const data = await res.json();
+          const rate = data.close || data.price;
+          output += `<li class="list-group-item"><strong>${symbol}</strong>: ${rate}</li>`;
+        } catch (error) {
+          output += `<li class="list-group-item text-danger">${symbol}: Error</li>`;
+        }
+      }
+      output += "</ul>";
+      ratesDiv.innerHTML = output;
+    }
+
+    window.onload = fetchExchangeRates;
+  </script>
+</body>
+</html>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

@@ -1,6 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <title>SADC CBDC Wallet Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { background-color: #f7f7f9; }
+    .container { max-width: 450px; margin-top: 48px; }
+    .qrcode { margin: 12px auto; width: fit-content; }
+    .logo { height: 40px; margin-left: 12px; }
+  </style>
+</head>
+<body>
+
+  <header class="d-flex align-items-center justify-content-between mb-4">
+    <img src="file_00000000968061f89abd9d3d435098f1.png" alt="SCB Logo" class="logo">
+    <h3>SADC Wallet</h3>
+  </header>
+
+  <nav>
+    <a href="index.html" class="btn">Credit Data</a>|
+    <a href="transactions.html" class="btn">Transactions Payments</a>|
+    <a href="sadccbdc.html" class="btn">SADC CBDC</a>|
+  <a href="index.html" class="btn">Home</a>|
+  <a href="photo-chatbusiness.html"class="btn">Chat Business</a>|
+  <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>
+  </nav>
+
+  <div class="container">
+    <h2 class="text-center mb-4">SADC CBDC Wallet Portal</h2>
+
+    <!-- Registration Section -->
+    <div class="card mb-3 p-3">
+      <h5>Register Wallet</h5>
+      <input type="text" class="form-control mb-2" placeholder="Full Name" id="regName" />
+      <input type="text" class="form-control mb-2" placeholder="National ID" id="regNationalId" />
+      <input type="text" class="form-control mb-2" placeholder="Biometric Hash (simulate)" id="regBio" />
+      <button class="btn btn-primary w-100" onclick="registerWallet()">Register</button>
+      <div id="regResult" class="text-success mt-2"></div>
+    </div>
+
+    <!-- Login Section -->
+    <div class="card mb-3 p-3">
+      <h5>Biometric Login</h5>
+      <input type="text" class="form-control mb-2" placeholder="National ID" id="loginNationalId" />
+      <input type="text" class="form-control mb-2" placeholder="Biometric Hash (simulate)" id="loginBio" />
+      <button class="btn btn-dark w-100" onclick="biometricLogin()">Login</button>
+      <div id="loginResult" class="text-success mt-2"></div>
+      <div id="loginError" class="text-danger mt-1"></div>
+    </div>
+
+    <!-- Wallet Section -->
+    <div id="walletSection" style="display:none;">
+      <div class="card mb-3 p-3">
+        <h5>Wallet Actions</h5>
+        <button class="btn btn-outline-info mb-2" onclick="checkBalance()">Check Balance</button>
+        <div id="balanceResult" class="mb-2"></div>
+        <input type="text" class="form-control mb-2" placeholder="Recipient Wallet ID" id="toWallet" />
+        <input type="number" class="form-control mb-2" placeholder="Amount (ZAR)" id="transferAmount" />
+        <button class="btn btn-success w-100" onclick="transferFunds()">Transfer</button>
+        <div id="transferResult" class="text-success mt-2"></div>
+        <div class="qrcode" id="walletQR"></div>
+        <div class="small text-muted text-center" id="walletIdLabel"></div>
+      </div>
+    </div>
+
+    <!-- USSD Section -->
+    <div class="card p-3 mb-4">
+      <h6>USSD Demo</h6>
+      <input type="text" class="form-control mb-2" id="ussdInput" placeholder="Type USSD input e.g. 1, 2" />
+      <button class="btn btn-secondary w-100 mb-2" onclick="sendUSSD()">Send USSD</button>
+      <div id="ussdResult" style="white-space:pre-line;"></div>
+      <div class="small text-muted mt-2">Dial <span class="text-success fw-bold">*134*CBDC#</span> on your phone for real USSD</div>
+    </div>
+
+    <!-- CoinMarketCap Price Section -->
+    <div class="card p-3 mb-4">
+      <h6>Market Price (via CoinMarketCap)</h6>
+      <button class="btn btn-outline-primary w-100 mb-2" onclick="getMarketPrice()">Get SADICoin/ZAR</button>
+      <div id="cmcPriceResult" class="text-primary fw-bold text-center"></div>
+    </div>
+
+    <footer class="text-center small mt-4 text-muted">&copy; 2025 SADC CBDC Wallet Portal</footer>
+  </div>
+
+  <script>
+    let walletId = null;
+    let privateKey = null;
+
+    function registerWallet() {
+      const name = document.getElementById('regName').value;
+      const nationalId = document.getElementById('regNationalId').value;
+      const biometricHash = document.getElementById('regBio').value;
+      fetch('http://localhost:3000/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, nationalId, biometricHash })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if(data.walletId){
+          walletId = data.walletId;
+          privateKey = data.privateKey;
+          document.getElementById('regResult').innerHTML = `Registered!<br>Wallet ID: <b>${walletId}</b><br><span class="small">Save your private key safely.</span>`;
+          showWallet(walletId);
+        } else {
+          document.getElementById('regResult').innerText = "Registration failed.";
+        }
+      });
+    }
+
+    function biometricLogin() {
+      const nationalId = document.getElementById('loginNationalId').value;
+      const biometricHash = document.getElementById('loginBio').value;
+      fetch('http://localhost:3000/auth/biometric', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nationalId, biometricHash })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if(data.walletId){
+          walletId = data.walletId;
+          document.getElementById('loginResult').innerText = `Login successful!`;
+          document.getElementById('loginError').innerText = '';
+          showWallet(walletId);
+        } else {
+          document.getElementById('loginError').innerText = data.error || "Login failed.";
+        }
+      });
+    }
+
+    function showWallet(wid) {
+      document.getElementById('walletSection').style.display = '';
+      document.getElementById('walletIdLabel').innerHTML = `<span class="fw-bold">Wallet ID:</span> <span class="text-primary">${wid}</span>`;
+      // Generate QR
+      document.getElementById('walletQR').innerHTML = '';
+      new QRCode(document.getElementById('walletQR'), wid);
+    }
+
+    function checkBalance() {
+      if(!walletId) return;
+      fetch(`http://localhost:3000/balance/${walletId}`)
+      .then(r => r.json())
+      .then(data => {
+        if(data.balance !== undefined) {
+          document.getElementById('balanceResult').innerHTML = `<b>Balance:</b> ZAR ${data.balance}`;
+        } else {
+          document.getElementById('balanceResult').innerText = "Balance fetch error.";
+        }
+      });
+    }
+
+    function transferFunds() {
+      const toWallet = document.getElementById('toWallet').value;
+      const amount = parseFloat(document.getElementById('transferAmount').value);
+      if(!walletId || !toWallet || !amount) {
+        document.getElementById('transferResult').innerText = "Please fill all fields.";
+        return;
+      }
+      fetch('http://localhost:3000/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromWallet: walletId, toWallet, amount })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if(data.message){
+          document.getElementById('transferResult').innerText = data.message;
+        } else {
+          document.getElementById('transferResult').innerText = data.error || "Transfer failed";
+        }
+      });
+    }
+
+    function sendUSSD() {
+      const text = document.getElementById('ussdInput').value;
+      const phoneNumber = "testUser"; // Simulate MSISDN
+      fetch('http://localhost:3000/ussd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, phoneNumber })
+      })
+      .then(r => r.text())
+      .then(data => {
+        document.getElementById('ussdResult').innerText = data;
+      });
+    }
+
+    function getMarketPrice() {
+      const apiKey = '0b53aa75-9da6-41c8-bbba-eb33bf350d3a'; // Replace with your actual key
+      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=BTC&convert=ZAR', {
+        method: 'GET',
+        headers: {
+          'X-CMC_PRO_API_KEY': apiKey
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if(data && data.data && data.data.quote && data.data.quote.ZAR) {
+          const price = data.data.quote.ZAR.price.toFixed(2);
+          document.getElementById('cmcPriceResult').innerText = `1 BTC = ZAR ${price}`;
+        } else {
+          document.getElementById('cmcPriceResult').innerText = 'Price fetch failed.';
+        }
+      })
+      .catch(err => {
+        document.getElementById('cmcPriceResult').innerText = 'Error contacting CoinMarketCap.';
+        console.error(err);
+      });
+    }
+  </script>
+</body>
+</html>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="utf-8">
   <title>Sadicoin Wallet (SADI)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">

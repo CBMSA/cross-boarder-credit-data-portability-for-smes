@@ -1,3 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sadicoin Wallet (SADI)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.moonpay.com https://unpkg.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://unpkg.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <script src="https://unpkg.com/@moonpay/moonpay-js"></script>
+  <style>
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;margin:20px;background:#f9fafb;color:#333;line-height:1.6;}
+    h1{text-align:center;color:#0055aa;margin-bottom:24px;font-weight:700;}
+    .box{background:#fff;border:1px solid #ddd;padding:20px 24px 24px;border-radius:12px;margin-bottom:20px;max-width:480px;margin-left:auto;margin-right:auto;box-shadow:0 4px 10px rgba(0,0,0,.05);}
+    h3{margin-top:0;margin-bottom:12px;color:#004080;font-weight:600;border-bottom:2px solid #0055aa;padding-bottom:6px;}
+    input,select{width:100%;padding:10px 14px;margin:6px 0 12px;border:1.5px solid #bbb;border-radius:8px;font-size:1rem;}
+    input:focus,select:focus{border-color:#0055aa;outline:none;box-shadow:0 0 6px #85baffaa;}
+    button{background:#0055aa;color:#fff;border:none;border-radius:8px;padding:12px 18px;cursor:pointer;font-size:1.1rem;font-weight:600;width:100%;margin-top:6px;}
+    button:hover{background:#003f7f;}
+    #wallet_info,#conv_res,#disb_res,#send_res{background:#eef6ff;border:1px solid #bbe0ff;padding:12px 16px;border-radius:8px;font-family:monospace;white-space:pre-wrap;color:#003366;margin-top:10px;min-height:50px;}
+    @media (max-width:520px){body{margin:10px}.box{max-width:100%;padding:16px 18px 18px}button{font-size:1rem;padding:10px 14px}}
+  </style>
+</head>
+<body>
+  <h1>Sadicoin Wallet (SADI)</h1>
+
+  <div class="box">
+    <h3>Register</h3>
+    <input id="r_name" placeholder="Full name" type="text">
+    <input id="r_email" placeholder="Email" type="email">
+    <input id="r_phone" placeholder="Phone" type="text">
+    <input id="r_pass" placeholder="Password" type="password">
+    <button onclick="register()">Register (airdrop 100 SADI)</button>
+  </div>
+
+  <div class="box">
+    <h3>Login</h3>
+    <input id="l_email" placeholder="Email" type="email">
+    <input id="l_pass" placeholder="Password" type="password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="box">
+    <h3>Wallet</h3>
+    <div id="wallet_info">Not logged in</div>
+    <button onclick="loadWallet()">Refresh Wallet</button>
+  </div>
+
+  <div class="box">
+    <h3>Send SADI</h3>
+    <input id="to_addr" placeholder="Recipient EVM address (0x...)" type="text">
+    <input id="to_amt" placeholder="Amount (SADI)" type="number" step="0.000000000000000001">
+    <button onclick="send()">Send</button>
+    <div id="send_res"></div>
+  </div>
+
+  <div class="box">
+    <h3>Swap via MoonPay</h3>
+    <input id="swap_from" placeholder="From currency (btc, eth, usdt)" type="text">
+    <input id="swap_to" placeholder="To currency (eth, btc, usdc)" type="text">
+    <input id="swap_amt" placeholder="Amount" type="number" min="0.0001" step="0.0001">
+    <button onclick="openSwap()">Swap Now</button>
+  </div>
+
+  <script>
+    // Mock user database (in localStorage for prototype)
+    const USERS_KEY = "sadi_users";
+    const TOKEN_KEY = "sadi_token";
+
+    function getUsers() {
+      return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+
+    function generateAddress() {
+      const hex = Array.from(crypto.getRandomValues(new Uint8Array(20))).map(b => b.toString(16).padStart(2, '0')).join('');
+      return "0x" + hex;
+    }
+
+    function register() {
+      const name = document.getElementById("r_name").value.trim();
+      const email = document.getElementById("r_email").value.trim().toLowerCase();
+      const phone = document.getElementById("r_phone").value.trim();
+      const password = document.getElementById("r_pass").value;
+
+      if (!name || !email || !phone || !password) return alert("Please fill all fields.");
+
+      const users = getUsers();
+
+      if (users[email]) {
+        alert("User already exists.");
+        return;
+      }
+
+      const wallet = {
+        address: generateAddress(),
+        balance: 100.0
+      };
+
+      users[email] = {
+        name, email, phone, password, wallet
+      };
+
+      saveUsers(users);
+      localStorage.setItem(TOKEN_KEY, email);
+      alert("Registered! Wallet created and credited.");
+      loadWallet();
+    }
+
+    function login() {
+      const email = document.getElementById("l_email").value.trim().toLowerCase();
+      const password = document.getElementById("l_pass").value;
+
+      const users = getUsers();
+
+      if (!users[email] || users[email].password !== password) {
+        alert("Invalid email or password.");
+        return;
+      }
+
+      localStorage.setItem(TOKEN_KEY, email);
+      alert("Login successful.");
+      loadWallet();
+    }
+
+    function loadWallet() {
+      const walletEl = document.getElementById("wallet_info");
+      const email = localStorage.getItem(TOKEN_KEY);
+      const users = getUsers();
+
+      if (!email || !users[email]) {
+        walletEl.innerText = "Not logged in";
+        return;
+      }
+
+      const user = users[email];
+      walletEl.innerText = `Address: ${user.wallet.address}\nBalance: ${user.wallet.balance.toFixed(6)} SADI`;
+    }
+
+    function send() {
+      const to = document.getElementById("to_addr").value.trim();
+      const amount = parseFloat(document.getElementById("to_amt").value);
+      const email = localStorage.getItem(TOKEN_KEY);
+      const users = getUsers();
+      const res = document.getElementById("send_res");
+
+      if (!email || !users[email]) return alert("Login first.");
+      if (!to || isNaN(amount) || amount <= 0) return alert("Enter valid recipient and amount.");
+
+      const user = users[email];
+
+      if (user.wallet.balance < amount) {
+        res.innerText = "Insufficient balance.";
+        return;
+      }
+
+      user.wallet.balance -= amount;
+
+      // Optionally simulate receiving wallet
+      res.innerText = `Sent ${amount} SADI to ${to}`;
+      saveUsers(users);
+      loadWallet();
+    }
+
+    async function openSwap() {
+      const from = document.getElementById("swap_from").value.trim().toLowerCase();
+      const to = document.getElementById("swap_to").value.trim().toLowerCase();
+      const amt = document.getElementById("swap_amt").value;
+
+      if (!from || !to || !amt) return alert("Enter from, to, and amount.");
+
+      try {
+        const moonPay = await loadMoonPay();
+        const moonPaySdk = moonPay({
+          flow: 'buy', // or 'swap'
+          environment: 'sandbox',
+          variant: 'overlay',
+          params: {
+            apiKey: 'pk_test_txsJargoBKFPE73J06Myz1mYLqlwwssb',
+            baseCurrencyCode: from,
+            baseCurrencyAmount: amt,
+            defaultCurrencyCode: to,
+            theme: 'dark'
+          }
+        });
+        moonPaySdk.show();
+      } catch (err) {
+        console.error("MoonPay failed:", err);
+        alert("Could not open MoonPay widget.");
+      }
+    }
+
+    // On load
+    window.addEventListener("load", loadWallet);
+  </script>
+</body>
+</html>
+
+
 
 <!DOCTYPE html>
 <html lang="en">

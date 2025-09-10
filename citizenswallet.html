@@ -1,41 +1,38 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Sadicoin Wallet (SADI)</title>
+  <title>Sadicoin Wallet (Prototype Demo)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.moonpay.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <style>
-    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;margin:20px;background:#f9fafb;color:#333;line-height:1.6;}
-    h1{text-align:center;color:#0055aa;margin-bottom:24px;font-weight:700;}
-    .box{background:#fff;border:1px solid #ddd;padding:20px 24px 24px;border-radius:12px;margin-bottom:20px;max-width:480px;margin-left:auto;margin-right:auto;box-shadow:0 4px 10px rgba(0,0,0,.05);}
-    h3{margin-top:0;margin-bottom:12px;color:#004080;font-weight:600;border-bottom:2px solid #0055aa;padding-bottom:6px;}
-    input,select{width:100%;padding:10px 14px;margin:6px 0 12px;border:1.5px solid #bbb;border-radius:8px;font-size:1rem;}
-    input:focus,select:focus{border-color:#0055aa;outline:none;box-shadow:0 0 6px #85baffaa;}
-    button{background:#0055aa;color:#fff;border:none;border-radius:8px;padding:12px 18px;cursor:pointer;font-size:1.1rem;font-weight:600;width:100%;margin-top:6px;}
-    button:hover{background:#003f7f;}
-    #wallet_info,#send_res{background:#eef6ff;border:1px solid #bbe0ff;padding:12px 16px;border-radius:8px;font-family:monospace;white-space:pre-wrap;color:#003366;margin-top:10px;min-height:50px;}
-    @media (max-width:520px){body{margin:10px}.box{max-width:100%;padding:16px 18px 18px}button{font-size:1rem;padding:10px 14px}}
+    body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
+    h1 { color: #2a4d8f; }
+    .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 500px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    input, button { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
+    button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1c3360; }
+    pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; }
+    .keys { font-size: 12px; background: #f0f0f0; padding: 10px; border-radius: 8px; overflow-x: auto; }
   </style>
 </head>
 <body>
-  <h1>Sadicoin Wallet (SADI)</h1>
+  <h1>💳 Sadicoin Wallet (SADI Prototype)</h1>
 
   <!-- Register -->
   <div class="box">
     <h3>Register</h3>
-    <input id="r_name" placeholder="Full name" type="text">
-    <input id="r_email" placeholder="Email" type="email">
-    <input id="r_phone" placeholder="Phone" type="text">
+    <input id="r_name" placeholder="Name">
+    <input id="r_email" placeholder="Email">
+    <input id="r_phone" placeholder="Phone">
     <input id="r_pass" placeholder="Password" type="password">
-    <button onclick="register()">Register (airdrop 100 SADI)</button>
+    <button onclick="register()">Register</button>
   </div>
 
   <!-- Login -->
   <div class="box">
     <h3>Login</h3>
-    <input id="l_email" placeholder="Email" type="email">
+    <input id="l_email" placeholder="Email">
     <input id="l_pass" placeholder="Password" type="password">
     <button onclick="login()">Login</button>
   </div>
@@ -43,127 +40,83 @@
   <!-- Wallet -->
   <div class="box">
     <h3>Wallet</h3>
-    <div id="wallet_info">Not logged in</div>
-    <button onclick="loadWallet()">Refresh Wallet</button>
+    <pre id="wallet_info">Not logged in</pre>
+    <button onclick="refreshWallet()">Refresh</button>
   </div>
 
   <!-- Send -->
   <div class="box">
     <h3>Send SADI</h3>
-    <input id="to_addr" placeholder="Recipient EVM address (0x...)" type="text">
-    <input id="to_amt" placeholder="Amount (SADI)" type="number" step="0.000000000000000001">
+    <input id="to_addr" placeholder="Recipient address">
+    <input id="to_amt" placeholder="Amount" type="number">
     <button onclick="send()">Send</button>
-    <div id="send_res"></div>
+    <pre id="send_res"></pre>
   </div>
 
-  <!-- Swap -->
+  <!-- MoonPay -->
   <div class="box">
-    <h3>Swap via MoonPay</h3>
-    <input id="swap_currency" placeholder="Currency code (eth, btc, usdc)" type="text">
+    <h3>MoonPay Swap</h3>
     <button onclick="openSwap()">Swap with MoonPay</button>
   </div>
 
+  <!-- Keys -->
+  <div class="box">
+    <h3>Prototype Keys (Demo Only)</h3>
+    <div class="keys">
+      <p><b>DB_USER:</b> proxy-transfer</p>
+      <p><b>DB_PASSWORD:</b> @cbdc2025</p>
+      <p><b>DB_SERVER:</b> transfer-database.database.windows.net</p>
+      <p><b>DB_NAME:</b> transaction-database</p>
+      <p><b>APIX_TOKEN:</b> (Bearer …)</p>
+      <p><b>MOVE_VM_ADDRESS:</b> 4.222.217.84:8080</p>
+      <p><b>MoonPay Publishable:</b> pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k</p>
+      <p><b>MoonPay Secret:</b> sk_live_1fpmEXXq5N0sSDl2m2Yv59kKn1eLOG4</p>
+    </div>
+  </div>
+
   <script>
+    // 🔹 Local simulation
+    let users = []; 
     let currentUser = null;
 
-    async function register() {
-      const name = document.getElementById("r_name").value.trim();
-      const email = document.getElementById("r_email").value.trim().toLowerCase();
-      const phone = document.getElementById("r_phone").value.trim();
-      const password = document.getElementById("r_pass").value;
-
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, password })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert("Registered!");
-        currentUser = email;
-        loadWallet();
-      } else {
-        alert(data.error || "Register failed");
-      }
+    function register() {
+      const name = r_name.value, email = r_email.value, phone = r_phone.value, password = r_pass.value;
+      if (!name || !email || !phone || !password) return alert("Fill all fields");
+      if (users.find(u => u.email === email)) return alert("User already exists!");
+      const wallet = { address: "0x" + Math.random().toString(16).substr(2,40), balance: 100 };
+      users.push({ name, email, phone, password, wallet });
+      alert("Registered successfully!");
     }
 
-    async function login() {
-      const email = document.getElementById("l_email").value.trim().toLowerCase();
-      const password = document.getElementById("l_pass").value;
-
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert("Login successful");
-        currentUser = email;
-        loadWallet();
-      } else {
-        alert(data.error || "Login failed");
-      }
+    function login() {
+      const email = l_email.value, password = l_pass.value;
+      const u = users.find(u => u.email===email && u.password===password);
+      if (!u) return alert("Invalid credentials");
+      currentUser = u;
+      refreshWallet();
     }
 
-    async function loadWallet() {
-      if (!currentUser) {
-        document.getElementById("wallet_info").innerText = "Not logged in";
-        return;
-      }
-      const res = await fetch(`/api/wallet/${currentUser}`);
-      const data = await res.json();
-      if (res.ok) {
-        document.getElementById("wallet_info").innerText =
-          `Address: ${data.address}\nBalance: ${data.balance.toFixed(6)} SADI`;
-      } else {
-        document.getElementById("wallet_info").innerText = data.error || "Error loading wallet";
-      }
+    function refreshWallet() {
+      if (!currentUser) return wallet_info.innerText = "Not logged in";
+      wallet_info.innerText = JSON.stringify(currentUser.wallet,null,2);
     }
 
-    async function send() {
-      if (!currentUser) {
-        alert("Login first.");
-        return;
-      }
-      const to = document.getElementById("to_addr").value.trim();
-      const amount = parseFloat(document.getElementById("to_amt").value);
-
-      const res = await fetch("/api/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromEmail: currentUser, toAddr: to, amount })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        document.getElementById("send_res").innerText = data.message;
-        loadWallet();
-      } else {
-        document.getElementById("send_res").innerText = data.error || "Send failed";
-      }
+    function send() {
+      if (!currentUser) return alert("Login first");
+      const toAddress = to_addr.value, amount = parseFloat(to_amt.value);
+      if (!toAddress || isNaN(amount)) return alert("Fill all fields");
+      if (currentUser.wallet.balance < amount) return alert("Insufficient funds");
+      currentUser.wallet.balance -= amount;
+      send_res.innerText = `Sent ${amount} SADI to ${toAddress}`;
+      refreshWallet();
     }
 
-    async function openSwap() {
-      if (!currentUser) {
-        alert("Login first.");
-        return;
-      }
-
-      const currency = document.getElementById("swap_currency").value.trim().toLowerCase() || "eth";
-      const walletRes = await fetch(`/api/wallet/${currentUser}`);
-      const wallet = await walletRes.json();
-
-      const res = await fetch(`/api/moonpay-url?currency=${currency}&address=${wallet.address}`);
-      const data = await res.json();
-      if (res.ok) {
-        window.open(data.url, "_blank");
-      } else {
-        alert("Failed to open MoonPay");
-      }
+    function openSwap() {
+      if (!currentUser) return alert("Login first");
+      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=eth&walletAddress=${currentUser.wallet.address}`;
+      window.open(url,"_blank");
     }
   </script>
 </body>
 </html>
+

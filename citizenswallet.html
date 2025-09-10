@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Sadicoin Wallet (Prototype Demo)</title>
+  <title>Sadicoin Wallet (Prototype Demo - ZAR)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
@@ -17,7 +17,7 @@
   </style>
 </head>
 <body>
-  <h1>💳 Sadicoin Wallet (SADI Prototype)</h1>
+  <h1>💳 Sadicoin Wallet (ZAR Prototype)</h1>
 
   <!-- Register -->
   <div class="box">
@@ -26,7 +26,7 @@
     <input id="r_email" placeholder="Email">
     <input id="r_phone" placeholder="Phone">
     <input id="r_pass" placeholder="Password" type="password">
-    <button onclick="register()">Register</button>
+    <button onclick="register()">Register (Get ZAR 10,000)</button>
   </div>
 
   <!-- Login -->
@@ -46,9 +46,9 @@
 
   <!-- Send -->
   <div class="box">
-    <h3>Send SADI</h3>
+    <h3>Send ZAR</h3>
     <input id="to_addr" placeholder="Recipient address">
-    <input id="to_amt" placeholder="Amount" type="number">
+    <input id="to_amt" placeholder="Amount (ZAR)" type="number">
     <button onclick="send()">Send</button>
     <pre id="send_res"></pre>
   </div>
@@ -57,21 +57,6 @@
   <div class="box">
     <h3>MoonPay Swap</h3>
     <button onclick="openSwap()">Swap with MoonPay</button>
-  </div>
-
-  <!-- Keys -->
-  <div class="box">
-    <h3>Prototype Keys (Demo Only)</h3>
-    <div class="keys">
-      <p><b>DB_USER:</b> proxy-transfer</p>
-      <p><b>DB_PASSWORD:</b> @cbdc2025</p>
-      <p><b>DB_SERVER:</b> transfer-database.database.windows.net</p>
-      <p><b>DB_NAME:</b> transaction-database</p>
-      <p><b>APIX_TOKEN:</b> (Bearer …)</p>
-      <p><b>MOVE_VM_ADDRESS:</b> 4.222.217.84:8080</p>
-      <p><b>MoonPay Publishable:</b> pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k</p>
-      <p><b>MoonPay Secret:</b> sk_live_1fpmEXXq5N0sSDl2m2Yv59kKn1eLOG4</p>
-    </div>
   </div>
 
   <script>
@@ -83,9 +68,9 @@
       const name = r_name.value, email = r_email.value, phone = r_phone.value, password = r_pass.value;
       if (!name || !email || !phone || !password) return alert("Fill all fields");
       if (users.find(u => u.email === email)) return alert("User already exists!");
-      const wallet = { address: "0x" + Math.random().toString(16).substr(2,40), balance: 100 };
+      const wallet = { address: "0x" + Math.random().toString(16).substr(2,40), balance: 10000 }; // ZAR 10,000
       users.push({ name, email, phone, password, wallet });
-      alert("Registered successfully!");
+      alert("Registered successfully! You got ZAR 10,000.");
     }
 
     function login() {
@@ -98,7 +83,7 @@
 
     function refreshWallet() {
       if (!currentUser) return wallet_info.innerText = "Not logged in";
-      wallet_info.innerText = JSON.stringify(currentUser.wallet,null,2);
+      wallet_info.innerText = `Address: ${currentUser.wallet.address}\nBalance: ZAR ${currentUser.wallet.balance.toFixed(2)}`;
     }
 
     function send() {
@@ -107,16 +92,15 @@
       if (!toAddress || isNaN(amount)) return alert("Fill all fields");
       if (currentUser.wallet.balance < amount) return alert("Insufficient funds");
       currentUser.wallet.balance -= amount;
-      send_res.innerText = `Sent ${amount} SADI to ${toAddress}`;
+      send_res.innerText = `Sent ZAR ${amount.toFixed(2)} to ${toAddress}`;
       refreshWallet();
     }
 
     function openSwap() {
       if (!currentUser) return alert("Login first");
-      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=eth&walletAddress=${currentUser.wallet.address}`;
+      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=zar&walletAddress=${currentUser.wallet.address}`;
       window.open(url,"_blank");
     }
   </script>
 </body>
 </html>
-

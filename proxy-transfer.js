@@ -1,3 +1,131 @@
+// server.js
+import express from "express";
+import bodyParser from "body-parser";
+import fs from "fs";
+import crypto from "crypto";
+import querystring from "querystring";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const app = express();
+app.use(bodyParser.json());
+app.use(express.static("public")); // serve index.html from /public folder
+
+// ---- Simple JSON file "DB" ----
+const USERS_FILE = "./users.json";
+function loadUsers() {
+  if (!fs.existsSync(USERS_FILE)) return {};
+  return JSON.parse(fs.readFileSync(USERS_FILE));
+}
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+// Generate fake EVM address
+function generateAddress() {
+  const hex = crypto.randomBytes(20).toString("hex");
+  return "0x" + hex;
+}
+
+// ---------------- AUTH ----------------
+app.post("/api/register", (req, res) => {
+  const { name, email, phone, password } = req.body;
+  if (!name || !email || !phone || !password)
+    return res.status(400).json({ error: "Missing fields" });
+
+  const users = loadUsers();
+  if (users[email]) return res.status(400).json({ error: "User exists" });
+
+  users[email] = {
+    name,
+    email,
+    phone,
+    password,
+    wallet: { address: generateAddress(), balance: 100 },
+  };
+
+  saveUsers(users);
+  res.json({ message: "Registered", wallet: users[email].wallet });
+});
+
+app.post("/api/login", (req, res) => {
+  const { email, password } = req.body;
+  const users = loadUsers();
+  if (!users[email] || users[email].password !== password) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  res.json({ message: "Login successful", wallet: users[email].wallet });
+});
+
+app.get("/api/wallet/:email", (req, res) => {
+  const users = loadUsers();
+  const user = users[req.params.email];
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json(user.wallet);
+});
+
+app.post("/api/send", (req, res) => {
+  const { fromEmail, toAddr, amount } = req.body;
+  const users = loadUsers();
+  const sender = users[fromEmail];
+  if (!sender) return res.status(404).json({ error: "Sender not found" });
+
+  if (sender.wallet.balance < amount) {
+    return res.status(400).json({ error: "Insufficient balance" });
+  }
+
+  sender.wallet.balance -= amount;
+  saveUsers(users);
+
+  res.json({ message: `Sent ${amount} SADI to ${toAddr}` });
+});
+
+// ---------------- MOONPAY ----------------
+app.get("/api/moonpay-url", (req, res) => {
+  const baseUrl = "https://buy.moonpay.com";
+  const params = {
+    apiKey: process.env.MOONPAY_PUBLISHABLE_KEY,
+    currencyCode: req.query.currency || "eth",
+    walletAddress: req.query.address,
+  };
+
+  const query = querystring.stringify(params);
+  const url = `${baseUrl}?${query}`;
+
+  const signature = crypto
+    .createHmac("sha256", process.env.MOONPAY_SECRET_KEY)
+    .update(url)
+    .digest("base64");
+
+  const signedUrl = `${url}&signature=${encodeURIComponent(signature)}`;
+  res.json({ url: signedUrl });
+});
+
+// ---------------- WEBHOOK ----------------
+app.post("/api/moonpay-webhook", (req, res) => {
+  const rawBody = JSON.stringify(req.body);
+  const signature = req.headers["moonpay-signature"];
+
+  const expected = crypto
+    .createHmac("sha256", process.env.MOONPAY_WEBHOOK_KEY)
+    .update(rawBody)
+    .digest("hex");
+
+  if (signature !== expected) {
+    return res.status(401).send("Invalid webhook signature");
+  }
+
+  console.log("MoonPay webhook event:", req.body);
+  res.send("ok");
+});
+
+// ---------------- START ----------------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
+
 
 // Load environment variables
 require('dotenv').config();

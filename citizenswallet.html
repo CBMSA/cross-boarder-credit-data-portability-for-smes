@@ -3,124 +3,166 @@
 <head>
   <meta charset="utf-8">
   <title>Sadicoin Wallet (SADI)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.moonpay.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <style>
-    body{font-family:sans-serif;margin:20px;background:#f9fafb;color:#333;}
-    h1{text-align:center;color:#0055aa;}
-    .box{background:#fff;border:1px solid #ddd;padding:20px;border-radius:12px;margin:20px auto;max-width:480px;}
-    input{width:100%;padding:10px;margin:6px 0;border:1px solid #bbb;border-radius:8px;}
-    button{background:#0055aa;color:#fff;border:none;border-radius:8px;padding:12px;width:100%;cursor:pointer;}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;margin:20px;background:#f9fafb;color:#333;line-height:1.6;}
+    h1{text-align:center;color:#0055aa;margin-bottom:24px;font-weight:700;}
+    .box{background:#fff;border:1px solid #ddd;padding:20px 24px 24px;border-radius:12px;margin-bottom:20px;max-width:480px;margin-left:auto;margin-right:auto;box-shadow:0 4px 10px rgba(0,0,0,.05);}
+    h3{margin-top:0;margin-bottom:12px;color:#004080;font-weight:600;border-bottom:2px solid #0055aa;padding-bottom:6px;}
+    input,select{width:100%;padding:10px 14px;margin:6px 0 12px;border:1.5px solid #bbb;border-radius:8px;font-size:1rem;}
+    input:focus,select:focus{border-color:#0055aa;outline:none;box-shadow:0 0 6px #85baffaa;}
+    button{background:#0055aa;color:#fff;border:none;border-radius:8px;padding:12px 18px;cursor:pointer;font-size:1.1rem;font-weight:600;width:100%;margin-top:6px;}
     button:hover{background:#003f7f;}
-    #wallet_info,#send_res{background:#eef6ff;border:1px solid #bbe0ff;padding:12px;border-radius:8px;margin-top:10px;}
+    #wallet_info,#send_res{background:#eef6ff;border:1px solid #bbe0ff;padding:12px 16px;border-radius:8px;font-family:monospace;white-space:pre-wrap;color:#003366;margin-top:10px;min-height:50px;}
+    @media (max-width:520px){body{margin:10px}.box{max-width:100%;padding:16px 18px 18px}button{font-size:1rem;padding:10px 14px}}
   </style>
 </head>
 <body>
   <h1>Sadicoin Wallet (SADI)</h1>
 
+  <!-- Register -->
   <div class="box">
     <h3>Register</h3>
-    <input id="r_name" placeholder="Full name">
-    <input id="r_email" placeholder="Email">
-    <input id="r_phone" placeholder="Phone">
+    <input id="r_name" placeholder="Full name" type="text">
+    <input id="r_email" placeholder="Email" type="email">
+    <input id="r_phone" placeholder="Phone" type="text">
     <input id="r_pass" placeholder="Password" type="password">
     <button onclick="register()">Register (airdrop 100 SADI)</button>
   </div>
 
+  <!-- Login -->
   <div class="box">
     <h3>Login</h3>
-    <input id="l_email" placeholder="Email">
+    <input id="l_email" placeholder="Email" type="email">
     <input id="l_pass" placeholder="Password" type="password">
     <button onclick="login()">Login</button>
   </div>
 
+  <!-- Wallet -->
   <div class="box">
     <h3>Wallet</h3>
     <div id="wallet_info">Not logged in</div>
     <button onclick="loadWallet()">Refresh Wallet</button>
   </div>
 
+  <!-- Send -->
   <div class="box">
     <h3>Send SADI</h3>
-    <input id="to_addr" placeholder="Recipient EVM address (0x...)">
-    <input id="to_amt" placeholder="Amount (SADI)" type="number">
+    <input id="to_addr" placeholder="Recipient EVM address (0x...)" type="text">
+    <input id="to_amt" placeholder="Amount (SADI)" type="number" step="0.000000000000000001">
     <button onclick="send()">Send</button>
     <div id="send_res"></div>
   </div>
 
+  <!-- Swap -->
   <div class="box">
     <h3>Swap via MoonPay</h3>
-    <button onclick="openSwap()">Swap Now</button>
+    <input id="swap_currency" placeholder="Currency code (eth, btc, usdc)" type="text">
+    <button onclick="openSwap()">Swap with MoonPay</button>
   </div>
 
   <script>
     let currentUser = null;
 
     async function register() {
-      const body = {
-        name: document.getElementById("r_name").value,
-        email: document.getElementById("r_email").value,
-        phone: document.getElementById("r_phone").value,
-        password: document.getElementById("r_pass").value,
-      };
+      const name = document.getElementById("r_name").value.trim();
+      const email = document.getElementById("r_email").value.trim().toLowerCase();
+      const phone = document.getElementById("r_phone").value.trim();
+      const password = document.getElementById("r_pass").value;
+
       const res = await fetch("/api/register", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(body)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, password })
       });
+
       const data = await res.json();
-      if (data.error) return alert(data.error);
-      currentUser = body.email;
-      alert("Registered! Wallet created.");
-      loadWallet();
+      if (res.ok) {
+        alert("Registered!");
+        currentUser = email;
+        loadWallet();
+      } else {
+        alert(data.error || "Register failed");
+      }
     }
 
     async function login() {
-      const body = {
-        email: document.getElementById("l_email").value,
-        password: document.getElementById("l_pass").value,
-      };
+      const email = document.getElementById("l_email").value.trim().toLowerCase();
+      const password = document.getElementById("l_pass").value;
+
       const res = await fetch("/api/login", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(body)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
       });
+
       const data = await res.json();
-      if (data.error) return alert(data.error);
-      currentUser = body.email;
-      alert("Login successful.");
-      loadWallet();
+      if (res.ok) {
+        alert("Login successful");
+        currentUser = email;
+        loadWallet();
+      } else {
+        alert(data.error || "Login failed");
+      }
     }
 
     async function loadWallet() {
-      if (!currentUser) return document.getElementById("wallet_info").innerText = "Not logged in";
+      if (!currentUser) {
+        document.getElementById("wallet_info").innerText = "Not logged in";
+        return;
+      }
       const res = await fetch(`/api/wallet/${currentUser}`);
-      const wallet = await res.json();
-      if (wallet.error) return alert(wallet.error);
-      document.getElementById("wallet_info").innerText =
-        `Address: ${wallet.address}\nBalance: ${wallet.balance.toFixed(6)} SADI`;
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById("wallet_info").innerText =
+          `Address: ${data.address}\nBalance: ${data.balance.toFixed(6)} SADI`;
+      } else {
+        document.getElementById("wallet_info").innerText = data.error || "Error loading wallet";
+      }
     }
 
     async function send() {
-      if (!currentUser) return alert("Login first.");
-      const body = {
-        fromEmail: currentUser,
-        toAddr: document.getElementById("to_addr").value,
-        amount: parseFloat(document.getElementById("to_amt").value),
-      };
+      if (!currentUser) {
+        alert("Login first.");
+        return;
+      }
+      const to = document.getElementById("to_addr").value.trim();
+      const amount = parseFloat(document.getElementById("to_amt").value);
+
       const res = await fetch("/api/send", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(body)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromEmail: currentUser, toAddr: to, amount })
       });
+
       const data = await res.json();
-      document.getElementById("send_res").innerText = data.error || data.message;
-      loadWallet();
+      if (res.ok) {
+        document.getElementById("send_res").innerText = data.message;
+        loadWallet();
+      } else {
+        document.getElementById("send_res").innerText = data.error || "Send failed";
+      }
     }
 
     async function openSwap() {
-      if (!currentUser) return alert("Login first.");
-      const resWallet = await fetch(`/api/wallet/${currentUser}`);
-      const wallet = await resWallet.json();
-      const res = await fetch(`/api/moonpay-url?currency=eth&address=${wallet.address}`);
+      if (!currentUser) {
+        alert("Login first.");
+        return;
+      }
+
+      const currency = document.getElementById("swap_currency").value.trim().toLowerCase() || "eth";
+      const walletRes = await fetch(`/api/wallet/${currentUser}`);
+      const wallet = await walletRes.json();
+
+      const res = await fetch(`/api/moonpay-url?currency=${currency}&address=${wallet.address}`);
       const data = await res.json();
-      window.open(data.url, "_blank");
+      if (res.ok) {
+        window.open(data.url, "_blank");
+      } else {
+        alert("Failed to open MoonPay");
+      }
     }
   </script>
 </body>

@@ -1,87 +1,134 @@
 // server.js
 import express from "express";
 import bodyParser from "body-parser";
-import fs from "fs";
+import dotenv from "dotenv";
+import sql from "mssql";
 import crypto from "crypto";
 import querystring from "querystring";
-import dotenv from "dotenv";
 
 dotenv.config();
-
 const app = express();
 app.use(bodyParser.json());
-app.use(express.static("public")); // serve index.html from /public folder
+app.use(express.static("public"));
 
-// ---- Simple JSON file "DB" ----
-const USERS_FILE = "./users.json";
-function loadUsers() {
-  if (!fs.existsSync(USERS_FILE)) return {};
-  return JSON.parse(fs.readFileSync(USERS_FILE));
+// ---------- SQL Server Connection ----------
+const sqlConfig = {
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  options: {
+    encrypt: true,
+    trustServerCertificate: false,
+  },
+};
+
+let pool;
+async function getPool() {
+  if (!pool) pool = await sql.connect(sqlConfig);
+  return pool;
 }
-function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+
+// ---------- Wallet DB helpers ----------
+async function createUser({ name, email, phone, password }) {
+  const pool = await getPool();
+  const address = "0x" + crypto.randomBytes(20).toString("hex");
+  const balance = 100;
+
+  await pool
+    .request()
+    .input("email", sql.VarChar, email)
+    .input("name", sql.VarChar, name)
+    .input("phone", sql.VarChar, phone)
+    .input("password", sql.VarChar, password)
+    .input("address", sql.VarChar, address)
+    .input("balance", sql.Float, balance)
+    .query(`
+      INSERT INTO Users (Email, Name, Phone, Password, Address, Balance)
+      VALUES (@email, @name, @phone, @password, @address, @balance)
+    `);
+
+  return { address, balance };
 }
 
-// Generate fake EVM address
-function generateAddress() {
-  const hex = crypto.randomBytes(20).toString("hex");
-  return "0x" + hex;
+async function findUser(email) {
+  const pool = await getPool();
+  const result = await pool
+    .request()
+    .input("email", sql.VarChar, email)
+    .query("SELECT * FROM Users WHERE Email=@email");
+  return result.recordset[0];
 }
 
-// ---------------- AUTH ----------------
-app.post("/api/register", (req, res) => {
-  const { name, email, phone, password } = req.body;
-  if (!name || !email || !phone || !password)
-    return res.status(400).json({ error: "Missing fields" });
+async function updateBalance(email, balance) {
+  const pool = await getPool();
+  await pool
+    .request()
+    .input("email", sql.VarChar, email)
+    .input("balance", sql.Float, balance)
+    .query("UPDATE Users SET Balance=@balance WHERE Email=@email");
+}
 
-  const users = loadUsers();
-  if (users[email]) return res.status(400).json({ error: "User exists" });
+// ---------- API routes ----------
+app.post("/api/register", async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body;
+    if (!name || !email || !phone || !password)
+      return res.status(400).json({ error: "Missing fields" });
 
-  users[email] = {
-    name,
-    email,
-    phone,
-    password,
-    wallet: { address: generateAddress(), balance: 100 },
-  };
+    const existing = await findUser(email);
+    if (existing) return res.status(400).json({ error: "User exists" });
 
-  saveUsers(users);
-  res.json({ message: "Registered", wallet: users[email].wallet });
-});
-
-app.post("/api/login", (req, res) => {
-  const { email, password } = req.body;
-  const users = loadUsers();
-  if (!users[email] || users[email].password !== password) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    const wallet = await createUser({ name, email, phone, password });
+    res.json({ message: "Registered", wallet });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Register failed" });
   }
-  res.json({ message: "Login successful", wallet: users[email].wallet });
 });
 
-app.get("/api/wallet/:email", (req, res) => {
-  const users = loadUsers();
-  const user = users[req.params.email];
-  if (!user) return res.status(404).json({ error: "User not found" });
-  res.json(user.wallet);
-});
-
-app.post("/api/send", (req, res) => {
-  const { fromEmail, toAddr, amount } = req.body;
-  const users = loadUsers();
-  const sender = users[fromEmail];
-  if (!sender) return res.status(404).json({ error: "Sender not found" });
-
-  if (sender.wallet.balance < amount) {
-    return res.status(400).json({ error: "Insufficient balance" });
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await findUser(email);
+    if (!user || user.Password !== password) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    res.json({ message: "Login successful", wallet: { address: user.Address, balance: user.Balance } });
+  } catch (err) {
+    res.status(500).json({ error: "Login failed" });
   }
-
-  sender.wallet.balance -= amount;
-  saveUsers(users);
-
-  res.json({ message: `Sent ${amount} SADI to ${toAddr}` });
 });
 
-// ---------------- MOONPAY ----------------
+app.get("/api/wallet/:email", async (req, res) => {
+  try {
+    const user = await findUser(req.params.email);
+    if (!user) return res.status(404).json({ error: "Not found" });
+    res.json({ address: user.Address, balance: user.Balance });
+  } catch (err) {
+    res.status(500).json({ error: "Wallet fetch failed" });
+  }
+});
+
+app.post("/api/send", async (req, res) => {
+  try {
+    const { fromEmail, toAddr, amount } = req.body;
+    const user = await findUser(fromEmail);
+    if (!user) return res.status(404).json({ error: "Sender not found" });
+
+    if (user.Balance < amount)
+      return res.status(400).json({ error: "Insufficient balance" });
+
+    const newBalance = user.Balance - amount;
+    await updateBalance(fromEmail, newBalance);
+
+    res.json({ message: `Sent ${amount} SADI to ${toAddr}` });
+  } catch (err) {
+    res.status(500).json({ error: "Send failed" });
+  }
+});
+
+// ---------- MoonPay ----------
 app.get("/api/moonpay-url", (req, res) => {
   const baseUrl = "https://buy.moonpay.com";
   const params = {
@@ -102,7 +149,6 @@ app.get("/api/moonpay-url", (req, res) => {
   res.json({ url: signedUrl });
 });
 
-// ---------------- WEBHOOK ----------------
 app.post("/api/moonpay-webhook", (req, res) => {
   const rawBody = JSON.stringify(req.body);
   const signature = req.headers["moonpay-signature"];
@@ -120,11 +166,9 @@ app.post("/api/moonpay-webhook", (req, res) => {
   res.send("ok");
 });
 
-// ---------------- START ----------------
+// ---------- Start ----------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
 
 
 // Load environment variables

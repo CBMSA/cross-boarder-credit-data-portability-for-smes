@@ -3,20 +3,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Sadicoin Wallet (Prototype Demo - ZAR)</title>
+  <title>Sadicoin Wallet (Prototype - USD)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
     h1 { color: #2a4d8f; }
     .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 500px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-    input, button { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
+    input, button, select { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
     button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
     button:hover { background: #1c3360; }
     pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; }
   </style>
 </head>
 <body>
-  <h1>💳 Sadicoin Wallet (ZAR Prototype)</h1>
+  <h1>💳 Sadicoin Wallet (USD Prototype)</h1>
 
   <!-- Register -->
   <div class="box">
@@ -25,7 +25,7 @@
     <input id="r_email" placeholder="Email">
     <input id="r_phone" placeholder="Phone">
     <input id="r_pass" placeholder="Password" type="password">
-    <button onclick="register()">Register (Get ZAR 10,000)</button>
+    <button onclick="register()">Register (Get USD 200)</button>
   </div>
 
   <!-- Login -->
@@ -45,17 +45,27 @@
 
   <!-- Send -->
   <div class="box">
-    <h3>Send ZAR</h3>
+    <h3>Send USD</h3>
     <input id="to_addr" placeholder="Recipient address">
-    <input id="to_amt" placeholder="Amount (ZAR)" type="number">
+    <input id="to_amt" placeholder="Amount (USD)" type="number">
     <button onclick="send()">Send</button>
     <pre id="send_res"></pre>
   </div>
 
+  <!-- Transfer to Bank -->
+  <div class="box">
+    <h3>Transfer to Traditional Account</h3>
+    <input id="bank_acc" placeholder="Bank Account Number">
+    <select id="fx_currency"></select>
+    <input id="fx_amount" placeholder="Amount (USD)" type="number">
+    <button onclick="transferToBank()">Transfer</button>
+    <pre id="bank_res"></pre>
+  </div>
+
   <!-- MoonPay -->
   <div class="box">
-    <h3>MoonPay Swap</h3>
-    <button onclick="openSwap()">Swap with MoonPay</button>
+    <h3>MoonPay Buy</h3>
+    <button onclick="openSwap()">Buy via MoonPay</button>
   </div>
 
   <script>
@@ -63,13 +73,34 @@
     let users = []; 
     let currentUser = null;
 
+    // 🔁 Live Exchange Rates from EODHD
+    const eodhdToken = "67b2d451e5b8a8.90504186";
+    const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
+    let fxRates = {};
+
+    async function loadRates() {
+      try {
+        const resp = await fetch(`https://eodhd.com/api/forex/list/USD?api_token=${eodhdToken}&fmt=json`);
+        const data = await resp.json();
+        fxRates = {};
+        currencySymbols.forEach(sym => {
+          const rateObj = data.find(r => r.ticker === `USD${sym}.FOREX`);
+          if (rateObj) fxRates[sym] = rateObj.close;
+        });
+        // Populate dropdown
+        fx_currency.innerHTML = currencySymbols.map(c => `<option>${c}</option>`).join("");
+      } catch (err) {
+        console.error("FX fetch failed", err);
+      }
+    }
+
     function register() {
       const name = r_name.value, email = r_email.value, phone = r_phone.value, password = r_pass.value;
       if (!name || !email || !phone || !password) return alert("Fill all fields");
       if (users.find(u => u.email === email)) return alert("User already exists!");
-      const wallet = { address: "0x" + Math.random().toString(16).substr(2,40), balance: 10000 }; // ZAR 10,000
+      const wallet = { address: "0x" + Math.random().toString(16).substr(2,40), balance: 200 }; // USD 200
       users.push({ name, email, phone, password, wallet });
-      alert("Registered successfully! You got ZAR 10,000.");
+      alert("Registered successfully! You got USD 200.");
     }
 
     function login() {
@@ -82,7 +113,7 @@
 
     function refreshWallet() {
       if (!currentUser) return wallet_info.innerText = "Not logged in";
-      wallet_info.innerText = `Address: ${currentUser.wallet.address}\nBalance: ZAR ${currentUser.wallet.balance.toFixed(2)}`;
+      wallet_info.innerText = `Address: ${currentUser.wallet.address}\nBalance: USD ${currentUser.wallet.balance.toFixed(2)}`;
     }
 
     function send() {
@@ -91,22 +122,32 @@
       if (!toAddress || isNaN(amount)) return alert("Fill all fields");
       if (currentUser.wallet.balance < amount) return alert("Insufficient funds");
       currentUser.wallet.balance -= amount;
-      send_res.innerText = `Sent ZAR ${amount.toFixed(2)} to ${toAddress}`;
+      send_res.innerText = `Sent USD ${amount.toFixed(2)} to ${toAddress}`;
+      refreshWallet();
+    }
+
+    function transferToBank() {
+      if (!currentUser) return alert("Login first");
+      const acc = bank_acc.value, amount = parseFloat(fx_amount.value), targetCur = fx_currency.value;
+      if (!acc || isNaN(amount)) return alert("Fill all fields");
+      if (currentUser.wallet.balance < amount) return alert("Insufficient funds");
+      if (!fxRates[targetCur]) return alert("FX rate not available");
+
+      currentUser.wallet.balance -= amount;
+      const converted = (amount * fxRates[targetCur]).toFixed(2);
+      bank_res.innerText = `Transferred USD ${amount.toFixed(2)} (~${converted} ${targetCur}) to bank account ${acc}`;
       refreshWallet();
     }
 
     function openSwap() {
       if (!currentUser) return alert("Login first");
-
-      // 🟢 ZAR is internal only; MoonPay requires USD (or supported fiat)
-      const zarAmount = currentUser.wallet.balance;
-      const usdEquivalent = (zarAmount / 19).toFixed(2); // Example: 1 USD = ~19 ZAR
-
-      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=usd&walletAddress=${currentUser.wallet.address}&baseCurrencyAmount=${usdEquivalent}`;
-
+      const usdAmount = 50; // Example fixed MoonPay purchase
+      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=eth&walletAddress=${currentUser.wallet.address}&baseCurrencyAmount=${usdAmount}&baseCurrencyCode=usd`;
       window.open(url,"_blank");
     }
+
+    // Load FX on start
+    loadRates();
   </script>
 </body>
 </html>
-

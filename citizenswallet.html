@@ -13,7 +13,6 @@
     button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
     button:hover { background: #1c3360; }
     pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; }
-    .keys { font-size: 12px; background: #f0f0f0; padding: 10px; border-radius: 8px; overflow-x: auto; }
   </style>
 </head>
 <body>
@@ -98,9 +97,16 @@
 
     function openSwap() {
       if (!currentUser) return alert("Login first");
-      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=zar&walletAddress=${currentUser.wallet.address}`;
+
+      // 🟢 ZAR is internal only; MoonPay requires USD (or supported fiat)
+      const zarAmount = currentUser.wallet.balance;
+      const usdEquivalent = (zarAmount / 19).toFixed(2); // Example: 1 USD = ~19 ZAR
+
+      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=usd&walletAddress=${currentUser.wallet.address}&baseCurrencyAmount=${usdEquivalent}`;
+
       window.open(url,"_blank");
     }
   </script>
 </body>
 </html>
+

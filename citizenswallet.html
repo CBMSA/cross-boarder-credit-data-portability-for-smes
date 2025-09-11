@@ -1,34 +1,31 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Sadicoin Wallet (Prototype - USD)</title>
+  <title>Sadicoin Wallet — USD Prototype with Transactions</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
-    h1 { color: #2a4d8f; }
-    .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 500px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-    input, button, select { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
-    button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #1c3360; }
-    pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; }
+    body { font-family: Arial; margin: 20px; background:#f6f9fc; }
+    .box{ background:#fff;padding:16px;border-radius:8px;max-width:800px;margin:12px auto;box-shadow:0 3px 6px rgba(0,0,0,.08) }
+    input, button, select { width:100%; padding:10px; margin:8px 0; font-size:14px; }
+    button { cursor:pointer; background:#2a4d8f;color:#fff;border:none;border-radius:6px; }
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+    .small{font-size:13px;color:#666}
   </style>
 </head>
 <body>
-  <h1>💳 Sadicoin Wallet (USD Prototype)</h1>
+  <h1 style="text-align:center">Sadicoin Wallet — USD Prototype</h1>
 
-  <!-- Register -->
   <div class="box">
     <h3>Register</h3>
     <input id="r_name" placeholder="Name">
     <input id="r_email" placeholder="Email">
     <input id="r_phone" placeholder="Phone">
     <input id="r_pass" placeholder="Password" type="password">
-    <button onclick="register()">Register (Get USD 200)</button>
+    <button onclick="register()">Register (USD 200)</button>
   </div>
 
-  <!-- Login -->
   <div class="box">
     <h3>Login</h3>
     <input id="l_email" placeholder="Email">
@@ -36,118 +33,180 @@
     <button onclick="login()">Login</button>
   </div>
 
-  <!-- Wallet -->
   <div class="box">
     <h3>Wallet</h3>
     <pre id="wallet_info">Not logged in</pre>
     <button onclick="refreshWallet()">Refresh</button>
   </div>
 
-  <!-- Send -->
   <div class="box">
-    <h3>Send USD</h3>
+    <h3>Send (on-chain simulation)</h3>
     <input id="to_addr" placeholder="Recipient address">
     <input id="to_amt" placeholder="Amount (USD)" type="number">
     <button onclick="send()">Send</button>
     <pre id="send_res"></pre>
   </div>
 
-  <!-- Transfer to Bank -->
   <div class="box">
-    <h3>Transfer to Traditional Account</h3>
-    <input id="bank_acc" placeholder="Bank Account Number">
+    <h3>Transfer to Bank</h3>
+    <input id="bank_acc" placeholder="Bank account number / IBAN">
     <select id="fx_currency"></select>
     <input id="fx_amount" placeholder="Amount (USD)" type="number">
-    <button onclick="transferToBank()">Transfer</button>
+    <button onclick="transferToBank()">Transfer to Bank</button>
     <pre id="bank_res"></pre>
   </div>
 
-  <!-- MoonPay -->
   <div class="box">
-    <h3>MoonPay Buy</h3>
-    <button onclick="openSwap()">Buy via MoonPay</button>
+    <h3>Transactions</h3>
+    <table id="tx_table">
+      <thead><tr><th>TxId</th><th>Type</th><th>Amount</th><th>Currency</th><th>Status</th><th>When</th><th>PDF</th></tr></thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <script>
-    // 🔹 Local simulation
-    let users = []; 
-    let currentUser = null;
+<script>
+  let currentUser = null;
+  const currencySymbols = ["ZAR","USD","BWP","MZN","XDR","XAU"];
+  const eodhdToken = "67b2d451e5b8a8.90504186";
+  let fxRates = {};
 
-    // 🔁 Live Exchange Rates from EODHD
-    const eodhdToken = "67b2d451e5b8a8.90504186";
-    const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
-    let fxRates = {};
-
-    async function loadRates() {
-      try {
-        const resp = await fetch(`https://eodhd.com/api/forex/list/USD?api_token=${eodhdToken}&fmt=json`);
-        const data = await resp.json();
+  async function loadRates(){
+    try{
+      // example EODHD endpoint - adjust as needed; fallback sample rates if not available
+      const resp = await fetch(`https://eodhd.com/api/forex/latest?api_token=${eodhdToken}&symbols=${currencySymbols.join(",")}&base=USD`);
+      const data = await resp.json();
+      // EODHD response shapes vary; below assumes data.rates or data is array. We'll try to adapt:
+      if (data && data.rates) {
+        fxRates = data.rates;
+      } else if (Array.isArray(data)) {
+        // If it's array of tickers
         fxRates = {};
-        currencySymbols.forEach(sym => {
-          const rateObj = data.find(r => r.ticker === `USD${sym}.FOREX`);
-          if (rateObj) fxRates[sym] = rateObj.close;
-        });
-        // Populate dropdown
-        fx_currency.innerHTML = currencySymbols.map(c => `<option>${c}</option>`).join("");
-      } catch (err) {
-        console.error("FX fetch failed", err);
+        for (const it of data) {
+          // possible item.ticker: "USDZAR.FOREX" or ticker and close
+          if (it.ticker && it.close) {
+            const match = it.ticker.match(/^USD([A-Z]+)\.FOREX$/);
+            if (match) fxRates[match[1]] = it.close;
+          }
+        }
+      } else {
+        // fallback
+        fxRates = { ZAR: 19, USD: 1, BWP: 13, MZN: 63, XDR: 0.72, XAU: 0.00057 };
       }
+    }catch(e){
+      console.error("FX error", e);
+      fxRates = { ZAR: 19, USD: 1, BWP: 13, MZN: 63, XDR: 0.72, XAU: 0.00057 };
     }
+    const sel = document.getElementById("fx_currency");
+    sel.innerHTML = currencySymbols.map(c => `<option value="${c}">${c} (${fxRates[c] ? fxRates[c] : 'n/a'})</option>`).join("");
+  }
 
-    function register() {
-      const name = r_name.value, email = r_email.value, phone = r_phone.value, password = r_pass.value;
-      if (!name || !email || !phone || !password) return alert("Fill all fields");
-      if (users.find(u => u.email === email)) return alert("User already exists!");
-      const wallet = { address: "0x" + Math.random().toString(16).substr(2,40), balance: 200 }; // USD 200
-      users.push({ name, email, phone, password, wallet });
-      alert("Registered successfully! You got USD 200.");
-    }
+  // register
+  async function register(){
+    const name = document.getElementById("r_name").value;
+    const email = document.getElementById("r_email").value;
+    const phone = document.getElementById("r_phone").value;
+    const password = document.getElementById("r_pass").value;
+    const res = await fetch("/api/register", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name, email, phone, password })});
+    const data = await res.json();
+    if (data.success) { alert("Registered"); currentUser = email; refreshWallet(); loadTxs(); }
+    else alert(data.error || "Register failed");
+  }
 
-    function login() {
-      const email = l_email.value, password = l_pass.value;
-      const u = users.find(u => u.email===email && u.password===password);
-      if (!u) return alert("Invalid credentials");
-      currentUser = u;
-      refreshWallet();
-    }
+  async function login(){
+    const email = document.getElementById("l_email").value;
+    const password = document.getElementById("l_pass").value;
+    const res = await fetch("/api/login", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ email, password })});
+    const data = await res.json();
+    if (data.success) { currentUser = email; refreshWallet(); loadTxs(); alert("Logged in"); }
+    else alert(data.error || "Login failed");
+  }
 
-    function refreshWallet() {
-      if (!currentUser) return wallet_info.innerText = "Not logged in";
-      wallet_info.innerText = `Address: ${currentUser.wallet.address}\nBalance: USD ${currentUser.wallet.balance.toFixed(2)}`;
-    }
+  async function refreshWallet(){
+    if (!currentUser) { wallet_info.innerText = "Not logged in"; return; }
+    const r = await fetch(`/api/wallet/${currentUser}`);
+    const data = await r.json();
+    if (data.error) { wallet_info.innerText = data.error; return; }
+    wallet_info.innerText = `Address: ${data.address}\nBalance: USD ${Number(data.balance).toFixed(2)}`;
+  }
 
-    function send() {
-      if (!currentUser) return alert("Login first");
-      const toAddress = to_addr.value, amount = parseFloat(to_amt.value);
-      if (!toAddress || isNaN(amount)) return alert("Fill all fields");
-      if (currentUser.wallet.balance < amount) return alert("Insufficient funds");
-      currentUser.wallet.balance -= amount;
-      send_res.innerText = `Sent USD ${amount.toFixed(2)} to ${toAddress}`;
-      refreshWallet();
-    }
+  async function send(){
+    if (!currentUser) return alert("Login first");
+    const toAddr = document.getElementById("to_addr").value;
+    const amt = parseFloat(document.getElementById("to_amt").value);
+    if (!toAddr || isNaN(amt)) return alert("Fill fields");
+    const res = await fetch("/api/send", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ fromEmail: currentUser, toAddr, amount: amt })});
+    const data = await res.json();
+    send_res.innerText = JSON.stringify(data,null,2);
+    refreshWallet();
+    loadTxs();
+  }
 
-    function transferToBank() {
-      if (!currentUser) return alert("Login first");
-      const acc = bank_acc.value, amount = parseFloat(fx_amount.value), targetCur = fx_currency.value;
-      if (!acc || isNaN(amount)) return alert("Fill all fields");
-      if (currentUser.wallet.balance < amount) return alert("Insufficient funds");
-      if (!fxRates[targetCur]) return alert("FX rate not available");
+  async function transferToBank(){
+    if (!currentUser) return alert("Login first");
+    const acc = document.getElementById("bank_acc").value;
+    const amt = parseFloat(document.getElementById("fx_amount").value);
+    const cur = document.getElementById("fx_currency").value;
+    if (!acc || isNaN(amt)) return alert("Fill fields");
+    const res = await fetch("/api/transfer-to-bank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ fromEmail: currentUser, bankAccountNumber: acc, amount: amt, targetCurrency: cur })});
+    const data = await res.json();
+    bank_res.innerText = JSON.stringify(data,null,2);
+    refreshWallet();
+    loadTxs();
+  }
 
-      currentUser.wallet.balance -= amount;
-      const converted = (amount * fxRates[targetCur]).toFixed(2);
-      bank_res.innerText = `Transferred USD ${amount.toFixed(2)} (~${converted} ${targetCur}) to bank account ${acc}`;
-      refreshWallet();
-    }
+  async function loadTxs(){
+    if (!currentUser) return;
+    const res = await fetch(`/api/txs/${currentUser}`);
+    const list = await res.json();
+    const tbody = document.querySelector("#tx_table tbody");
+    tbody.innerHTML = "";
+    list.forEach(tx => {
+      const tr = document.createElement("tr");
+      const created = new Date(tx.CreatedAt).toLocaleString();
+      tr.innerHTML = `
+        <td class="small">${tx.TxId}</td>
+        <td class="small">${tx.Type}</td>
+        <td class="small">${Number(tx.Amount).toFixed(2)}</td>
+        <td class="small">${tx.Currency}</td>
+        <td class="small">${tx.Status}</td>
+        <td class="small">${created}</td>
+        <td><button onclick="downloadPDF('${tx.TxId}')">PDF</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 
-    function openSwap() {
-      if (!currentUser) return alert("Login first");
-      const usdAmount = 50; // Example fixed MoonPay purchase
-      const url = `https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=eth&walletAddress=${currentUser.wallet.address}&baseCurrencyAmount=${usdAmount}&baseCurrencyCode=usd`;
-      window.open(url,"_blank");
-    }
+  async function downloadPDF(txid){
+    const resp = await fetch(`/api/txs/${txid}/pdf`);
+    if (!resp.ok) { alert("PDF failed"); return; }
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transaction-${txid}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  }
 
-    // Load FX on start
-    loadRates();
-  </script>
+  // MoonPay buy example: record a purchase tx (simulate)
+  async function buyViaMoonPay(){
+    if (!currentUser) return alert("Login first");
+    // In production, redirect to /api/moonpay-url and wait webhook to credit
+    // For prototype we simulate a USD 50 purchase and credit user
+    const purchaseAmount = 50;
+    // call backend to increment balance (we'll insert a transaction)
+    // For simplicity we simulate by calling send with fromEmail = 'SYSTEM' or create a special endpoint
+    const res = await fetch("/api/send", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ fromEmail: currentUser, toAddr: "MOONPAY_PURCHASE", amount: -purchaseAmount })});
+    // Note: In real flow, MoonPay would call webhook to update DB. Here we simulate client-side just for demo.
+    await refreshWallet();
+    await loadTxs();
+  }
+
+  // start
+  loadRates();
+  setInterval(loadRates, 1000 * 60 * 5); // refresh FX every 5 min
+</script>
 </body>
 </html>

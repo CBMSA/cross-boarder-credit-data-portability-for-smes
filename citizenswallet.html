@@ -15,6 +15,7 @@
     table { width:100%; border-collapse:collapse; margin-top:10px }
     th, td { padding:8px; border-bottom:1px solid #eee; text-align:left }
     .small { font-size:13px; color:#333 }
+    .rate-box { font-size:14px; padding:6px; background:#eef; border-radius:6px; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -57,6 +58,7 @@
     <input id="fx_amount" placeholder="Amount (USD)" type="number">
     <button onclick="transferToBank()">Transfer to Bank</button>
     <pre id="bank_res"></pre>
+    <div id="fx_display" class="rate-box">FX Rates loading...</div>
   </div>
 
   <div class="box">
@@ -80,7 +82,8 @@
   // Load exchange rates
   async function loadRates(){
     try{
-      const resp = await fetch(`https://eodhd.com/api/real-time/USD.ZAR,USD.BWP,USD.MZN,USD.XDR,USD.XAU?api_token=${eodhdToken}&fmt=json`);
+      const url = `https://eodhd.com/api/real-time/USD.ZAR,USD.BWP,USD.MZN,USD.XDR,USD.XAU?api_token=${eodhdToken}&fmt=json`;
+      const resp = await fetch(url);
       const data = await resp.json();
       fxRates = { USD:1 };
       data.forEach(it=>{
@@ -93,6 +96,9 @@
     }
     const sel = document.getElementById("fx_currency");
     sel.innerHTML = currencySymbols.map(c => `<option value="${c}">${c} (${fxRates[c]||'n/a'})</option>`).join("");
+
+    document.getElementById("fx_display").innerText =
+      "💱 Live FX: " + currencySymbols.map(c=>`1 USD = ${(fxRates[c]||'n/a')} ${c}`).join(" | ");
   }
 
   function getUsers(){ return JSON.parse(localStorage.getItem(USERS_KEY)) || {}; }

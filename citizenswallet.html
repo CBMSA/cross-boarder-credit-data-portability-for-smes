@@ -1,26 +1,26 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Sadicoin Wallet — Full Prototype</title>
+  <title>Sadicoin Wallet (Full Prototype)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial; margin:20px; background:#f6f9fc; }
-    h1 { text-align:center; color:#2a4d8f; }
-    .box { background:#fff; padding:16px; border-radius:8px; max-width:800px; margin:12px auto; box-shadow:0 3px 6px rgba(0,0,0,.08) }
-    input, button, select { width:100%; padding:10px; margin:8px 0; font-size:14px; }
-    button { cursor:pointer; background:#2a4d8f; color:#fff; border:none; border-radius:6px; }
-    button:hover { background:#1c3360; }
-    table { width:100%; border-collapse:collapse; margin-top:10px }
-    th, td { padding:8px; border-bottom:1px solid #eee; text-align:left }
-    .small { font-size:13px; color:#333 }
-    .rate-box { font-size:14px; padding:6px; background:#eef; border-radius:6px; margin-top:10px; }
+    body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
+    h1 { color: #2a4d8f; }
+    .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 650px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    input, button, select { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
+    button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1c3360; }
+    pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #2a4d8f; color: #fff; }
   </style>
 </head>
 <body>
-  <h1>💳 Sadicoin Wallet — USD Prototype</h1>
+  <h1>💳 Sadicoin Wallet Prototype</h1>
 
+  <!-- Register -->
   <div class="box">
     <h3>Register</h3>
     <input id="r_name" placeholder="Name">
@@ -30,6 +30,7 @@
     <button onclick="register()">Register (Get USD 200)</button>
   </div>
 
+  <!-- Login -->
   <div class="box">
     <h3>Login</h3>
     <input id="l_email" placeholder="Email">
@@ -37,168 +38,190 @@
     <button onclick="login()">Login</button>
   </div>
 
+  <!-- Wallet -->
   <div class="box">
     <h3>Wallet</h3>
     <pre id="wallet_info">Not logged in</pre>
     <button onclick="refreshWallet()">Refresh</button>
   </div>
 
+  <!-- Send -->
   <div class="box">
-    <h3>Send</h3>
+    <h3>Send USD</h3>
     <input id="to_addr" placeholder="Recipient address">
     <input id="to_amt" placeholder="Amount (USD)" type="number">
     <button onclick="send()">Send</button>
     <pre id="send_res"></pre>
   </div>
 
+  <!-- Bank Transfer -->
   <div class="box">
-    <h3>Transfer to Bank</h3>
-    <input id="bank_acc" placeholder="Bank account number / IBAN">
-    <select id="fx_currency"></select>
-    <input id="fx_amount" placeholder="Amount (USD)" type="number">
-    <button onclick="transferToBank()">Transfer to Bank</button>
+    <h3>Bank Transfer</h3>
+    <input id="bank_name" placeholder="Bank Name">
+    <input id="bank_acc" placeholder="Account Number / IBAN">
+    <select id="bank_currency">
+      <option value="ZAR">ZAR (South Africa)</option>
+      <option value="BWP">BWP (Botswana)</option>
+      <option value="MZN">MZN (Mozambique)</option>
+      <option value="USD">USD</option>
+    </select>
+    <input id="bank_amt" placeholder="Amount (USD)" type="number">
+    <button onclick="bankTransfer()">Transfer</button>
     <pre id="bank_res"></pre>
-    <div id="fx_display" class="rate-box">FX Rates loading...</div>
   </div>
 
+  <!-- Transactions -->
   <div class="box">
     <h3>Transactions</h3>
-    <table id="tx_table">
-      <thead><tr><th>TxId</th><th>Type</th><th>Amount</th><th>Currency</th><th>Status</th><th>When</th><th>PDF</th></tr></thead>
-      <tbody></tbody>
+    <table>
+      <thead>
+        <tr>
+          <th>TxID</th><th>Type</th><th>Amount</th><th>Currency</th><th>Status</th><th>Date</th><th>Receipt</th>
+        </tr>
+      </thead>
+      <tbody id="tx_table"></tbody>
     </table>
   </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script>
-  const USERS_KEY = "sadi_users";
-  const TXS_KEY = "sadi_txs";
-  let currentUser = null;
+  <!-- MoonPay -->
+  <div class="box">
+    <h3>MoonPay Swap</h3>
+    <button onclick="openSwap()">Swap with MoonPay</button>
+  </div>
 
-  const currencySymbols = ["ZAR","USD","BWP","MZN","XDR","XAU"];
-  const eodhdToken = "67b2d451e5b8a8.90504186";
-  let fxRates = {};
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    // 🔑 API Config
+    const eodhdToken = "67b2d451e5b8a8.90504186";
+    const currencySymbols = ["ZAR","USD","BWP","MZN","XDR","XAU"];
 
-  // Load exchange rates
-  async function loadRates(){
-    try{
-      const url = `https://eodhd.com/api/real-time/USD.ZAR,USD.BWP,USD.MZN,USD.XDR,USD.XAU?api_token=${eodhdToken}&fmt=json`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      fxRates = { USD:1 };
-      data.forEach(it=>{
-        const cur = it.code.replace("USD","").replace(".FOREX","");
-        fxRates[cur] = it.close;
-      });
-    }catch(e){
-      console.warn("FX API failed, using fallback", e);
-      fxRates = { USD:1, ZAR:19, BWP:13, MZN:63, XDR:0.72, XAU:0.00057 };
+    // 🔹 Local simulation
+    let users = JSON.parse(localStorage.getItem("users")||"[]");
+    let currentUser = null;
+    let rates = {};
+
+    // ✅ Register
+    function register() {
+      const name=r_name.value,email=r_email.value,phone=r_phone.value,password=r_pass.value;
+      if(!name||!email||!phone||!password) return alert("Fill all fields");
+      if(users.find(u=>u.email===email)) return alert("User already exists!");
+      const wallet={address:"0x"+Math.random().toString(16).substr(2,40),balance:200};
+      users.push({name,email,phone,password,wallet,txs:[]});
+      localStorage.setItem("users",JSON.stringify(users));
+      alert("Registered successfully! You got USD 200.");
     }
-    const sel = document.getElementById("fx_currency");
-    sel.innerHTML = currencySymbols.map(c => `<option value="${c}">${c} (${fxRates[c]||'n/a'})</option>`).join("");
 
-    document.getElementById("fx_display").innerText =
-      "💱 Live FX: " + currencySymbols.map(c=>`1 USD = ${(fxRates[c]||'n/a')} ${c}`).join(" | ");
-  }
+    // ✅ Login
+    function login() {
+      const email=l_email.value,password=l_pass.value;
+      const u=users.find(u=>u.email===email&&u.password===password);
+      if(!u) return alert("Invalid credentials");
+      currentUser=u; refreshWallet(); renderTx();
+    }
 
-  function getUsers(){ return JSON.parse(localStorage.getItem(USERS_KEY)) || {}; }
-  function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
-  function getTxs(){ return JSON.parse(localStorage.getItem(TXS_KEY)) || []; }
-  function saveTxs(t){ localStorage.setItem(TXS_KEY, JSON.stringify(t)); }
+    // ✅ Wallet
+    async function refreshWallet() {
+      if(!currentUser) return wallet_info.innerText="Not logged in";
+      await fetchRates();
+      let info=`Address: ${currentUser.wallet.address}\nBalance: USD ${currentUser.wallet.balance.toFixed(2)}\n\nLive FX:\n`;
+      for(const c of currencySymbols){
+        if(c==="USD") continue;
+        let val=(currentUser.wallet.balance*(rates[c]||0)).toFixed(2);
+        info+=`${c}: ${val}\n`;
+      }
+      wallet_info.innerText=info;
+    }
 
-  function generateTxId(){ return "tx_" + Math.random().toString(36).substr(2,9); }
+    // ✅ Fetch Rates
+    async function fetchRates() {
+      try {
+        const url=`https://eodhd.com/api/forex-rates?api_token=${eodhdToken}&fmt=json`;
+        const res=await fetch(url); const data=await res.json();
+        rates={};
+        currencySymbols.forEach(c=>{
+          if(c==="USD"){rates[c]=1;}
+          else {
+            let r=data.find(d=>d.ticker===`USD/${c}`);
+            if(r) rates[c]=r.close;
+          }
+        });
+      } catch(e){ console.error("FX error",e); }
+    }
 
-  function register(){
-    const name = r_name.value, email = r_email.value.toLowerCase(), phone = r_phone.value, password = r_pass.value;
-    if (!name||!email||!phone||!password) return alert("Fill all fields");
-    let users = getUsers();
-    if (users[email]) return alert("User exists!");
-    users[email] = { name,email,phone,password,wallet:{ address:"0x"+Math.random().toString(16).substr(2,40), balance:200 }};
-    saveUsers(users);
-    alert("Registered! You got USD 200.");
-  }
+    // ✅ Send
+    function send() {
+      if(!currentUser) return alert("Login first");
+      const to=to_addr.value,amt=parseFloat(to_amt.value);
+      if(!to||isNaN(amt)) return alert("Fill all fields");
+      if(currentUser.wallet.balance<amt) return alert("Insufficient funds");
+      currentUser.wallet.balance-=amt;
+      const tx=makeTx("SEND",amt,"USD","Success");
+      currentUser.txs.push(tx); save(); renderTx(); refreshWallet();
+      send_res.innerText=`Sent USD ${amt.toFixed(2)} to ${to}`;
+    }
 
-  function login(){
-    const email = l_email.value.toLowerCase(), password = l_pass.value;
-    let users = getUsers();
-    if (!users[email] || users[email].password!==password) return alert("Invalid login");
-    currentUser=email; refreshWallet(); loadTxs(); alert("Logged in");
-  }
+    // ✅ Bank Transfer
+    function bankTransfer() {
+      if(!currentUser) return alert("Login first");
+      const bank=bank_name.value,acc=bank_acc.value,curr=bank_currency.value,amt=parseFloat(bank_amt.value);
+      if(!bank||!acc||isNaN(amt)) return alert("Fill all fields");
+      if(currentUser.wallet.balance<amt) return alert("Insufficient funds");
+      const rate=rates[curr]||1, converted=(amt*rate).toFixed(2);
+      currentUser.wallet.balance-=amt;
+      const tx=makeTx("BANK_TRANSFER",amt,curr,"Pending");
+      currentUser.txs.push(tx); save(); renderTx(); refreshWallet();
+      bank_res.innerText=`Transfer of USD ${amt.toFixed(2)} (${converted} ${curr}) initiated to ${bank} - ${acc}`;
+      setTimeout(()=>{ tx.status="Success"; save(); renderTx(); },3000); // simulate async
+    }
 
-  function refreshWallet(){
-    if (!currentUser){ wallet_info.innerText="Not logged in"; return; }
-    let u=getUsers()[currentUser];
-    wallet_info.innerText=`Address: ${u.wallet.address}\nBalance: USD ${u.wallet.balance.toFixed(2)}`;
-  }
+    // ✅ Transaction Utility
+    function makeTx(type,amount,currency,status){
+      return {id:"TX"+Math.random().toString(36).substr(2,9).toUpperCase(),
+              type,amount,currency,status,date:new Date().toLocaleString()};
+    }
 
-  function recordTx(type,amount,currency,status){
-    const txs=getTxs();
-    const tx={ TxId:generateTxId(), Type:type, Amount:amount, Currency:currency, Status:status, CreatedAt:new Date().toISOString(), User:currentUser };
-    txs.push(tx); saveTxs(txs); loadTxs();
-  }
+    function renderTx() {
+      if(!currentUser) return;
+      tx_table.innerHTML=currentUser.txs.map(tx=>
+        `<tr>
+          <td>${tx.id}</td>
+          <td>${tx.type}</td>
+          <td>${tx.amount}</td>
+          <td>${tx.currency}</td>
+          <td>${tx.status}</td>
+          <td>${tx.date}</td>
+          <td><button onclick="genPDF('${tx.id}')">PDF</button></td>
+        </tr>`
+      ).join("");
+    }
 
-  function send(){
-    if (!currentUser) return alert("Login first");
-    const to=to_addr.value, amt=parseFloat(to_amt.value);
-    if(!to||isNaN(amt)) return alert("Fill fields");
-    let users=getUsers(); let u=users[currentUser];
-    if(u.wallet.balance<amt) return alert("Insufficient funds");
-    u.wallet.balance-=amt; saveUsers(users);
-    send_res.innerText=`Sent USD ${amt.toFixed(2)} to ${to}`;
-    recordTx("Send",amt,"USD","Success");
-    refreshWallet();
-  }
+    function save(){ localStorage.setItem("users",JSON.stringify(users)); }
 
-  function transferToBank(){
-    if (!currentUser) return alert("Login first");
-    const acc=bank_acc.value, amt=parseFloat(fx_amount.value), cur=fx_currency.value;
-    if(!acc||isNaN(amt)) return alert("Fill fields");
-    let users=getUsers(); let u=users[currentUser];
-    if(u.wallet.balance<amt) return alert("Insufficient funds");
-    u.wallet.balance-=amt; saveUsers(users);
-    const converted=(amt* (fxRates[cur]||1)).toFixed(2);
-    bank_res.innerText=`Transferred ${amt} USD (~${converted} ${cur}) to bank account ${acc}`;
-    recordTx("Bank Transfer",amt,cur,"Pending");
-    refreshWallet();
-  }
+    // ✅ PDF Receipts
+    async function genPDF(id){
+      const tx=currentUser.txs.find(t=>t.id===id);
+      const { jsPDF }=window.jspdf;
+      const doc=new jsPDF();
+      doc.text("Sadicoin Wallet - Transaction Receipt",20,20);
+      doc.text(`Transaction ID: ${tx.id}`,20,40);
+      doc.text(`Type: ${tx.type}`,20,50);
+      doc.text(`Amount: ${tx.amount} ${tx.currency}`,20,60);
+      doc.text(`Status: ${tx.status}`,20,70);
+      doc.text(`Date: ${tx.date}`,20,80);
+      doc.save(`receipt_${tx.id}.pdf`);
+    }
 
-  function loadTxs(){
-    if(!currentUser) return;
-    const txs=getTxs().filter(t=>t.User===currentUser);
-    const tbody=document.querySelector("#tx_table tbody");
-    tbody.innerHTML="";
-    txs.forEach(tx=>{
-      const tr=document.createElement("tr");
-      tr.innerHTML=`
-        <td class="small">${tx.TxId}</td>
-        <td class="small">${tx.Type}</td>
-        <td class="small">${tx.Amount.toFixed(2)}</td>
-        <td class="small">${tx.Currency}</td>
-        <td class="small">${tx.Status}</td>
-        <td class="small">${new Date(tx.CreatedAt).toLocaleString()}</td>
-        <td><button onclick="downloadPDF('${tx.TxId}')">PDF</button></td>`;
-      tbody.appendChild(tr);
-    });
-  }
+    // ✅ MoonPay
+    function openSwap(){
+      if(!currentUser) return alert("Login first");
+      const usd=currentUser.wallet.balance;
+      const url=`https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=usd&walletAddress=${currentUser.wallet.address}&baseCurrencyAmount=${usd}`;
+      window.open(url,"_blank");
+    }
 
-  async function downloadPDF(txid){
-    const { jsPDF } = window.jspdf;
-    const tx = getTxs().find(t=>t.TxId===txid);
-    if(!tx) return alert("Tx not found");
-    const doc=new jsPDF();
-    doc.text("Sadicoin Wallet — Transaction Receipt",10,10);
-    doc.text(`TxId: ${tx.TxId}`,10,20);
-    doc.text(`Type: ${tx.Type}`,10,30);
-    doc.text(`Amount: ${tx.Amount} ${tx.Currency}`,10,40);
-    doc.text(`Status: ${tx.Status}`,10,50);
-    doc.text(`Date: ${new Date(tx.CreatedAt).toLocaleString()}`,10,60);
-    doc.save(`transaction-${tx.TxId}.pdf`);
-  }
-
-  // Init
-  loadRates();
-  setInterval(loadRates,1000*60*5);
-</script>
+    // Auto-refresh rates
+    setInterval(fetchRates,300000);
+  </script>
 </body>
 </html>
 

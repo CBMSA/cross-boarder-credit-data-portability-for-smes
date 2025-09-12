@@ -170,3 +170,211 @@
 </html>
 
 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sadicoin Treasures Wallet</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body{font-family:Segoe UI;padding:20px;background:#f9f9f9}
+    .logo{height:60px}
+  </style>
+</head>
+<body>
+  <header class="d-flex align-items-center justify-content-between mb-4">
+    <img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
+    <h3>SADC Wallet - Web3</h3>
+  </header>
+
+  <nav class="mb-4">
+    <button id="connectBtn" class="btn btn-primary">Connect Wallet</button>
+    <span id="account" class="ms-3 text-monospace"></span>
+  </nav>
+
+  <div id="app" style="display:none;">
+    <div class="card p-3 mb-3">
+      <h5>Your SADI Balance</h5>
+      <p id="tokenBalance">-</p>
+      <p id="nativeBalance">-</p>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h5>Transfer SADI</h5>
+      <input id="to" class="form-control mb-2" placeholder="Recipient address"/>
+      <input id="amount" type="number" class="form-control mb-2" placeholder="Amount (SADI)"/>
+      <button id="sendBtn" class="btn btn-success w-100">Send</button>
+      <div id="txStatus" class="mt-2"></div>
+      <div id="qr"></div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h5>Market Data</h5>
+      <button id="priceBtn" class="btn btn-outline-primary mb-2">Get 1 SADI → ZAR (CoinMarketCap)</button>
+      <div id="cmcResult"></div>
+      <button id="ratesBtn" class="btn btn-outline-secondary mt-2">Get Live Exchange Rates</button>
+      <div id="ratesResult"></div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <h5>MoonPay Swap (overlay)</h5>
+      <input id="mp_from" class="form-control mb-2" placeholder="From (e.g. SADI)"/>
+      <input id="mp_to" class="form-control mb-2" placeholder="To (e.g. USD)"/>
+      <input id="mp_amount" type="number" class="form-control mb-2" placeholder="Amount"/>
+      <button id="mp_btn" class="btn btn-warning w-100">Open MoonPay (publishable key used client-side)</button>
+    </div>
+  </div>
+
+  <footer class="mt-5 text-center">
+    <p>&copy; 2025 SCB - SadiCoin</p>
+  </footer>
+
+<script>
+/* --------- CONFIG (fill after deployment) ----------
+   Replace with your deployed contract address and chain id (e.g., 137 = Polygon, 80001 = Mumbai)
+   This script expects server endpoints:
+     GET /api/cmc-price  -> returns { priceZAR: number, symbol: "SADI" }
+     GET /api/rates     -> returns { rates: { USDZAR: x, ... } }
+   Server will use your API keys from .env
+*/
+const CONFIG = {
+  CONTRACT_ADDRESS: "REPLACE_WITH_DEPLOYED_CONTRACT_ADDRESS",
+  CHAIN_ID: 80001, // example: Mumbai testnet
+  TOKEN_DECIMALS: 18,
+  MOONPAY_PUBLISHABLE: "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k" // public key - ok client-side
+};
+/* -------------------------------------------------- */
+
+let provider, signer, account;
+const tokenAbi = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function balanceOf(address) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)"
+];
+
+async function init() {
+  const connectBtn = document.getElementById('connectBtn');
+  connectBtn.onclick = connectWallet;
+
+  document.getElementById('sendBtn').onclick = sendToken;
+  document.getElementById('priceBtn').onclick = getCmcPrice;
+  document.getElementById('ratesBtn').onclick = getRates;
+  document.getElementById('mp_btn').onclick = openMoonPay;
+}
+
+async function connectWallet(){
+  if (!window.ethereum) return alert("Please install MetaMask or another injected wallet.");
+  provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = await provider.getSigner();
+  account = await signer.getAddress();
+  document.getElementById('account').innerText = account;
+  document.getElementById('app').style.display = 'block';
+  refreshBalances();
+}
+
+async function refreshBalances(){
+  // native balance
+  const bal = await provider.getBalance(account);
+  document.getElementById('nativeBalance').innerText = `Native: ${ethers.formatEther(bal)} ETH (or native)`;
+
+  // token balance
+  const token = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, tokenAbi, provider);
+  const raw = await token.balanceOf(account);
+  const decimals = CONFIG.TOKEN_DECIMALS;
+  const human = Number(ethers.formatUnits(raw, decimals));
+  document.getElementById('tokenBalance').innerText = `${human.toLocaleString()} SADI`;
+}
+
+async function sendToken(){
+  const to = document.getElementById('to').value.trim();
+  const amount = Number(document.getElementById('amount').value);
+  if (!ethers.isAddress(to)) return alert("Invalid recipient address");
+  if (!amount || amount <= 0) return alert("Invalid amount");
+
+  const tokenWithSigner = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, tokenAbi, signer);
+  const decimals = CONFIG.TOKEN_DECIMALS;
+  const amountUnits = ethers.parseUnits(amount.toString(), decimals);
+
+  try {
+    const tx = await tokenWithSigner.transfer(to, amountUnits);
+    document.getElementById('txStatus').innerText = `Tx sent: ${tx.hash}. Waiting for confirmation...`;
+    const receipt = await tx.wait();
+    document.getElementById('txStatus').innerText = `Tx confirmed: ${receipt.transactionHash}`;
+    document.getElementById('qr').innerHTML = "";
+    new QRCode(document.getElementById('qr'), receipt.transactionHash);
+    refreshBalances();
+  } catch (err) {
+    console.error(err);
+    alert("Transfer failed: " + (err?.message || err));
+  }
+}
+
+/* Market endpoints (server) */
+async function getCmcPrice(){
+  const res = await fetch('/api/cmc-price');
+  if (!res.ok) return alert('Price request failed');
+  const js = await res.json();
+  document.getElementById('cmcResult').innerText = `1 SADI = ZAR ${js.priceZAR}`;
+}
+
+async function getRates(){
+  const res = await fetch('/api/rates');
+  if (!res.ok) return alert('Rates request failed');
+  const js = await res.json();
+  const container = document.getElementById('ratesResult');
+  container.innerHTML = '';
+  Object.entries(js.rates || {}).forEach(([k,v]) => {
+    const p = document.createElement('p');
+    p.innerText = `${k}: ${v}`;
+    container.appendChild(p);
+  });
+}
+
+/* MoonPay overlay — uses publishable key */
+async function openMoonPay(){
+  const from = document.getElementById('mp_from').value.trim().toUpperCase();
+  const to = document.getElementById('mp_to').value.trim().toUpperCase();
+  const amt = document.getElementById('mp_amount').value;
+  if (!from || !to || !amt) return alert("Enter from/to/amount");
+
+  // load MoonPay sdk
+  const script = document.createElement('script');
+  script.src = "https://buy.moonpay.com/js/sdk/latest.js";
+  script.onload = () => {
+    try {
+      const MoonPay = window.MoonPay;
+      const inst = new MoonPay({
+        apiKey: CONFIG.MOONPAY_PUBLISHABLE,
+        environment: 'production',
+        flow: 'swap',
+        variant: 'overlay',
+        params: {
+          baseCurrencyCode: from,
+          baseCurrencyAmount: amt,
+          defaultCurrencyCode: to
+        }
+      });
+      inst.show();
+    } catch(e) {
+      console.error(e);
+      alert("MoonPay failed to open.");
+    }
+  };
+  script.onerror = () => alert("Could not load MoonPay SDK.");
+  document.body.appendChild(script);
+}
+
+init();
+</script>
+</body>
+</html>
+

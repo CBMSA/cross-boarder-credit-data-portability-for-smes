@@ -1,152 +1,470 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SadiCoin Wallet (Web3)</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-</head>
-<body class="container py-4">
-  <h2 class="mb-3">🌍 SadiCoin Web3 Wallet</h2>
+<!DOCTYPE html><html lang="en"><head>  <meta charset="UTF-8" />  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>  <title>Sadicoin Treasures Wallet</title>  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>  <style>
+  
+    body { font-family: 'Segoe UI'; padding: 20px; background-color: #f9f9f9; }
+  
+    nav a { margin-right: 15px; text-decoration: none; color: #0d6efd; font-weight: bold; }
+  
+    .logo { height: 60px; }
+  
+  </style></head><body>  <header class="d-flex align-items-center justify-content-between mb-4"><img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
 
-  <button class="btn btn-primary mb-3" onclick="connectWallet()">Connect MetaMask</button>
-  <p id="walletAddress" class="fw-bold text-success"></p>
-  <p>Balance: <span id="balance">0</span> SADI</p>
+<h3>SADC Wallet</h3>
 
-  <div class="card p-3 mb-3">
-    <h5>Send SadiCoin</h5>
-    <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address"/>
-    <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADI)"/>
-    <button class="btn btn-dark w-100" onclick="sendTransaction()">Send</button>
-    <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
-  </div>
+  </header>  <nav class="mb-4"><a href="#register" class="btn">Register</a>
 
-  <div class="card p-3 mb-3">
-    <h5>Transaction History</h5>
-    <ul id="txHistory" class="list-group"></ul>
-    <button class="btn btn-outline-secondary mt-3" onclick="generatePDF()">Download PDF Report</button>
-  </div>
+<a href="#login" class="btn">Login</a>
 
-  <script>
-    let web3;
-    let contract;
-    let accounts;
+<a href="#transactions" class="btn">Transactions</a>
+
+<a href="#exchange" class="btn">Exchange Rates</a>
+
+<a href="index.html" class="btn">Home</a>|
+
+<a href="photochatmeetings.html"class="btn">Chat Business</a>|
+
+<a href="sadccbdc.html" class="btn">Treasures PORTAL </a>|
+
+<a href="transactions.html" class="btn">SADC Gov SMEs Grants</a>|
+
+<a href="tokenizedbond.html">Tokenized Bond Wallet</a> |  
+
+<a href="sad banknotes.html">Our Banknotes and coins</a>
+
+  </nav>  <!-- Registration -->  <div id="register"><h4>Account Registration</h4>
+
+<select id="role" class="form-control mb-2">
+
+  <option value="user">User</option>
+
+  <option value="srb_admin">SRB Admin</option>
+
+  <option value="regional_bank">Regional Central Bank</option>
+
+  <option value="national_treasury">National Treasury</option>
+
+</select>
+
+<input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
+
+<input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
+
+<input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
+
+<input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
+
+<button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
+
+  </div>  <!-- Login -->  <div id="login" class="mt-5"><h4>Login</h4>
+
+<input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
+
+<input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
+
+<button class="btn btn-success w-100" onclick="loginUser()">Login</button>
+
+<p id="loginError" class="text-danger"></p>
+
+  </div>  <!-- Transactions -->  <div id="transactions" class="mt-5" style="display:none;"><h4>Send SADICOIN</h4>
+
+<p>Balance: <span id="balance">SADICOIN 0</span></p>
+
+<input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
+
+<input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
+
+<button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
+
+<div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
+
+<div id="qr"></div>
+
+<button class="btn btn-outline-secondary mt-3" onclick="generatePDF()">Download PDF Report</button>
+
+
+
+<hr>
+
+<div id="conversion" class="mt-4">
+
+  <h5>Currency & Asset Conversion</h5>
+
+  <p>USD Value: <strong id="usdValue">-</strong></p>
+
+  <p>SPY ETF Units: <strong id="spyValue">-</strong></p>
+
+  <p>Gold (Ounces): <strong id="goldValue">-</strong></p>
+
+</div>
+
+  </div>  <!-- MoonPay Swap -->  <div id="swap" class="mt-5"><h4>Swap SADICOIN</h4>
+
+<div class="mb-2">
+
+  <input type="text" id="swap_from" class="form-control mb-2" placeholder="From Currency (e.g., SADI)">
+
+  <input type="text" id="swap_to" class="form-control mb-2" placeholder="To Currency (e.g., USD)">
+
+  <input type="number" id="swap_amt" class="form-control mb-2" placeholder="Amount">
+
+  <button class="btn btn-warning w-100" onclick="openSwap()">Swap via MoonPay</button>
+
+</div>
+
+  </div>  <!-- CoinMarketCap Price -->  <div class="card p-3 mb-4"><h6>Market Price (via CoinMarketCap)</h6>
+
+<button class="btn btn-outline-primary w-100 mb-2" onclick="getMarketPrice()">Get SADICoin/ZAR</button>
+
+<div id="cmcPriceResult" class="text-primary fw-bold text-center"></div>
+
+  </div>  <!-- Live Exchange Rates -->  <div id="exchange" class="mt-5"><h4>Live Exchange Rates</h4>
+
+<div id="rates"></div>
+
+  </div>  <footer class="mt-5 text-center"><p>&copy; 2025 SCB - SadiCoin. All rights reserved. Licensed and regulated by SCB.</p>
+
+  </footer>  <script>
+  
+    let users = {};
+  
+    let currentUser = null;
+  
     let txHistory = [];
+  
+    const apiKey = '67b2d451e5b8a8.90504186';
+  
 
-    // 📌 Replace with your deployed contract address + ABI
-    const contractAddress = "YOUR_DEPLOYED_CONTRACT_ADDRESS";
-    const contractABI = [
-      {
-        "inputs": [{"internalType":"address","name":"_treasury","type":"address"}],
-        "stateMutability":"nonpayable","type":"constructor"
-      },
-      {"anonymous":false,"inputs":[
-        {"indexed":true,"internalType":"address","name":"from","type":"address"},
-        {"indexed":true,"internalType":"address","name":"to","type":"address"},
-        {"indexed":false,"internalType":"uint256","name":"taxAmount","type":"uint256"}
-      ],"name":"TaxTaken","type":"event"},
-      {"anonymous":false,"inputs":[
-        {"indexed":true,"internalType":"address","name":"from","type":"address"},
-        {"indexed":true,"internalType":"address","name":"to","type":"address"},
-        {"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}
-      ],"name":"Transfer","type":"event"},
-      {"inputs":[{"internalType":"address","name":"account","type":"address"}],
-        "name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
-        "stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"recipient","type":"address"},
-        {"internalType":"uint256","name":"amount","type":"uint256"}],
-        "name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],
-        "stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],
-        "stateMutability":"view","type":"function"}
-    ];
+  
+    function registerUser() {
+  
+      const role = document.getElementById("role").value;
+  
+      const name = document.getElementById("name").value;
+  
+      const id = document.getElementById("idNumber").value;
+  
+      const wallet = document.getElementById("walletAddress").value;
+  
+      const password = document.getElementById("password").value;
+  
+      if (!name || !id || !wallet || !password) return alert("All fields required");
+  
+      if (users[id]) return alert("User already exists");
+  
 
-    // 🔗 Connect wallet
-    async function connectWallet() {
-      if (window.ethereum) {
-        web3 = new Web3(window.ethereum);
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        accounts = await web3.eth.getAccounts();
+  
+      users[id] = { id, name, role, wallet, password, balance: 1000000 };
+  
+      alert("Registered. Login to continue.");
+  
+    }
+  
 
-        document.getElementById("walletAddress").innerText = "Connected: " + accounts[0];
-
-        contract = new web3.eth.Contract(contractABI, contractAddress);
-        updateBalance();
-        listenToEvents();
-      } else {
-        alert("Install MetaMask to use this wallet.");
+  
+    function loginUser() {
+  
+      const id = document.getElementById("loginId").value;
+  
+      const password = document.getElementById("loginPassword").value;
+  
+      if (!users[id] || users[id].password !== password) {
+  
+        document.getElementById("loginError").innerText = "Login failed. Check credentials.";
+  
+        return;
+  
       }
+  
+      currentUser = users[id];
+  
+      document.getElementById("transactions").style.display = "block";
+  
+      document.getElementById("balance").innerText = `SADICOIN ${currentUser.balance.toLocaleString()}`;
+  
+      fetchConversions(currentUser.balance);
+  
+      fetchExchangeRates();
+  
     }
+  
 
-    // 📊 Update balance
-    async function updateBalance() {
-      if (!contract || !accounts) return;
-      const decimals = await contract.methods.decimals().call();
-      const bal = await contract.methods.balanceOf(accounts[0]).call();
-      document.getElementById("balance").innerText = (bal / (10 ** decimals)).toFixed(2);
-    }
-
-    // 💸 Send tokens
-    async function sendTransaction() {
+  
+    function sendTransaction() {
+  
       const to = document.getElementById("toAccount").value;
-      const amount = document.getElementById("amount").value;
-      if (!to || !amount) return alert("Enter recipient and amount.");
+  
+      const amount = parseFloat(document.getElementById("amount").value);
+  
+      if (!to || isNaN(amount)) return alert("Invalid input");
+  
+      if (amount > currentUser.balance) return alert("Insufficient funds");
+  
 
-      const decimals = await contract.methods.decimals().call();
-      const value = web3.utils.toBN(amount * (10 ** decimals));
+  
+      const tax = amount * 0.02;
+  
+      const net = amount - tax;
+  
+      const txId = Math.floor(Math.random() * 1e12).toString(16);
+  
+      currentUser.balance -= amount;
+  
 
+  
+      const tx = { id: txId, from: currentUser.id, to, amount, tax, net, timestamp: new Date().toISOString() };
+  
+      txHistory.push(tx);
+  
+      document.getElementById("balance").innerText = `SADICOIN ${currentUser.balance.toLocaleString()}`;
+  
+      document.getElementById("txResult").style.display = 'block';
+  
+      document.getElementById("txResult").innerText = `Tx ID: ${tx.id}\nSent: ${net.toFixed(2)} SADICOIN (Tax: ${tax.toFixed(2)})`;
+  
+      document.getElementById("qr").innerHTML = "";
+  
+      new QRCode(document.getElementById("qr"), JSON.stringify(tx));
+  
+      fetchConversions(currentUser.balance);
+  
+    }
+  
+
+  
+    async function fetchConversions(balance) {
+  
       try {
-        const tx = await contract.methods.transfer(to, value).send({ from: accounts[0] });
-        const txId = tx.transactionHash;
+  
+        const fxRes = await fetch(`https://eodhd.com/api/real-time/ZARUSD.FOREX?api_token=${apiKey}&fmt=json`);
+  
+        const usdRate = (await fxRes.json()).close;
+  
+        const usdValue = balance * usdRate;
+  
 
-        txHistory.push({ id: txId, to, amount, timestamp: new Date().toISOString() });
-        document.getElementById("txResult").style.display = 'block';
-        document.getElementById("txResult").innerText = `✅ Tx Sent! Hash: ${txId}`;
+  
+        const spyRes = await fetch(`https://eodhd.com/api/real-time/SPY.US?api_token=${apiKey}&fmt=json`);
+  
+        const goldRes = await fetch(`https://eodhd.com/api/real-time/XAUUSD.FOREX?api_token=${apiKey}&fmt=json`);
+  
 
-        renderHistory();
-        updateBalance();
+  
+        document.getElementById("usdValue").innerText = `USD ${usdValue.toFixed(2)}`;
+  
+        document.getElementById("spyValue").innerText = `${(usdValue / (await spyRes.json()).close).toFixed(4)} SPY`;
+  
+        document.getElementById("goldValue").innerText = `${(usdValue / (await goldRes.json()).close).toFixed(4)} oz`;
+  
       } catch (err) {
+  
         console.error(err);
-        alert("Transaction failed.");
+  
       }
+  
     }
+  
 
-    // 📜 Listen to blockchain events
-    function listenToEvents() {
-      contract.events.Transfer({ fromBlock: "latest" })
-        .on("data", event => {
-          console.log("Event:", event);
-          // Optional: auto-refresh history
-        })
-        .on("error", console.error);
+  
+    async function fetchExchangeRates() {
+  
+      const currencies = ["USDZAR","ZARUSD","USDEUR","USDGBP","USDJPY","USDCNY","USDAED","USDKES"];
+  
+      const container = document.getElementById("rates");
+  
+      container.innerHTML = "";
+  
+      for (let code of currencies) {
+  
+        const res = await fetch(`https://eodhd.com/api/real-time/${code}.FOREX?api_token=${apiKey}&fmt=json`);
+  
+        const data = await res.json();
+  
+        const el = document.createElement("p");
+  
+        el.innerText = `${code}: ${data.close}`;
+  
+        container.appendChild(el);
+  
+      }
+  
     }
+  
 
-    // 📝 Render history
-    function renderHistory() {
-      const list = document.getElementById("txHistory");
-      list.innerHTML = "";
-      txHistory.forEach(tx => {
-        const item = document.createElement("li");
-        item.className = "list-group-item";
-        item.innerText = `${tx.timestamp} → ${tx.to} : ${tx.amount} SADI (Tx: ${tx.id})`;
-        list.appendChild(item);
-      });
-    }
-
-    // 📄 Generate PDF
-    function generatePDF() {
+  
+    async function generatePDF() {
+  
       const { jsPDF } = window.jspdf;
+  
       const doc = new jsPDF();
-      doc.text("SadiCoin Transaction History", 10, 10);
-      txHistory.forEach((tx, i) => {
-        doc.text(`${i + 1}. To: ${tx.to}, Amount: ${tx.amount} SADI, Tx: ${tx.id}`, 10, 20 + (i * 10));
+  
+      doc.text("SADC Wallet Transaction History", 10, 10);
+  
+      txHistory.forEach((tx,i)=>{
+  
+        doc.text(`${i+1}. ID: ${tx.id}, Amount: ${tx.amount}, Tax: ${tx.tax}, To: ${tx.to}`,10,20+(i*10));
+  
       });
-      doc.save("SadiCoin_Transactions.pdf");
+  
+      doc.save("SADC_Transactions.pdf");
+  
     }
-  </script>
-</body>
-</html>
+  
+
+  
+    function getMarketPrice() {
+  
+      const cmcKey='0b53aa75-9da6-41c8-bbba-eb33bf350d3a';
+  
+      fetch('https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR',{
+  
+        method:'GET',
+  
+        headers:{'X-CMC_PRO_API_KEY':cmcKey}
+  
+      })
+  
+      .then(response=>response.json())
+  
+      .then(data=>{
+  
+        if(data?.data?.quote?.ZAR){
+  
+          const price=data.data.quote.ZAR.price.toFixed(2);
+  
+          document.getElementById('cmcPriceResult').innerText=`1 SADICOIN = ZAR ${price}`;
+  
+        }else{
+  
+          document.getElementById('cmcPriceResult').innerText='Price fetch failed.';
+  
+        }
+  
+      })
+  
+      .catch(err=>{
+  
+        document.getElementById('cmcPriceResult').innerText='Error contacting CoinMarketCap.';
+  
+        console.error(err);
+  
+      });
+  
+    }
+  
+
+  
+    // 🌐 Load MoonPay SDK
+  
+    async function loadMoonPay() {
+  
+      if(window.MoonPay) return window.MoonPay;
+  
+      return new Promise((resolve,reject)=>{
+  
+        const script=document.createElement('script');
+  
+        script.src="https://buy.moonpay.com/js/sdk/latest.js";
+  
+        script.onload=()=>resolve(window.MoonPay);
+  
+        script.onerror=reject;
+  
+        document.body.appendChild(script);
+  
+      });
+  
+    }
+  
+
+  
+    // 🌐 MoonPay Swap Handler
+  
+    async function openSwap(){
+  
+      const from=document.getElementById("swap_from").value.trim().toUpperCase();
+  
+      const to=document.getElementById("swap_to").value.trim().toUpperCase();
+  
+      const amt=document.getElementById("swap_amt").value;
+  
+      if(!from||!to||!amt) return alert("Enter from, to, and amount.");
+  
+
+  
+      try{
+  
+        const MoonPaySDK=await loadMoonPay();
+  
+        const moonPayInstance=new MoonPaySDK({
+  
+          flow:'swap',
+  
+          environment:'sandbox', // change to 'production' later
+  
+          variant:'overlay',
+  
+          params:{
+  
+            apiKey:'pk_live_OUYBz1syIA4A3AdJ47IQr0Rkx6dCWB4k', // replace with your publishable key
+  
+            baseCurrencyCode:from,
+  
+            baseCurrencyAmount:amt,
+  
+            defaultCurrencyCode:to,
+  
+            theme:'dark'
+  
+          }
+  
+        });
+  
+        moonPayInstance.show();
+  
+
+  
+        // 🔹 Simulation of real-time balance update (replace with webhook in production)
+  
+        setTimeout(()=>{
+  
+          const received=(to==="SADI")?amt:amt*0.95; // mock conversion
+  
+          moonPayWebhookCallback({fromCurrency:from,toCurrency:to,amount:amt,receivedAmount:received.toFixed(2)});
+  
+        },5000);
+  
+
+  
+      }catch(err){
+  
+        console.error("MoonPay init failed:",err);
+  
+        alert("MoonPay swap could not be launched.");
+  
+      }
+  
+    }
+  
+
+  
+    // Simulated webhook callback
+  
+    function moonPayWebhookCallback(tx){
+  
+      if(!currentUser) return;
+  
+      if(tx.toCurrency==="SADI") currentUser.balance+=parseFloat(tx.receivedAmount);
+  
+      if(tx.fromCurrency==="SADI") currentUser.balance-=parseFloat(tx.amount);
+  
+      document.getElementById("balance").innerText=`SADICOIN ${currentUser.balance.toLocaleString()}`;
+  
+      fetchConversions(currentUser.balance);
+  
+      alert(`Swap Successful! ${tx.fromCurrency} → ${tx.toCurrency}: ${tx.receivedAmount} received`);
+  
+    }
+  
+
+  
+  </script></body></html>

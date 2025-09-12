@@ -1,3 +1,68 @@
+
+
+// server.js
+require('dotenv').config();
+const express = require('express');
+const fetch = require('node-fetch');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.static('public')); // serve the front-end index.html from /public
+
+// -> GET /api/cmc-price
+// returns { priceZAR: number }
+app.get('/api/cmc-price', async (req, res) => {
+  try {
+    const cmcKey = process.env.CMC_PRO_API_KEY || process.env.cmcKey || 'REPLACE';
+    // Use CoinMarketCap price conversion endpoint (server-side)
+    const q = `https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR`;
+    const r = await fetch(q, {
+      headers: { 'X-CMC_PRO_API_KEY': cmcKey }
+    });
+    const js = await r.json();
+    if (js?.data?.quote?.ZAR) {
+      const price = js.data.quote.ZAR.price;
+      return res.json({ priceZAR: Number(price).toFixed(2) });
+    }
+    console.error('cmc response', js);
+    return res.status(500).json({ error: 'CoinMarketCap failed' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// -> GET /api/rates
+// Use eodhd (or other) via your APIX_TOKEN or EODHD token
+app.get('/api/rates', async (req, res) => {
+  try {
+    const eodKey = process.env.EODHD_API_KEY || process.env.apiKey || process.env.APIX_TOKEN || '';
+    // Example: fetch USDZAR and others. Adjust provider as needed.
+    // If you use eodhd (the one in your front-end) the server should build each request.
+    const symbols = ["USDZAR","ZARUSD","USDEUR","USDGBP","USDJPY","USDCNY"];
+    const results = {};
+    for (const s of symbols) {
+      const url = `https://eodhd.com/api/real-time/${s}.FOREX?api_token=${eodKey}&fmt=json`;
+      const r = await fetch(url);
+      const j = await r.json();
+      results[s] = j?.close ?? null;
+    }
+    res.json({ rates: results });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed fetching rates' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`API server listening on ${PORT}`);
+});
+
+
+
+
+
 // --- File: server.js (CBDC backend with Azure SQL + USSD + Biometric + QR + Offline Ready) ---
 const express = require('express');
 const bodyParser = require('body-parser');

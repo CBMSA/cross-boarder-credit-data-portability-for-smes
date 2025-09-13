@@ -188,6 +188,7 @@
     .tx-status { font-size: 0.9rem; color: #666; }
     .tx-success { color: #28a745; }
     .tx-error { color: #dc3545; }
+    .address { font-family: monospace; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -198,7 +199,7 @@
 
   <nav class="mb-4">
     <button id="connectBtn" class="btn btn-primary">Connect Wallet</button>
-    <span id="account" class="ms-3 text-monospace"></span>
+    <span id="account" class="ms-3 address"></span>
     <span id="network" class="ms-2 badge bg-secondary"></span>
   </nav>
 
@@ -209,7 +210,8 @@
       <p id="nativeBalance">-</p>
       <div class="mt-2">
         <p><strong>Current Tax Rate:</strong> <span id="currentTax">-</span>%</p>
-        <p><strong>Treasury Address:</strong> <span id="treasuryAddress">-</span></p>
+        <p><strong>Treasury Address:</strong> <span id="treasuryAddress" class="address">-</span></p>
+        <p><strong>Contract Owner:</strong> <span id="contractOwner" class="address">-</span></p>
       </div>
     </div>
 
@@ -221,7 +223,7 @@
       </div>
       <div class="mb-2">
         <label class="form-label">Amount (SADI)</label>
-        <input id="amount" type="number" class="form-control" placeholder="0.0"/>
+        <input id="amount" type="number" class="form-control" placeholder="0.0" step="0.000001"/>
       </div>
       <button id="sendBtn" class="btn btn-success w-100">Send</button>
       <div id="txStatus" class="tx-status mt-2"></div>
@@ -231,40 +233,86 @@
     <!-- Admin Panel (only visible to contract owner) -->
     <div id="adminPanel" class="admin-panel" style="display:none;">
       <h5>Admin Functions</h5>
-      <div class="mb-3">
-        <label class="form-label">Set Tax Rate (%)</label>
-        <input id="newTax" type="number" class="form-control" placeholder="e.g., 2 for 2%" min="0" max="10"/>
-        <button id="setTaxBtn" class="btn btn-warning mt-2">Update Tax Rate</button>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Set Treasury Address</label>
-        <input id="newTreasury" class="form-control" placeholder="0x..."/>
-        <button id="setTreasuryBtn" class="btn btn-warning mt-2">Update Treasury</button>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Mint Tokens</label>
+
+      <div class="mb-3 p-3 bg-light rounded">
+        <h6>Tax Settings</h6>
         <div class="row">
-          <div class="col">
-            <input id="mintTo" class="form-control" placeholder="Recipient 0x..."/>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Current Tax Rate</label>
+            <div class="input-group">
+              <input id="currentTaxDisplay" class="form-control" disabled/>
+              <span class="input-group-text">%</span>
+            </div>
           </div>
-          <div class="col">
-            <input id="mintAmount" type="number" class="form-control" placeholder="Amount"/>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">New Tax Rate (%)</label>
+            <div class="input-group">
+              <input id="newTax" type="number" class="form-control" placeholder="e.g., 2" min="0" max="10"/>
+              <span class="input-group-text">%</span>
+              <button id="setTaxBtn" class="btn btn-warning">Update</button>
+            </div>
           </div>
         </div>
-        <button id="mintBtn" class="btn btn-warning mt-2">Mint Tokens</button>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Burn Tokens</label>
-        <div class="row">
-          <div class="col">
-            <input id="burnFrom" class="form-control" placeholder="Address 0x..."/>
+
+      <div class="mb-3 p-3 bg-light rounded">
+        <h6>Treasury Management</h6>
+        <div class="mb-2">
+          <label class="form-label">Current Treasury</label>
+          <input id="currentTreasuryDisplay" class="form-control address" disabled/>
+        </div>
+        <div class="input-group">
+          <input id="newTreasury" class="form-control" placeholder="New treasury address (0x...)"/>
+          <button id="setTreasuryBtn" class="btn btn-warning">Update Treasury</button>
+        </div>
+      </div>
+
+      <div class="mb-3 p-3 bg-light rounded">
+        <h6>Token Management</h6>
+        <div class="row mb-2">
+          <div class="col-md-5">
+            <label class="form-label">Mint Tokens</label>
+            <input id="mintTo" class="form-control" placeholder="Recipient (0x...)"/>
           </div>
-          <div class="col">
-            <input id="burnAmount" type="number" class="form-control" placeholder="Amount"/>
+          <div class="col-md-5">
+            <input id="mintAmount" type="number" class="form-control" placeholder="Amount" step="0.000001"/>
+          </div>
+          <div class="col-md-2 d-grid">
+            <button id="mintBtn" class="btn btn-warning">Mint</button>
           </div>
         </div>
-        <button id="burnBtn" class="btn btn-warning mt-2">Burn Tokens</button>
+        <div class="row">
+          <div class="col-md-5">
+            <label class="form-label">Burn Tokens</label>
+            <input id="burnFrom" class="form-control" placeholder="Address (0x...)"/>
+          </div>
+          <div class="col-md-5">
+            <input id="burnAmount" type="number" class="form-control" placeholder="Amount" step="0.000001"/>
+          </div>
+          <div class="col-md-2 d-grid">
+            <button id="burnBtn" class="btn btn-warning">Burn</button>
+          </div>
+        </div>
       </div>
+
+      <div class="mb-3 p-3 bg-light rounded">
+        <h6>Ownership</h6>
+        <div class="d-flex justify-content-between">
+          <div>
+            <p class="mb-1"><strong>Current Owner:</strong> <span id="ownerAddress" class="address">-</span></p>
+          </div>
+          <div>
+            <button id="renounceBtn" class="btn btn-danger btn-sm">Renounce Ownership</button>
+          </div>
+        </div>
+        <div class="mt-2">
+          <div class="input-group">
+            <input id="newOwner" class="form-control" placeholder="New owner address (0x...)"/>
+            <button id="transferOwnershipBtn" class="btn btn-warning">Transfer Ownership</button>
+          </div>
+        </div>
+      </div>
+
       <div id="adminStatus" class="tx-status mt-2"></div>
     </div>
 
@@ -283,37 +331,275 @@
 
 <script>
 // ========== CONFIGURATION ==========
-// Replace these values with your deployed contract details
 const CONFIG = {
-  CONTRACT_ADDRESS: "0xYourDeployedContractAddressHere", // Replace with your contract address
-  CHAIN_ID: 80001, // Mumbai testnet (change to your network's chain ID)
+  CONTRACT_ADDRESS: "0xYourDeployedContractAddressHere", // REPLACE WITH YOUR CONTRACT ADDRESS
+  CHAIN_ID: 80001, // Mumbai testnet (change to match your network)
   TOKEN_DECIMALS: 18,
-  MOONPAY_PUBLISHABLE: "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k", // Replace with your MoonPay key
-  RPC_URLS: {
-    1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
-    5: "https://goerli.infura.io/v3/YOUR_INFURA_KEY",
-    80001: "https://polygon-mumbai.g.alchemy.com/v2/YOUR_ALCHEMY_KEY", // Mumbai testnet
-    137: "https://polygon-rpc.com" // Polygon mainnet
-  }
+  MOONPAY_PUBLISHABLE: "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k" // Replace with your MoonPay key
 };
 
-// Full SadiCoin ABI including tax functions
+// Full ABI for SadiCoin (including Ownable, ERC20, and custom functions)
 const tokenAbi = [
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function taxBasisPoints() view returns (uint256)",
-  "function treasury() view returns (address)",
-  "function setTaxBps(uint256 _bps)",
-  "function setTreasury(address _treasury)",
-  "function mint(address to, uint256 amount)",
-  "function burn(address from, uint256 amount)",
-  "function owner() view returns (address)",
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-  "event TaxUpdated(uint256 newBps)",
-  "event TreasuryUpdated(address newTreasury)"
+  // ===== Ownable Functions =====
+  {
+    "inputs": [
+      {"internalType": "address", "name": "owner", "type": "address"}
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "account", "type": "address"}
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "previousOwner", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "newOwner", "type": "address"}
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "newOwner", "type": "address"}],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
+  // ===== ERC20 Standard Functions =====
+  {
+    "inputs": [
+      {"internalType": "address", "name": "spender", "type": "address"},
+      {"internalType": "uint256", "name": "allowance", "type": "uint256"},
+      {"internalType": "uint256", "name": "needed", "type": "uint256"}
+    ],
+    "name": "ERC20InsufficientAllowance",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "sender", "type": "address"},
+      {"internalType": "uint256", "name": "balance", "type": "uint256"},
+      {"internalType": "uint256", "name": "needed", "type": "uint256"}
+    ],
+    "name": "ERC20InsufficientBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "approver", "type": "address"}],
+    "name": "ERC20InvalidApprover",
+    "type": "error"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "receiver", "type": "address"}],
+    "name": "ERC20InvalidReceiver",
+    "type": "error"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "sender", "type": "address"}],
+    "name": "ERC20InvalidSender",
+    "type": "error"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "spender", "type": "address"}],
+    "name": "ERC20InvalidSpender",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "owner", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "spender", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}
+    ],
+    "name": "Approval",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}
+    ],
+    "name": "Transfer",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "owner", "type": "address"},
+      {"internalType": "address", "name": "spender", "type": "address"}
+    ],
+    "name": "allowance",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "spender", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "approve",
+    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+    "name": "balanceOf",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "name",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "to", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "transfer",
+    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "from", "type": "address"},
+      {"internalType": "address", "name": "to", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "transferFrom",
+    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
+  // ===== Custom SadiCoin Functions =====
+  {
+    "inputs": [],
+    "name": "taxBasisPoints",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "treasury",
+    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "_bps", "type": "uint256"}],
+    "name": "setTaxBps",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_treasury", "type": "address"}],
+    "name": "setTreasury",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "to", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "mint",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "from", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "burn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
+  // ===== Custom Events =====
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "uint256", "name": "newBps", "type": "uint256"}
+    ],
+    "name": "TaxUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "address", "name": "newTreasury", "type": "address"}
+    ],
+    "name": "TreasuryUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "taxAmount", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "netAmount", "type": "uint256"}
+    ],
+    "name": "TaxedTransfer",
+    "type": "event"
+  }
 ];
 
 let provider, signer, account, tokenContract, isOwner = false;
@@ -327,10 +613,12 @@ async function init() {
   document.getElementById('setTreasuryBtn').onclick = setTreasuryAddress;
   document.getElementById('mintBtn').onclick = mintTokens;
   document.getElementById('burnBtn').onclick = burnTokens;
+  document.getElementById('renounceBtn').onclick = renounceOwnership;
+  document.getElementById('transferOwnershipBtn').onclick = transferOwnership;
 
-  // Check if we're on the correct network
   if (window.ethereum) {
     window.ethereum.on('chainChanged', handleChainChanged);
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
   }
 }
 
@@ -338,36 +626,33 @@ async function connectWallet() {
   if (!window.ethereum) return alert("Please install MetaMask or another wallet");
 
   try {
-    // Request account access
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     account = accounts[0];
     document.getElementById('account').innerText = `${account.substring(0, 6)}...${account.substring(38)}`;
 
-    // Initialize provider and signer
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
 
-    // Get network information
     const network = await provider.getNetwork();
     document.getElementById('network').innerText = getNetworkName(network.chainId);
 
-    // Check if connected to the right network
     if (network.chainId !== CONFIG.CHAIN_ID) {
       alert(`Please switch to the correct network (Chain ID: ${CONFIG.CHAIN_ID})`);
       return;
     }
 
-    // Initialize contract
     tokenContract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, tokenAbi, provider);
 
-    // Check if current account is owner
     const owner = await tokenContract.owner();
     isOwner = (account.toLowerCase() === owner.toLowerCase());
     if (isOwner) {
       document.getElementById('adminPanel').style.display = 'block';
+      document.getElementById('ownerAddress').innerText = `${owner.substring(0, 6)}...${owner.substring(38)}`;
+      document.getElementById('currentTreasuryDisplay').value = await tokenContract.treasury();
+      document.getElementById('currentTaxDisplay').value = (await tokenContract.taxBasisPoints()) / 100;
     }
 
-    // Load initial data
+    document.getElementById('contractOwner').innerText = `${owner.substring(0, 6)}...${owner.substring(38)}`;
     document.getElementById('app').style.display = 'block';
     refreshBalances();
     refreshContractInfo();
@@ -379,6 +664,10 @@ async function connectWallet() {
 }
 
 async function handleChainChanged() {
+  window.location.reload();
+}
+
+async function handleAccountsChanged() {
   window.location.reload();
 }
 
@@ -399,11 +688,9 @@ function getNetworkName(chainId) {
 
 async function refreshBalances() {
   try {
-    // Native balance
     const bal = await provider.getBalance(account);
     document.getElementById('nativeBalance').innerText = `Native: ${ethers.formatEther(bal)}`;
 
-    // Token balance
     const rawBalance = await tokenContract.balanceOf(account);
     const decimals = await tokenContract.decimals();
     const humanBalance = ethers.formatUnits(rawBalance, decimals);
@@ -442,11 +729,9 @@ async function sendToken() {
   try {
     showTxStatus("Processing transaction...", "pending");
 
-    // Get decimals and calculate amount in wei
     const decimals = await tokenContract.decimals();
     const amountWei = ethers.parseUnits(amount, decimals);
 
-    // Send transaction
     const tokenWithSigner = tokenContract.connect(signer);
     const tx = await tokenWithSigner.transfer(to, amountWei);
 
@@ -457,7 +742,6 @@ async function sendToken() {
     document.getElementById('qr').innerHTML = "";
     new QRCode(document.getElementById('qr'), receipt.transactionHash);
 
-    // Refresh balances
     refreshBalances();
   } catch (err) {
     console.error(err);
@@ -476,7 +760,7 @@ async function setTaxRate() {
   try {
     showAdminStatus("Updating tax rate...", "pending");
 
-    const taxBps = Math.floor(parseFloat(newTax) * 100); // Convert % to basis points
+    const taxBps = Math.floor(parseFloat(newTax) * 100);
     const tokenWithSigner = tokenContract.connect(signer);
     const tx = await tokenWithSigner.setTaxBps(taxBps);
 
@@ -485,6 +769,7 @@ async function setTaxRate() {
 
     showAdminStatus("Tax rate updated successfully!", "success");
     refreshContractInfo();
+    document.getElementById('currentTaxDisplay').value = newTax;
   } catch (err) {
     console.error(err);
     showAdminStatus(`Error: ${err.message || err}`, "error");
@@ -510,6 +795,7 @@ async function setTreasuryAddress() {
 
     showAdminStatus("Treasury address updated successfully!", "success");
     refreshContractInfo();
+    document.getElementById('currentTreasuryDisplay').value = newTreasury;
   } catch (err) {
     console.error(err);
     showAdminStatus(`Error: ${err.message || err}`, "error");
@@ -578,6 +864,53 @@ async function burnTokens() {
 
     showAdminStatus("Tokens burned successfully!", "success");
     refreshBalances();
+  } catch (err) {
+    console.error(err);
+    showAdminStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+async function renounceOwnership() {
+  if (!confirm("Are you sure you want to renounce ownership? This cannot be undone.")) {
+    return;
+  }
+
+  try {
+    showAdminStatus("Renouncing ownership...", "pending");
+
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.renounceOwnership();
+
+    showAdminStatus(`Transaction sent: ${tx.hash}`, "pending");
+    await tx.wait();
+
+    showAdminStatus("Ownership renounced successfully!", "success");
+    window.location.reload();
+  } catch (err) {
+    console.error(err);
+    showAdminStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+async function transferOwnership() {
+  const newOwner = document.getElementById('newOwner').value.trim();
+
+  if (!ethers.isAddress(newOwner)) {
+    showAdminStatus("Invalid address", "error");
+    return;
+  }
+
+  try {
+    showAdminStatus("Transferring ownership...", "pending");
+
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.transferOwnership(newOwner);
+
+    showAdminStatus(`Transaction sent: ${tx.hash}`, "pending");
+    await tx.wait();
+
+    showAdminStatus("Ownership transferred successfully!", "success");
+    window.location.reload();
   } catch (err) {
     console.error(err);
     showAdminStatus(`Error: ${err.message || err}`, "error");

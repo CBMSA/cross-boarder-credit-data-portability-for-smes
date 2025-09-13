@@ -178,12 +178,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Sadicoin Treasures Wallet</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body{font-family:Segoe UI;padding:20px;background:#f9f9f9}
-    .logo{height:60px}
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f9f9f9; }
+    .logo { height: 60px; }
+    .card { margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .admin-panel { background: #f0f0f0; padding: 15px; border-radius: 5px; margin-top: 20px; }
+    .tx-status { font-size: 0.9rem; color: #666; }
+    .tx-success { color: #28a745; }
+    .tx-error { color: #dc3545; }
   </style>
 </head>
 <body>
@@ -195,6 +199,7 @@
   <nav class="mb-4">
     <button id="connectBtn" class="btn btn-primary">Connect Wallet</button>
     <span id="account" class="ms-3 text-monospace"></span>
+    <span id="network" class="ms-2 badge bg-secondary"></span>
   </nav>
 
   <div id="app" style="display:none;">
@@ -202,15 +207,65 @@
       <h5>Your SADI Balance</h5>
       <p id="tokenBalance">-</p>
       <p id="nativeBalance">-</p>
+      <div class="mt-2">
+        <p><strong>Current Tax Rate:</strong> <span id="currentTax">-</span>%</p>
+        <p><strong>Treasury Address:</strong> <span id="treasuryAddress">-</span></p>
+      </div>
     </div>
 
     <div class="card p-3 mb-3">
       <h5>Transfer SADI</h5>
-      <input id="to" class="form-control mb-2" placeholder="Recipient address"/>
-      <input id="amount" type="number" class="form-control mb-2" placeholder="Amount (SADI)"/>
+      <div class="mb-2">
+        <label class="form-label">Recipient Address</label>
+        <input id="to" class="form-control" placeholder="0x..."/>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Amount (SADI)</label>
+        <input id="amount" type="number" class="form-control" placeholder="0.0"/>
+      </div>
       <button id="sendBtn" class="btn btn-success w-100">Send</button>
-      <div id="txStatus" class="mt-2"></div>
-      <div id="qr"></div>
+      <div id="txStatus" class="tx-status mt-2"></div>
+      <div id="qr" class="mt-2"></div>
+    </div>
+
+    <!-- Admin Panel (only visible to contract owner) -->
+    <div id="adminPanel" class="admin-panel" style="display:none;">
+      <h5>Admin Functions</h5>
+      <div class="mb-3">
+        <label class="form-label">Set Tax Rate (%)</label>
+        <input id="newTax" type="number" class="form-control" placeholder="e.g., 2 for 2%" min="0" max="10"/>
+        <button id="setTaxBtn" class="btn btn-warning mt-2">Update Tax Rate</button>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Set Treasury Address</label>
+        <input id="newTreasury" class="form-control" placeholder="0x..."/>
+        <button id="setTreasuryBtn" class="btn btn-warning mt-2">Update Treasury</button>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Mint Tokens</label>
+        <div class="row">
+          <div class="col">
+            <input id="mintTo" class="form-control" placeholder="Recipient 0x..."/>
+          </div>
+          <div class="col">
+            <input id="mintAmount" type="number" class="form-control" placeholder="Amount"/>
+          </div>
+        </div>
+        <button id="mintBtn" class="btn btn-warning mt-2">Mint Tokens</button>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Burn Tokens</label>
+        <div class="row">
+          <div class="col">
+            <input id="burnFrom" class="form-control" placeholder="Address 0x..."/>
+          </div>
+          <div class="col">
+            <input id="burnAmount" type="number" class="form-control" placeholder="Amount"/>
+          </div>
+        </div>
+        <button id="burnBtn" class="btn btn-warning mt-2">Burn Tokens</button>
+      </div>
+      <div id="adminStatus" class="tx-status mt-2"></div>
     </div>
 
     <div class="card p-3 mb-3">
@@ -220,14 +275,6 @@
       <button id="ratesBtn" class="btn btn-outline-secondary mt-2">Get Live Exchange Rates</button>
       <div id="ratesResult"></div>
     </div>
-
-    <div class="card p-3 mb-3">
-      <h5>MoonPay Swap (overlay)</h5>
-      <input id="mp_from" class="form-control mb-2" placeholder="From (e.g. SADI)"/>
-      <input id="mp_to" class="form-control mb-2" placeholder="To (e.g. USD)"/>
-      <input id="mp_amount" type="number" class="form-control mb-2" placeholder="Amount"/>
-      <button id="mp_btn" class="btn btn-warning w-100">Open MoonPay (publishable key used client-side)</button>
-    </div>
   </div>
 
   <footer class="mt-5 text-center">
@@ -235,146 +282,341 @@
   </footer>
 
 <script>
-/* --------- CONFIG (fill after deployment) ----------
-   Replace with your deployed contract address and chain id (e.g., 137 = Polygon, 80001 = Mumbai)
-   This script expects server endpoints:
-     GET /api/cmc-price  -> returns { priceZAR: number, symbol: "SADI" }
-     GET /api/rates     -> returns { rates: { USDZAR: x, ... } }
-   Server will use your API keys from .env
-*/
+// ========== CONFIGURATION ==========
+// Replace these values with your deployed contract details
 const CONFIG = {
-  CONTRACT_ADDRESS: "REPLACE_WITH_DEPLOYED_CONTRACT_ADDRESS",
-  CHAIN_ID: 80001, // example: Mumbai testnet
+  CONTRACT_ADDRESS: "0xYourDeployedContractAddressHere", // Replace with your contract address
+  CHAIN_ID: 80001, // Mumbai testnet (change to your network's chain ID)
   TOKEN_DECIMALS: 18,
-  MOONPAY_PUBLISHABLE: "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k" // public key - ok client-side
+  MOONPAY_PUBLISHABLE: "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k", // Replace with your MoonPay key
+  RPC_URLS: {
+    1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+    5: "https://goerli.infura.io/v3/YOUR_INFURA_KEY",
+    80001: "https://polygon-mumbai.g.alchemy.com/v2/YOUR_ALCHEMY_KEY", // Mumbai testnet
+    137: "https://polygon-rpc.com" // Polygon mainnet
+  }
 };
-/* -------------------------------------------------- */
 
-let provider, signer, account;
+// Full SadiCoin ABI including tax functions
 const tokenAbi = [
   "function name() view returns (string)",
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
   "function transfer(address to, uint256 amount) returns (bool)",
-  "event Transfer(address indexed from, address indexed to, uint256 value)"
+  "function taxBasisPoints() view returns (uint256)",
+  "function treasury() view returns (address)",
+  "function setTaxBps(uint256 _bps)",
+  "function setTreasury(address _treasury)",
+  "function mint(address to, uint256 amount)",
+  "function burn(address from, uint256 amount)",
+  "function owner() view returns (address)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "event TaxUpdated(uint256 newBps)",
+  "event TreasuryUpdated(address newTreasury)"
 ];
 
-async function init() {
-  const connectBtn = document.getElementById('connectBtn');
-  connectBtn.onclick = connectWallet;
+let provider, signer, account, tokenContract, isOwner = false;
 
+async function init() {
+  document.getElementById('connectBtn').onclick = connectWallet;
   document.getElementById('sendBtn').onclick = sendToken;
   document.getElementById('priceBtn').onclick = getCmcPrice;
   document.getElementById('ratesBtn').onclick = getRates;
-  document.getElementById('mp_btn').onclick = openMoonPay;
-}
+  document.getElementById('setTaxBtn').onclick = setTaxRate;
+  document.getElementById('setTreasuryBtn').onclick = setTreasuryAddress;
+  document.getElementById('mintBtn').onclick = mintTokens;
+  document.getElementById('burnBtn').onclick = burnTokens;
 
-async function connectWallet(){
-  if (!window.ethereum) return alert("Please install MetaMask or another injected wallet.");
-  provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = await provider.getSigner();
-  account = await signer.getAddress();
-  document.getElementById('account').innerText = account;
-  document.getElementById('app').style.display = 'block';
-  refreshBalances();
-}
-
-async function refreshBalances(){
-  // native balance
-  const bal = await provider.getBalance(account);
-  document.getElementById('nativeBalance').innerText = `Native: ${ethers.formatEther(bal)} ETH (or native)`;
-
-  // token balance
-  const token = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, tokenAbi, provider);
-  const raw = await token.balanceOf(account);
-  const decimals = CONFIG.TOKEN_DECIMALS;
-  const human = Number(ethers.formatUnits(raw, decimals));
-  document.getElementById('tokenBalance').innerText = `${human.toLocaleString()} SADI`;
-}
-
-async function sendToken(){
-  const to = document.getElementById('to').value.trim();
-  const amount = Number(document.getElementById('amount').value);
-  if (!ethers.isAddress(to)) return alert("Invalid recipient address");
-  if (!amount || amount <= 0) return alert("Invalid amount");
-
-  const tokenWithSigner = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, tokenAbi, signer);
-  const decimals = CONFIG.TOKEN_DECIMALS;
-  const amountUnits = ethers.parseUnits(amount.toString(), decimals);
-
-  try {
-    const tx = await tokenWithSigner.transfer(to, amountUnits);
-    document.getElementById('txStatus').innerText = `Tx sent: ${tx.hash}. Waiting for confirmation...`;
-    const receipt = await tx.wait();
-    document.getElementById('txStatus').innerText = `Tx confirmed: ${receipt.transactionHash}`;
-    document.getElementById('qr').innerHTML = "";
-    new QRCode(document.getElementById('qr'), receipt.transactionHash);
-    refreshBalances();
-  } catch (err) {
-    console.error(err);
-    alert("Transfer failed: " + (err?.message || err));
+  // Check if we're on the correct network
+  if (window.ethereum) {
+    window.ethereum.on('chainChanged', handleChainChanged);
   }
 }
 
-/* Market endpoints (server) */
-async function getCmcPrice(){
-  const res = await fetch('/api/cmc-price');
-  if (!res.ok) return alert('Price request failed');
-  const js = await res.json();
-  document.getElementById('cmcResult').innerText = `1 SADI = ZAR ${js.priceZAR}`;
+async function connectWallet() {
+  if (!window.ethereum) return alert("Please install MetaMask or another wallet");
+
+  try {
+    // Request account access
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    account = accounts[0];
+    document.getElementById('account').innerText = `${account.substring(0, 6)}...${account.substring(38)}`;
+
+    // Initialize provider and signer
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+
+    // Get network information
+    const network = await provider.getNetwork();
+    document.getElementById('network').innerText = getNetworkName(network.chainId);
+
+    // Check if connected to the right network
+    if (network.chainId !== CONFIG.CHAIN_ID) {
+      alert(`Please switch to the correct network (Chain ID: ${CONFIG.CHAIN_ID})`);
+      return;
+    }
+
+    // Initialize contract
+    tokenContract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, tokenAbi, provider);
+
+    // Check if current account is owner
+    const owner = await tokenContract.owner();
+    isOwner = (account.toLowerCase() === owner.toLowerCase());
+    if (isOwner) {
+      document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    // Load initial data
+    document.getElementById('app').style.display = 'block';
+    refreshBalances();
+    refreshContractInfo();
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to connect wallet: " + (err.message || err));
+  }
 }
 
-async function getRates(){
-  const res = await fetch('/api/rates');
-  if (!res.ok) return alert('Rates request failed');
-  const js = await res.json();
+async function handleChainChanged() {
+  window.location.reload();
+}
+
+function getNetworkName(chainId) {
+  const networks = {
+    1: "Ethereum Mainnet",
+    5: "Goerli",
+    11155111: "Sepolia",
+    137: "Polygon Mainnet",
+    80001: "Polygon Mumbai",
+    56: "BSC",
+    97: "BSC Testnet",
+    43114: "Avalanche",
+    43113: "Avalanche Fuji"
+  };
+  return networks[chainId] || `Unknown (${chainId})`;
+}
+
+async function refreshBalances() {
+  try {
+    // Native balance
+    const bal = await provider.getBalance(account);
+    document.getElementById('nativeBalance').innerText = `Native: ${ethers.formatEther(bal)}`;
+
+    // Token balance
+    const rawBalance = await tokenContract.balanceOf(account);
+    const decimals = await tokenContract.decimals();
+    const humanBalance = ethers.formatUnits(rawBalance, decimals);
+    document.getElementById('tokenBalance').innerText = `${humanBalance} SADI`;
+  } catch (err) {
+    console.error(err);
+    alert("Failed to fetch balances");
+  }
+}
+
+async function refreshContractInfo() {
+  try {
+    const taxBps = await tokenContract.taxBasisPoints();
+    const treasury = await tokenContract.treasury();
+    document.getElementById('currentTax').innerText = (taxBps / 100).toFixed(2);
+    document.getElementById('treasuryAddress').innerText = `${treasury.substring(0, 6)}...${treasury.substring(38)}`;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function sendToken() {
+  const to = document.getElementById('to').value.trim();
+  const amount = document.getElementById('amount').value.trim();
+
+  if (!ethers.isAddress(to)) {
+    showTxStatus("Invalid recipient address", "error");
+    return;
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    showTxStatus("Invalid amount", "error");
+    return;
+  }
+
+  try {
+    showTxStatus("Processing transaction...", "pending");
+
+    // Get decimals and calculate amount in wei
+    const decimals = await tokenContract.decimals();
+    const amountWei = ethers.parseUnits(amount, decimals);
+
+    // Send transaction
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.transfer(to, amountWei);
+
+    showTxStatus(`Transaction sent: ${tx.hash}`, "pending");
+    const receipt = await tx.wait();
+
+    showTxStatus(`Transaction confirmed! Hash: ${receipt.hash}`, "success");
+    document.getElementById('qr').innerHTML = "";
+    new QRCode(document.getElementById('qr'), receipt.transactionHash);
+
+    // Refresh balances
+    refreshBalances();
+  } catch (err) {
+    console.error(err);
+    showTxStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+async function setTaxRate() {
+  const newTax = document.getElementById('newTax').value.trim();
+
+  if (!newTax || isNaN(newTax) || parseFloat(newTax) < 0 || parseFloat(newTax) > 10) {
+    showAdminStatus("Invalid tax rate (0-10%)", "error");
+    return;
+  }
+
+  try {
+    showAdminStatus("Updating tax rate...", "pending");
+
+    const taxBps = Math.floor(parseFloat(newTax) * 100); // Convert % to basis points
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.setTaxBps(taxBps);
+
+    showAdminStatus(`Transaction sent: ${tx.hash}`, "pending");
+    await tx.wait();
+
+    showAdminStatus("Tax rate updated successfully!", "success");
+    refreshContractInfo();
+  } catch (err) {
+    console.error(err);
+    showAdminStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+async function setTreasuryAddress() {
+  const newTreasury = document.getElementById('newTreasury').value.trim();
+
+  if (!ethers.isAddress(newTreasury)) {
+    showAdminStatus("Invalid treasury address", "error");
+    return;
+  }
+
+  try {
+    showAdminStatus("Updating treasury address...", "pending");
+
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.setTreasury(newTreasury);
+
+    showAdminStatus(`Transaction sent: ${tx.hash}`, "pending");
+    await tx.wait();
+
+    showAdminStatus("Treasury address updated successfully!", "success");
+    refreshContractInfo();
+  } catch (err) {
+    console.error(err);
+    showAdminStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+async function mintTokens() {
+  const to = document.getElementById('mintTo').value.trim();
+  const amount = document.getElementById('mintAmount').value.trim();
+
+  if (!ethers.isAddress(to)) {
+    showAdminStatus("Invalid recipient address", "error");
+    return;
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    showAdminStatus("Invalid amount", "error");
+    return;
+  }
+
+  try {
+    showAdminStatus("Minting tokens...", "pending");
+
+    const decimals = await tokenContract.decimals();
+    const amountWei = ethers.parseUnits(amount, decimals);
+
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.mint(to, amountWei);
+
+    showAdminStatus(`Transaction sent: ${tx.hash}`, "pending");
+    await tx.wait();
+
+    showAdminStatus("Tokens minted successfully!", "success");
+    refreshBalances();
+  } catch (err) {
+    console.error(err);
+    showAdminStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+async function burnTokens() {
+  const from = document.getElementById('burnFrom').value.trim();
+  const amount = document.getElementById('burnAmount').value.trim();
+
+  if (!ethers.isAddress(from)) {
+    showAdminStatus("Invalid address", "error");
+    return;
+  }
+
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    showAdminStatus("Invalid amount", "error");
+    return;
+  }
+
+  try {
+    showAdminStatus("Burning tokens...", "pending");
+
+    const decimals = await tokenContract.decimals();
+    const amountWei = ethers.parseUnits(amount, decimals);
+
+    const tokenWithSigner = tokenContract.connect(signer);
+    const tx = await tokenWithSigner.burn(from, amountWei);
+
+    showAdminStatus(`Transaction sent: ${tx.hash}`, "pending");
+    await tx.wait();
+
+    showAdminStatus("Tokens burned successfully!", "success");
+    refreshBalances();
+  } catch (err) {
+    console.error(err);
+    showAdminStatus(`Error: ${err.message || err}`, "error");
+  }
+}
+
+function showTxStatus(message, type) {
+  const element = document.getElementById('txStatus');
+  element.textContent = message;
+  element.className = `tx-status mt-2 tx-${type}`;
+}
+
+function showAdminStatus(message, type) {
+  const element = document.getElementById('adminStatus');
+  element.textContent = message;
+  element.className = `tx-status mt-2 tx-${type}`;
+}
+
+// Market data functions (placeholder - implement with your backend)
+async function getCmcPrice() {
+  document.getElementById('cmcResult').innerText = "1 SADI = ZAR 15.25 (Mock Data)";
+}
+
+async function getRates() {
+  const mockRates = {
+    USDZAR: 18.5,
+    EURZAR: 19.8,
+    GBPZAR: 22.3
+  };
   const container = document.getElementById('ratesResult');
   container.innerHTML = '';
-  Object.entries(js.rates || {}).forEach(([k,v]) => {
+  for (const [key, value] of Object.entries(mockRates)) {
     const p = document.createElement('p');
-    p.innerText = `${k}: ${v}`;
+    p.innerText = `${key}: ${value}`;
     container.appendChild(p);
-  });
-}
-
-/* MoonPay overlay — uses publishable key */
-async function openMoonPay(){
-  const from = document.getElementById('mp_from').value.trim().toUpperCase();
-  const to = document.getElementById('mp_to').value.trim().toUpperCase();
-  const amt = document.getElementById('mp_amount').value;
-  if (!from || !to || !amt) return alert("Enter from/to/amount");
-
-  // load MoonPay sdk
-  const script = document.createElement('script');
-  script.src = "https://buy.moonpay.com/js/sdk/latest.js";
-  script.onload = () => {
-    try {
-      const MoonPay = window.MoonPay;
-      const inst = new MoonPay({
-        apiKey: CONFIG.MOONPAY_PUBLISHABLE,
-        environment: 'production',
-        flow: 'swap',
-        variant: 'overlay',
-        params: {
-          baseCurrencyCode: from,
-          baseCurrencyAmount: amt,
-          defaultCurrencyCode: to
-        }
-      });
-      inst.show();
-    } catch(e) {
-      console.error(e);
-      alert("MoonPay failed to open.");
-    }
-  };
-  script.onerror = () => alert("Could not load MoonPay SDK.");
-  document.body.appendChild(script);
+  }
 }
 
 init();
 </script>
 </body>
 </html>
-

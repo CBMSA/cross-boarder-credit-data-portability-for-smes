@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,18 +8,36 @@
   <style>
     body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
     h1 { color: #2a4d8f; }
-    .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 600px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 720px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
     input, button, select { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
     button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
     button:hover { background: #1c3360; }
-    pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; }
+    pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; white-space: pre-wrap; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
     th { background: #f0f4f9; }
+    .row { display:flex; gap:10px; }
+    .col { flex:1; }
+    .small { font-size:12px; color:#666; margin-top:6px; }
   </style>
 </head>
 <body>
   <h1>💳 Sadicoin Wallet Prototype</h1>
+
+  <!-- MetaMask / Wallet Connect -->
+  <div class="box">
+    <h3>Connect Wallet</h3>
+    <div class="row">
+      <div class="col">
+        <button id="btn_connect" onclick="connectWallet()">Connect MetaMask</button>
+      </div>
+      <div class="col">
+        <button onclick="disconnectLocal()">Logout (local)</button>
+      </div>
+    </div>
+    <div class="small">Connected account: <span id="connected_addr">none</span></div>
+    <div class="small">Network: <span id="network_name">—</span></div>
+  </div>
 
   <!-- Register -->
   <div class="box">
@@ -47,20 +64,21 @@
     <select id="fx_currency" onchange="refreshWallet()"></select>
     <pre id="wallet_info">Not logged in</pre>
     <button onclick="refreshWallet()">Refresh</button>
+    <div class="small">ETH Balance: <span id="eth_balance">—</span> | SADI Balance: <span id="sadi_balance">—</span></div>
   </div>
 
   <!-- Send -->
   <div class="box">
-    <h3>Send USD</h3>
-    <input id="to_addr" placeholder="Recipient address">
-    <input id="to_amt" placeholder="Amount (USD)" type="number">
-    <button onclick="send()">Send</button>
+    <h3>Send SADI</h3>
+    <input id="to_addr" placeholder="Recipient address (0x...)">
+    <input id="to_amt" placeholder="Amount (SADI)" type="number" step="any">
+    <button onclick="sendToken()">Send SADI</button>
     <pre id="send_res"></pre>
   </div>
 
   <!-- Transactions -->
   <div class="box">
-    <h3>Transaction History</h3>
+    <h3>Transaction History (local)</h3>
     <table id="tx_table">
       <thead><tr><th>ID</th><th>To</th><th>Amount</th><th>Date</th><th>PDF</th></tr></thead>
       <tbody></tbody>
@@ -69,41 +87,67 @@
 
   <!-- MoonPay Swap -->
   <div class="box">
-    <h3>MoonPay Swap</h3>
-    <button onclick="openSwap()">Swap with MoonPay</button>
+    <h3>MoonPay</h3>
+    <div class="row">
+      <div class="col"><button onclick="openMoonPayBuy()">Buy (On-ramp) via MoonPay</button></div>
+      <div class="col"><button onclick="openMoonPaySell()">Sell (Off-ramp) — backend required</button></div>
+    </div>
+    <div class="small">Note: For secure off-ramp you should implement backend-assisted MoonPay flow.</div>
   </div>
 
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js" integrity="" crossorigin="anonymous"></script>
 
   <script>
+    // --------------- CONFIG (replace placeholders) ----------------
+    const CONTRACT_ADDRESS = "0xREPLACE_WITH_DEPLOYED_CONTRACT_ADDRESS"; // <-- set after deploy
+    const MOONPAY_PUBLIC_KEY = "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k"; // replace with your public key
+    const TOKEN_DECIMALS = 18; // SADI decimals
+
+    // Minimal ABI: ERC20 balanceOf, transfer, name, symbol, decimals
+    const ERC20_ABI = [
+      "function name() view returns (string)",
+      "function symbol() view returns (string)",
+      "function decimals() view returns (uint8)",
+      "function balanceOf(address) view returns (uint256)",
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "event Transfer(address indexed from, address indexed to, uint256 value)"
+    ];
+
+    // --------------- Local storage keys & state ----------------
     const USERS_KEY = "sadi_users";
     const TXS_KEY = "sadi_txs";
     let currentUser = null;
+
+    let provider = null;
+    let signer = null;
+    let tokenContract = null;
+    let connectedAddress = null;
 
     const currencySymbols = ["USD","ZAR","BWP","MZN","XDR","XAU"];
     const eodhdToken = "67b2d451e5b8a8.90504186";
     let fxRates = {};
 
-    // --- Persistence helpers ---
+    // ----------------- Helpers -----------------
     function getUsers(){ return JSON.parse(localStorage.getItem(USERS_KEY)||"{}"); }
     function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
     function getTxs(){ return JSON.parse(localStorage.getItem(TXS_KEY)||"[]"); }
     function saveTxs(t){ localStorage.setItem(TXS_KEY, JSON.stringify(t)); }
 
-    // --- Register ---
+    // ----------------- Register/Login -----------------
     function register(){
       const name=r_name.value,email=r_email.value,phone=r_phone.value,password=r_pass.value;
       if(!name||!email||!phone||!password) return alert("Fill all fields");
       let u=getUsers();
       if(u[email]) return alert("User exists!");
-      const wallet={ address:"0x"+Math.random().toString(16).substr(2,40), balance:200 }; // USD 200
+      const wallet={ address:"0x"+Math.random().toString(16).substr(2,40), balance:200 }; // USD 200 local
       u[email]={name,email,phone,password,wallet};
       saveUsers(u);
       alert("Registered! You got USD 200.");
     }
 
-    // --- Login ---
     function login(){
       const email=l_email.value,password=l_pass.value;
       let u=getUsers();
@@ -111,9 +155,16 @@
       currentUser=email;
       refreshWallet();
       refreshTxTable();
+      alert("Logged in as "+u[email].name);
     }
 
-    // --- FX Rates ---
+    function disconnectLocal(){
+      currentUser=null;
+      wallet_info.innerText="Not logged in";
+      connected_addr.innerText = "none";
+    }
+
+    // ---------------- FX Rates ----------------
     async function loadRates(){
       try{
         const resp=await fetch(
@@ -122,7 +173,7 @@
         const data=await resp.json();
         fxRates={USD:1};
         data.forEach(it=>{
-          if(it.code.startsWith("USD")){
+          if(it.code && it.code.startsWith("USD")){
             const cur=it.code.replace("USD","").replace(".FOREX","");
             fxRates[cur]=it.close;
           }
@@ -138,91 +189,194 @@
       refreshWallet();
     }
 
-    // --- Wallet ---
-    function refreshWallet(){
-      if(!currentUser) return wallet_info.innerText="Not logged in";
-      let u=getUsers()[currentUser];
-      let balanceUSD=u.wallet.balance.toFixed(2);
-      let cur=document.getElementById("fx_currency").value||"ZAR";
-      let rate=fxRates[cur]||0;
-      let balanceLocal=rate?(u.wallet.balance*rate).toFixed(2):"n/a";
-      wallet_info.innerText=`Address: ${u.wallet.address}\nBalance: USD ${balanceUSD}\n${cur} ≈ ${balanceLocal}`;
+    // ---------------- MetaMask / Ethers ----------------
+    async function connectWallet(){
+      if (!window.ethereum) return alert("MetaMask not detected. Install MetaMask and try again.");
+      try {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        connectedAddress = await signer.getAddress();
+        connected_addr.innerText = connectedAddress;
+        const network = await provider.getNetwork();
+        network_name.innerText = network.name + " (" + network.chainId + ")";
+        // instantiate token contract
+        tokenContract = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, signer);
+        // start watchers
+        watchTokenTransfers();
+        await updateBalances();
+      } catch (err) {
+        console.error(err);
+        alert("Connection failed: " + err.message);
+      }
     }
 
-    // --- Send ---
-    function send(){
-      if(!currentUser) return alert("Login first");
-      const to=to_addr.value, amt=parseFloat(to_amt.value);
-      if(!to||isNaN(amt)) return alert("Fill fields");
-      let u=getUsers();
-      let me=u[currentUser];
-      if(me.wallet.balance<amt) return alert("Insufficient funds");
-      me.wallet.balance-=amt;
-      saveUsers(u);
+    // Update ETH and SADI balances
+    async function updateBalances(){
+      if(!connectedAddress) return;
+      try {
+        const ethBalance = await provider.getBalance(connectedAddress);
+        const ethStr = ethers.formatEther(ethBalance) + " ETH";
+        eth_balance.innerText = ethStr;
+      } catch(e) {
+        eth_balance.innerText = "n/a";
+      }
 
-      // transaction record
-      const txId="TX"+Date.now();
-      let tx={id:txId,from:me.wallet.address,to,amount:amt,date:new Date().toLocaleString()};
-      let txs=getTxs(); txs.push(tx); saveTxs(txs);
-
-      send_res.innerText=`Sent USD ${amt.toFixed(2)} to ${to}\nTxID: ${txId}`;
-      refreshWallet();
-      refreshTxTable();
-      generatePDF(tx);
+      try {
+        if(tokenContract){
+          const raw = await tokenContract.balanceOf(connectedAddress);
+          const formatted = ethers.formatUnits(raw, TOKEN_DECIMALS);
+          sadi_balance.innerText = formatted + " SADI";
+        } else {
+          sadi_balance.innerText = "contract not set";
+        }
+      } catch(e){
+        sadi_balance.innerText = "n/a";
+      }
     }
 
-    // --- Transactions ---
+    // Send SADI tokens
+    async function sendToken(){
+      if(!connectedAddress) return alert("Connect MetaMask first");
+      const to = to_addr.value;
+      const amt = to_amt.value;
+      if(!to || !amt) return alert("Fill fields");
+      try {
+        const amtWei = ethers.parseUnits(amt.toString(), TOKEN_DECIMALS);
+        const tx = await tokenContract.transfer(to, amtWei);
+        send_res.innerText = "Pending tx: " + tx.hash;
+        await tx.wait();
+        send_res.innerText = "Sent! Tx: " + tx.hash;
+        // Add to local txs (prototype)
+        const txId = "ONCHAIN-" + Math.floor(Date.now()/1000);
+        const txRec = { id: txId, from: connectedAddress, to, amount: parseFloat(amt), date: new Date().toLocaleString() };
+        const txs = getTxs(); txs.push(txRec); saveTxs(txs);
+        refreshTxTable();
+        updateBalances();
+        generatePDF(txRec);
+      } catch (err) {
+        console.error(err);
+        alert("Send failed: " + (err && err.message ? err.message : err));
+      }
+    }
+
+    // Watch token Transfer events to refresh balance automatically
+    function watchTokenTransfers(){
+      if(!tokenContract) return;
+      tokenContract.on("Transfer", (from, to, value, event) => {
+        // refresh if connected address involved
+        if (from.toLowerCase() === connectedAddress.toLowerCase() || to.toLowerCase() === connectedAddress.toLowerCase()) {
+          setTimeout(updateBalances, 1500);
+        }
+      });
+    }
+
+    // ---------------- Transactions Table + PDF ----------------
     function refreshTxTable(){
       let txs=getTxs();
       let body=document.querySelector("#tx_table tbody");
       body.innerHTML=txs.map(t=>
-        `<tr><td>${t.id}</td><td>${t.to}</td><td>USD ${t.amount}</td><td>${t.date}</td><td><button onclick="generatePDF(${JSON.stringify(t).replace(/"/g,'&quot;')})">PDF</button></td></tr>`
+        `<tr><td>${t.id}</td><td>${t.to}</td><td>${t.amount}</td><td>${t.date}</td><td><button onclick='(${generatePDF.toString()})(${JSON.stringify(t)})'>PDF</button></td></tr>`
       ).join("");
     }
 
-    // --- PDF ---
     function generatePDF(tx){
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF();
       doc.text("Sadicoin Transaction Receipt",20,20);
       doc.text(`TxID: ${tx.id}`,20,40);
-      doc.text(`From: ${tx.from}`,20,50);
+      if(tx.from) doc.text(`From: ${tx.from}`,20,50);
       doc.text(`To: ${tx.to}`,20,60);
-      doc.text(`Amount: USD ${tx.amount}`,20,70);
+      doc.text(`Amount: ${tx.amount}`,20,70);
       doc.text(`Date: ${tx.date}`,20,80);
       doc.save(`${tx.id}.pdf`);
     }
 
-    // --- MoonPay with Backend-assisted flow + Fallback ---
+    // ---------------- MoonPay Integration (frontend fallback) ----------------
+    function openMoonPayBuy(){
+      if(!connectedAddress) return alert("Connect MetaMask first");
+      // Frontend direct buy link (public-key flow)
+      // Replace currencyCode and baseCurrencyAmount as needed
+      const usdAmount = prompt("Enter USD amount to buy (frontend fallback):", "50");
+      if(!usdAmount) return;
+      const url = `https://buy.moonpay.com?apiKey=${encodeURIComponent(MOONPAY_PUBLIC_KEY)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(connectedAddress)}&baseCurrencyAmount=${encodeURIComponent(usdAmount)}`;
+      window.open(url, "_blank");
+    }
+
+    function openMoonPaySell(){
+      // Sell/off-ramp via MoonPay requires backend / KYC flow; provide guidance
+      alert("Off-ramp / Sell requires a server-side (backend) integration with MoonPay to create signed ephemeral tokens and handle KYC callbacks. Implement /api/moonpay/sell on your backend and open the returned URL here.");
+      // Example frontend pattern (backend-assisted):
+      // fetch(`/api/moonpay/sell?address=${connectedAddress}`).then(r=>r.json()).then(d=>window.open(d.url))
+    }
+
+    // ---------------- Fallback: link to backend-assisted buy if available ----------------
     async function openSwap(){
       if(!currentUser) return alert("Login first");
-      let u=getUsers()[currentUser];
       try {
-        // Try backend-assisted flow
-        const resWallet = await fetch(`/api/wallet/${encodeURIComponent(currentUser)}`);
-        if (!resWallet.ok) throw new Error("Backend wallet not available");
-        const wallet = await resWallet.json();
-
-        const res = await fetch(`/api/moonpay-url?currency=usd&address=${encodeURIComponent(wallet.address)}`);
+        const res = await fetch(`/api/moonpay-url?currency=usd&address=${encodeURIComponent(currentUser)}`);
         if (!res.ok) throw new Error("Backend MoonPay not available");
         const data = await res.json();
-
         window.open(data.url, "_blank");
       } catch (err) {
         console.warn("Backend MoonPay failed, falling back:", err);
-        // Fallback: direct frontend link
-        const usd=u.wallet.balance.toFixed(2);
-        const url=`https://buy.moonpay.com?apiKey=pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k&currencyCode=usd&walletAddress=${u.wallet.address}&baseCurrencyAmount=${usd}`;
-        window.open(url,"_blank");
+        openMoonPayBuy();
       }
     }
 
-    // Init
+    // ---------------- Init & periodic updates ----------------
+    async function refreshWallet(){
+      if(!currentUser) return wallet_info.innerText="Not logged in";
+      let u=getUsers()[currentUser];
+      let balanceUSD=u.wallet.balance.toFixed(2);
+      let cur=document.getElementById("fx_currency").value||"ZAR";
+      let rate=fxRates[cur]||0;
+      let balanceLocal = rate ? (u.wallet.balance*rate).toFixed(2) : "n/a";
+      wallet_info.innerText=`Address: ${u.wallet.address}\nBalance: USD ${balanceUSD}\n${cur} ≈ ${balanceLocal}`;
+    }
+
+    // When connected, also refresh balances
+    setInterval(() => {
+      if (connectedAddress) updateBalances();
+    }, 15_000);
+
     loadRates();
     setInterval(loadRates,1000*60*5);
+    refreshTxTable();
+
+    // Attempt to auto-detect MetaMask connection and address (non-invasive)
+    (async function tryAutoConnect() {
+      if(window.ethereum && window.ethereum.selectedAddress) {
+        try {
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
+          connectedAddress = await signer.getAddress();
+          connected_addr.innerText = connectedAddress;
+          tokenContract = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, signer);
+          updateBalances();
+          watchTokenTransfers();
+        } catch(e) {
+          // ignore
+        }
+      }
+    })();
+
+    // Add small helper to detect network/account changes
+    if (window.ethereum) {
+      window.ethereum.on && window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          connected_addr.innerText = "none";
+          connectedAddress = null;
+        } else {
+          connected_addr.innerText = accounts[0];
+          connectedAddress = accounts[0];
+          updateBalances();
+        }
+      });
+      window.ethereum.on && window.ethereum.on('chainChanged', (chainId) => {
+        network_name.innerText = chainId;
+      });
+    }
   </script>
 </body>
 </html>
-
-
-

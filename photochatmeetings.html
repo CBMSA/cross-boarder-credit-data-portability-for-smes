@@ -200,8 +200,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="description" content="Sadicoin Vault – Browser wallet for SUSD tokens">
+  <meta name="theme-color" content="#2a4d8f">
   <title>Sadicoin Vault (Browser Wallet + SUSD)</title>
+
   <style>
     body { font-family: Inter, Arial, sans-serif; background:#f6f9fc; padding:20px; }
     .card{ background:#fff; padding:18px; border-radius:10px; max-width:900px; margin:12px auto; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
@@ -220,52 +224,42 @@
 
   <div class="card">
     <h3>1) Wallet (no MetaMask required)</h3>
-    <div>
-      <label>Create a new encrypted wallet (download keystore):</label>
-      <input id="new_pwd" placeholder="Enter a password to encrypt keystore">
-      <button onclick="createEncryptedWallet()">Create and Download Keystore</button>
-      <small class="note">We will generate a random wallet, encrypt it using the password, and prompt you to download the keystore JSON. Keep it safe.</small>
-    </div>
+    <label>Create a new encrypted wallet (download keystore):</label>
+    <input id="new_pwd" type="password" autocomplete="off" placeholder="Enter a password to encrypt keystore">
+    <button onclick="createEncryptedWallet()">Create and Download Keystore</button>
+    <small class="note">A random wallet is generated and encrypted. Keep the keystore file safe.</small>
 
     <hr/>
 
-    <div>
-      <label>Or load an encrypted keystore file:</label>
-      <input type="file" id="keystore_file">
-      <input id="load_pwd" placeholder="Password to decrypt">
-      <button onclick="loadKeystore()">Load Keystore</button>
-      <small class="note">You can also paste encrypted JSON into the keystore textarea (advanced).</small>
-    </div>
-
-    <hr/>
-
-    <div>
-      <label>Connected wallet address:</label>
-      <pre id="addr">none</pre>
-      <label>ETH balance:</label><pre id="ethbal">—</pre>
-      <label>SUSD balance:</label><pre id="tokenbal">—</pre>
-    </div>
+    <label>Or load an encrypted keystore file:</label>
+    <input type="file" id="keystore_file">
+    <input id="load_pwd" type="password" autocomplete="off" placeholder="Password to decrypt">
+    <button onclick="loadKeystore()">Load Keystore</button>
   </div>
 
   <div class="card">
     <h3>2) Network & Contract</h3>
-    <label>RPC URL (select or enter custom)</label>
+    <label>RPC URL</label>
     <select id="rpc_url_select">
       <option value="">-- Select an RPC URL --</option>
-      <option value="https://eth-mainnet.g.alchemy.com/v2/nEWMM8r_LC0XoflEmMBJX">Cbmwallet (Alchemy Ethereum Mainnet)</option>
-      <option value="https://eth-mainnet.g.alchemy.com/v2/d7gE2obkzI-6SO-OyQlGPG4uO3GwiwMN">Blessing Farai's First App (Alchemy Ethereum Mainnet)</option>
-      <option value="https://worldchain-mainnet.g.alchemy.com/v2/YSMa7Ojgstt6YOvACQ1z0">SadiCoin (Alchemy World Chain Mainnet)</option>
+      <option value="https://eth-mainnet.g.alchemy.com/v2/YOUR_PROJECT_ID">Alchemy Ethereum Mainnet</option>
       <option value="custom">Custom RPC...</option>
     </select>
-    <input id="rpc_url" placeholder="https://mainnet.infura.io/v3/YOUR_PROJECT_ID" value="">
-    <label>Contract address (deployed SadicoinUSD):</label>
-    <input id="contract_addr" placeholder="0x..." value="">
+    <input id="rpc_url" placeholder="https://mainnet.infura.io/v3/YOUR_PROJECT_ID">
+    <label>Contract address (SadicoinUSD):</label>
+    <input id="contract_addr" placeholder="0x...">
     <button onclick="connectContract()">Connect to Contract</button>
-    <small class="note">Do not insert private keys here. RPC public keys (Infura project id) are acceptable for client-side usage; for production lock them to allowed origins if provider supports it.</small>
   </div>
 
   <div class="card">
-    <h3>3) Send SUSD tokens</h3>
+    <h3>3) Balances</h3>
+    <label>Connected wallet address:</label><pre id="addr">none</pre>
+    <label>ETH balance:</label><pre id="ethbal">—</pre>
+    <label>SUSD balance:</label><pre id="tokenbal">—</pre>
+  </div>
+
+  <div class="card">
+    <h3>4) Send SUSD tokens</h3>
     <label>Recipient</label><input id="to_addr" placeholder="0x...">
     <label>Amount (SUSD)</label><input id="to_amt" type="number" step="any" placeholder="e.g. 100.00">
     <button onclick="sendToken()">Send SUSD</button>
@@ -273,175 +267,149 @@
   </div>
 
   <div class="card">
-    <h3>4) MoonPay Buy (on-ramp, frontend fallback)</h3>
+    <h3>5) MoonPay Buy (on-ramp)</h3>
     <label>MoonPay publishable key (public):</label>
-    <input id="moonpay_pk" value="pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k">
+    <input id="moonpay_pk" placeholder="YOUR_MOONPAY_PUBLIC_KEY">
     <label>USD amount to buy</label><input id="mp_usd" type="number" value="50">
     <button onclick="moonpayBuy()">Open MoonPay Buy</button>
-    <small class="note">This uses MoonPay's public buy widget and is safe for client-side use. For off-ramp (sell) and KYC you must use a server-side integration that uses your MoonPay secret key. See serverless example below.</small>
+    <small class="note">Only the public key is used client-side. Keep your secret key on the server.</small>
   </div>
 
   <div class="card">
-    <h3>5) Local Transaction Log and PDF receipts</h3>
+    <h3>6) Local Transaction Log & PDF receipts</h3>
     <button onclick="showLocalTxs()">Show local txs</button>
     <pre id="local_txs"></pre>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- External libraries (pinned versions with integrity) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"
+          integrity="sha384-REPLACE_WITH_HASH" crossorigin="anonymous"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+          integrity="sha384-REPLACE_WITH_HASH" crossorigin="anonymous"></script>
 
-<script>
-let wallet = null;
-let provider = null;
-let tokenContract = null;
-const ERC20_ABI = [
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)"
-];
+  <script defer>
+  // ---- App Logic ----
+  let wallet=null, provider=null, tokenContract=null;
+  const ERC20_ABI=[
+    "function name() view returns (string)",
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
+    "function balanceOf(address) view returns (uint256)",
+    "function transfer(address to, uint256 amount) returns (bool)"
+  ];
 
-function download(filename, text) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], {type:'application/json'}));
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-async function createEncryptedWallet(){
-  const pass = document.getElementById('new_pwd').value;
-  if(!pass) return alert('Enter password to encrypt keystore');
-  wallet = ethers.Wallet.createRandom();
-  const json = await wallet.encrypt(pass);
-  download(`${wallet.address.replace('0x','')}_keystore.json`, json);
-  document.getElementById('addr').textContent = wallet.address;
-  localStorage.setItem('sadi_keystore', json);
-  alert('Keystore generated and saved to localStorage and downloaded. Keep it safe.');
-}
-
-async function loadKeystore(){
-  const fileInput = document.getElementById('keystore_file');
-  if(fileInput.files.length === 0) return alert('Choose keystore JSON file');
-  const txt = await fileInput.files[0].text();
-  const pwd = document.getElementById('load_pwd').value;
-  if(!pwd) return alert('Enter password to decrypt');
-  try{
-    wallet = await ethers.Wallet.fromEncryptedJson(txt, pwd);
-    document.getElementById('addr').textContent = wallet.address;
-    localStorage.setItem('sadi_keystore', txt);
-  }catch(e){
-    console.error(e);
-    alert('Failed to load keystore: ' + e.message);
+  function download(filename, text){
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([text], {type:'application/json'}));
+    a.download=filename; a.click();
   }
-}
 
-document.getElementById('rpc_url_select').addEventListener('change', function() {
-  const val = this.value;
-  const rpcInput = document.getElementById('rpc_url');
-  if (val === 'custom' || val === '') {
-    rpcInput.value = '';
-    rpcInput.disabled = false;
-    rpcInput.focus();
-  } else {
-    rpcInput.value = val;
-    rpcInput.disabled = true;
+  async function createEncryptedWallet(){
+    const pass=document.getElementById('new_pwd').value.trim();
+    if(!pass) return alert('Enter password');
+    wallet=ethers.Wallet.createRandom();
+    const json=await wallet.encrypt(pass);
+    download(`${wallet.address.replace('0x','')}_keystore.json`, json);
+    document.getElementById('addr').textContent=wallet.address;
+    localStorage.setItem('sadi_keystore', json);
   }
-});
 
-async function connectContract(){
-  const rpc = document.getElementById('rpc_url').value.trim();
-  const caddr = document.getElementById('contract_addr').value.trim();
-  if(!rpc || !caddr) return alert('Enter RPC URL and contract address');
-  provider = new ethers.JsonRpcProvider(rpc);
-  if(wallet) wallet = wallet.connect(provider);
-  tokenContract = new ethers.Contract(caddr, ERC20_ABI, wallet || provider);
-  await refreshBalances();
-  alert('Connected to token contract');
-}
-
-async function refreshBalances(){
-  if(!wallet) { document.getElementById('tokenbal').textContent = 'No wallet loaded'; return; }
-  if(!provider) { document.getElementById('ethbal').textContent = 'No RPC'; return; }
-  try {
-    const ethBal = await provider.getBalance(wallet.address);
-    document.getElementById('ethbal').textContent = ethers.formatEther(ethBal) + ' ETH';
-  } catch(e){
-    document.getElementById('ethbal').textContent = 'err';
+  async function loadKeystore(){
+    const fileInput=document.getElementById('keystore_file');
+    if(!fileInput.files.length) return alert('Choose a file');
+    const txt=await fileInput.files[0].text();
+    const pwd=document.getElementById('load_pwd').value;
+    if(!pwd) return alert('Enter password');
+    try{
+      wallet=await ethers.Wallet.fromEncryptedJson(txt,pwd);
+      document.getElementById('addr').textContent=wallet.address;
+      localStorage.setItem('sadi_keystore', txt);
+    }catch(e){ alert('Failed to load: '+e.message); }
   }
-  if(tokenContract){
-    try {
-      const raw = await tokenContract.balanceOf(wallet.address);
-      const dec = await tokenContract.decimals();
-      const str = ethers.formatUnits(raw, dec);
-      document.getElementById('tokenbal').textContent = str + ' SUSD';
-    } catch(e){
-      document.getElementById('tokenbal').textContent = 'err';
+
+  document.getElementById('rpc_url_select').addEventListener('change',function(){
+    const val=this.value, rpc=document.getElementById('rpc_url');
+    if(val==='custom'||!val){ rpc.value=''; rpc.disabled=false; rpc.focus();}
+    else{ rpc.value=val; rpc.disabled=true; }
+  });
+
+  async function connectContract(){
+    const rpc=document.getElementById('rpc_url').value.trim();
+    const caddr=document.getElementById('contract_addr').value.trim();
+    if(!rpc||!caddr) return alert('Enter RPC & contract');
+    provider=new ethers.JsonRpcProvider(rpc);
+    if(wallet) wallet=wallet.connect(provider);
+    tokenContract=new ethers.Contract(caddr, ERC20_ABI, wallet||provider);
+    refreshBalances();
+    localStorage.setItem('sadi_rpc', rpc);
+    localStorage.setItem('sadi_contract', caddr);
+  }
+
+  async function refreshBalances(){
+    if(!wallet||!provider) return;
+    try{
+      const ethBal=await provider.getBalance(wallet.address);
+      document.getElementById('ethbal').textContent=ethers.formatEther(ethBal)+' ETH';
+    }catch{document.getElementById('ethbal').textContent='err';}
+    if(tokenContract){
+      try{
+        const raw=await tokenContract.balanceOf(wallet.address);
+        const dec=await tokenContract.decimals();
+        document.getElementById('tokenbal').textContent=ethers.formatUnits(raw,dec)+' SUSD';
+      }catch{document.getElementById('tokenbal').textContent='err';}
     }
   }
-}
 
-async function sendToken(){
-  if(!wallet) return alert('Load wallet first');
-  if(!tokenContract) return alert('Connect contract first');
-  const to = document.getElementById('to_addr').value;
-  const amt = document.getElementById('to_amt').value;
-  if(!to || !amt) return alert('Fill fields');
-  try {
-    const dec = await tokenContract.decimals();
-    const amtUnits = ethers.parseUnits(amt.toString(), dec);
-    const contractWithSigner = tokenContract.connect(wallet);
-    const tx = await contractWithSigner.transfer(to, amtUnits);
-    document.getElementById('send_res').textContent = 'Pending tx: ' + tx.hash;
-    await tx.wait();
-    document.getElementById('send_res').textContent = 'Confirmed tx: ' + tx.hash;
-    const txRec = { id: tx.hash, from: wallet.address, to, amount: amt, date: new Date().toLocaleString() };
-    const txs = JSON.parse(localStorage.getItem('sadi_local_txs') || '[]');
-    txs.push(txRec);
-    localStorage.setItem('sadi_local_txs', JSON.stringify(txs));
-    refreshBalances();
-    createPDF(txRec);
-  } catch(e){
-    console.error(e);
-    alert('Send failed: ' + (e.message || e));
+  async function sendToken(){
+    if(!wallet||!tokenContract) return alert('Load wallet & connect contract');
+    const to=document.getElementById('to_addr').value.trim();
+    const amt=document.getElementById('to_amt').value;
+    if(!ethers.isAddress(to)||!amt) return alert('Invalid input');
+    try{
+      const dec=await tokenContract.decimals();
+      const units=ethers.parseUnits(amt.toString(), dec);
+      const tx=await tokenContract.connect(wallet).transfer(to, units);
+      document.getElementById('send_res').textContent='Pending: '+tx.hash;
+      await tx.wait();
+      document.getElementById('send_res').textContent='Confirmed: '+tx.hash;
+      const rec={id:tx.hash,from:wallet.address,to,amount:amt,date:new Date().toLocaleString()};
+      const txs=JSON.parse(localStorage.getItem('sadi_local_txs')||'[]');
+      txs.push(rec); localStorage.setItem('sadi_local_txs', JSON.stringify(txs));
+      refreshBalances(); createPDF(rec);
+    }catch(e){ alert('Send failed: '+e.message); }
   }
-}
 
-function createPDF(tx){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text('Sadicoin Transaction Receipt', 20, 20);
-  doc.text('Tx: ' + tx.id, 20, 40);
-  doc.text('From: ' + tx.from, 20, 50);
-  doc.text('To: ' + tx.to, 20, 60);
-  doc.text('Amount: ' + tx.amount, 20, 70);
-  doc.text('Date: ' + tx.date, 20, 80);
-  doc.save(`${tx.id}.pdf`);
-}
+  function createPDF(tx){
+    const { jsPDF }=window.jspdf;
+    const doc=new jsPDF();
+    doc.text('Sadicoin Transaction Receipt',20,20);
+    doc.text('Tx: '+tx.id,20,40);
+    doc.text('From: '+tx.from,20,50);
+    doc.text('To: '+tx.to,20,60);
+    doc.text('Amount: '+tx.amount,20,70);
+    doc.text('Date: '+tx.date,20,80);
+    doc.save(`${tx.id}.pdf`);
+  }
 
-function showLocalTxs(){
-  const txs = JSON.parse(localStorage.getItem('sadi_local_txs') || '[]');
-  document.getElementById('local_txs').textContent = JSON.stringify(txs, null, 2);
-}
+  function showLocalTxs(){
+    const txs=JSON.parse(localStorage.getItem('sadi_local_txs')||'[]');
+    document.getElementById('local_txs').textContent=JSON.stringify(txs,null,2);
+  }
 
-function moonpayBuy(){
-  const pk = document.getElementById('moonpay_pk').value.trim();
-  const usd = document.getElementById('mp_usd').value || '50';
-  if(!pk) return alert('Set MoonPay publishable key');
-  if(!wallet) return alert('Load wallet first so we can pass walletAddress to MoonPay');
-  const address = wallet.address;
-  const url = `https://buy.moonpay.com?apiKey=${encodeURIComponent(pk)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(address)}&baseCurrencyAmount=${encodeURIComponent(usd)}`;
-  window.open(url, '_blank');
-}
+  function moonpayBuy(){
+    const pk=document.getElementById('moonpay_pk').value.trim();
+    const usd=document.getElementById('mp_usd').value||'50';
+    if(!pk) return alert('Set MoonPay publishable key');
+    if(!wallet) return alert('Load wallet first');
+    const url=`https://buy.moonpay.com?apiKey=${encodeURIComponent(pk)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(wallet.address)}&baseCurrencyAmount=${encodeURIComponent(usd)}`;
+    window.open(url,'_blank');
+  }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const savedRpc = localStorage.getItem('sadi_rpc') || '';
-  const savedContract = localStorage.getItem('sadi_contract') || '';
-  if(savedRpc) document.getElementById('rpc_url').value = savedRpc;
-  if(savedContract) document.getElementById('contract_addr').value = savedContract;
-});
-</script>
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.getElementById('rpc_url').value=localStorage.getItem('sadi_rpc')||'';
+    document.getElementById('contract_addr').value=localStorage.getItem('sadi_contract')||'';
+  });
+  </script>
 </body>
 </html>
+

@@ -141,7 +141,6 @@ function generatePDF() {
 </body>
 </html>
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -195,7 +194,14 @@ function generatePDF() {
 
   <div class="card">
     <h3>2) Network & Contract</h3>
-    <label>RPC URL (public RPC — replace with your Infura/Alchemy/QuickNode project URL)</label>
+    <label>RPC URL (select or enter custom)</label>
+    <select id="rpc_url_select">
+      <option value="">-- Select an RPC URL --</option>
+      <option value="https://eth-mainnet.g.alchemy.com/v2/nEWMM8r_LC0XoflEmMBJX">Cbmwallet (Alchemy Ethereum Mainnet)</option>
+      <option value="https://eth-mainnet.g.alchemy.com/v2/d7gE2obkzI-6SO-OyQlGPG4uO3GwiwMN">Blessing Farai's First App (Alchemy Ethereum Mainnet)</option>
+      <option value="https://worldchain-mainnet.g.alchemy.com/v2/YSMa7Ojgstt6YOvACQ1z0">SadiCoin (Alchemy World Chain Mainnet)</option>
+      <option value="custom">Custom RPC...</option>
+    </select>
     <input id="rpc_url" placeholder="https://mainnet.infura.io/v3/YOUR_PROJECT_ID" value="">
     <label>Contract address (deployed SadicoinUSD):</label>
     <input id="contract_addr" placeholder="0x..." value="">
@@ -230,13 +236,6 @@ function generatePDF() {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-/* --------------------
-  Frontend logic notes:
-  - This front-end is intentionally client-only, no server-side code required to create wallets or send tokens.
-  - However, **do not** embed MoonPay secret keys or webhook keys here.
-  - For production off-ramp (sell), implement a server endpoint and call it from the browser.
----------------------*/
-
 let wallet = null;
 let provider = null;
 let tokenContract = null;
@@ -264,10 +263,8 @@ async function createEncryptedWallet(){
   const json = await wallet.encrypt(pass);
   download(`${wallet.address.replace('0x','')}_keystore.json`, json);
   document.getElementById('addr').textContent = wallet.address;
-  // store encrypted in localStorage if user wants (optional)
   localStorage.setItem('sadi_keystore', json);
   alert('Keystore generated and saved to localStorage and downloaded. Keep it safe.');
-  // don't connect provider yet until user sets RPC and contract
 }
 
 async function loadKeystore(){
@@ -279,7 +276,6 @@ async function loadKeystore(){
   try{
     wallet = await ethers.Wallet.fromEncryptedJson(txt, pwd);
     document.getElementById('addr').textContent = wallet.address;
-    // optionally keep json in localStorage
     localStorage.setItem('sadi_keystore', txt);
   }catch(e){
     console.error(e);
@@ -287,13 +283,24 @@ async function loadKeystore(){
   }
 }
 
+document.getElementById('rpc_url_select').addEventListener('change', function() {
+  const val = this.value;
+  const rpcInput = document.getElementById('rpc_url');
+  if (val === 'custom' || val === '') {
+    rpcInput.value = '';
+    rpcInput.disabled = false;
+    rpcInput.focus();
+  } else {
+    rpcInput.value = val;
+    rpcInput.disabled = true;
+  }
+});
+
 async function connectContract(){
   const rpc = document.getElementById('rpc_url').value.trim();
   const caddr = document.getElementById('contract_addr').value.trim();
   if(!rpc || !caddr) return alert('Enter RPC URL and contract address');
-  // provider: public RPC (user supplies). For production use private RPC locked to origin or backend relay.
   provider = new ethers.JsonRpcProvider(rpc);
-  // if wallet exists, connect it with provider for signing
   if(wallet) wallet = wallet.connect(provider);
   tokenContract = new ethers.Contract(caddr, ERC20_ABI, wallet || provider);
   await refreshBalances();
@@ -335,13 +342,11 @@ async function sendToken(){
     document.getElementById('send_res').textContent = 'Pending tx: ' + tx.hash;
     await tx.wait();
     document.getElementById('send_res').textContent = 'Confirmed tx: ' + tx.hash;
-    // Save to local tx log
     const txRec = { id: tx.hash, from: wallet.address, to, amount: amt, date: new Date().toLocaleString() };
     const txs = JSON.parse(localStorage.getItem('sadi_local_txs') || '[]');
     txs.push(txRec);
     localStorage.setItem('sadi_local_txs', JSON.stringify(txs));
     refreshBalances();
-    // create PDF receipt
     createPDF(txRec);
   } catch(e){
     console.error(e);
@@ -366,34 +371,23 @@ function showLocalTxs(){
   document.getElementById('local_txs').textContent = JSON.stringify(txs, null, 2);
 }
 
-/* --------------------
-  MoonPay frontend buy (public)
-  - Uses publishable key only (safe client-side)
-  - For real production, you likely want a backend-assisted flow to create quotes and sign ephemeral sessions.
----------------------*/
 function moonpayBuy(){
-  // publishable key (public) that you provided
   const pk = document.getElementById('moonpay_pk').value.trim();
   const usd = document.getElementById('mp_usd').value || '50';
   if(!pk) return alert('Set MoonPay publishable key');
   if(!wallet) return alert('Load wallet first so we can pass walletAddress to MoonPay');
   const address = wallet.address;
-  // Example: buy ETH or USD stable; here we open MoonPay buy widget for Ethereum, adjust currencyCode as needed
   const url = `https://buy.moonpay.com?apiKey=${encodeURIComponent(pk)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(address)}&baseCurrencyAmount=${encodeURIComponent(usd)}`;
   window.open(url, '_blank');
 }
 
-/* On load: try to populate contract address from localStorage */
 document.addEventListener('DOMContentLoaded', () => {
   const savedRpc = localStorage.getItem('sadi_rpc') || '';
   const savedContract = localStorage.getItem('sadi_contract') || '';
   if(savedRpc) document.getElementById('rpc_url').value = savedRpc;
   if(savedContract) document.getElementById('contract_addr').value = savedContract;
 });
-
 </script>
 </body>
 </html>
-
-
 

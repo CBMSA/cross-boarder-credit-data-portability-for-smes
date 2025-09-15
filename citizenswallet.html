@@ -19,6 +19,7 @@
     .row { display:flex; gap:10px; }
     .col { flex:1; }
     .small { font-size:12px; color:#666; margin-top:6px; }
+    .admin-section { background: #fff8e1; padding: 15px; border-radius: 8px; margin-top: 15px; }
   </style>
 </head>
 <body>
@@ -76,6 +77,22 @@
     <pre id="send_res"></pre>
   </div>
 
+  <!-- Admin Section (only visible to contract owner) -->
+  <div class="box admin-section" id="admin_section" style="display: none;">
+    <h3>🔐 Admin Functions</h3>
+    <div>
+      <input id="mint_address" placeholder="Recipient address (0x...)">
+      <input id="mint_amount" placeholder="Amount (SADI)" type="number" step="any">
+      <button onclick="adminMint()">Mint SADI</button>
+      <pre id="mint_res"></pre>
+    </div>
+    <div style="margin-top: 10px;">
+      <input id="burn_amount" placeholder="Amount (SADI)" type="number" step="any">
+      <button onclick="userBurn()">Burn SADI</button>
+      <pre id="burn_res"></pre>
+    </div>
+  </div>
+
   <!-- Transactions -->
   <div class="box">
     <h3>Transaction History (local)</h3>
@@ -106,20 +123,661 @@
     const MOONPAY_PUBLIC_KEY = "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k"; // replace with your public key
     const TOKEN_DECIMALS = 18; // SADI decimals
 
-    // Minimal ABI: ERC20 balanceOf, transfer, name, symbol, decimals
-    const ERC20_ABI = [
-      "function name() view returns (string)",
-      "function symbol() view returns (string)",
-      "function decimals() view returns (uint8)",
-      "function balanceOf(address) view returns (uint256)",
-      "function transfer(address to, uint256 amount) returns (bool)",
-      "event Transfer(address indexed from, address indexed to, uint256 value)"
+    // Full Sadicoin ABI
+    const SADICOIN_ABI = [
+      {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "ECDSAInvalidSignature",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "length",
+            "type": "uint256"
+          }
+        ],
+        "name": "ECDSAInvalidSignatureLength",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ECDSAInvalidSignatureS",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "allowance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "needed",
+            "type": "uint256"
+          }
+        ],
+        "name": "ERC20InsufficientAllowance",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "needed",
+            "type": "uint256"
+          }
+        ],
+        "name": "ERC20InsufficientBalance",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "approver",
+            "type": "address"
+          }
+        ],
+        "name": "ERC20InvalidApprover",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "receiver",
+            "type": "address"
+          }
+        ],
+        "name": "ERC20InvalidReceiver",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          }
+        ],
+        "name": "ERC20InvalidSender",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          }
+        ],
+        "name": "ERC20InvalidSpender",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ],
+        "name": "ERC2612ExpiredSignature",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "signer",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          }
+        ],
+        "name": "ERC2612InvalidSigner",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "currentNonce",
+            "type": "uint256"
+          }
+        ],
+        "name": "InvalidAccountNonce",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "InvalidShortString",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableInvalidOwner",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableUnauthorizedAccount",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "str",
+            "type": "string"
+          }
+        ],
+        "name": "StringTooLong",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "Approval",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [],
+        "name": "EIP712DomainChanged",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "previousOwner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "Transfer",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "DOMAIN_SEPARATOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          }
+        ],
+        "name": "allowance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "approve",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "burn",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "eip712Domain",
+        "outputs": [
+          {
+            "internalType": "bytes1",
+            "name": "fields",
+            "type": "bytes1"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "version",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "chainId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "verifyingContract",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "salt",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "extensions",
+            "type": "uint256[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "moonPayWallet",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "name",
+        "outputs": [
+          {
+            "internalType": "string",
+            "name": "",
+            "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          }
+        ],
+        "name": "nonces",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "name": "permit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [
+          {
+            "internalType": "string",
+            "name": "",
+            "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "transfer",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "transferFrom",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
     ];
 
     // --------------- Local storage keys & state ----------------
     const USERS_KEY = "sadi_users";
     const TXS_KEY = "sadi_txs";
     let currentUser = null;
+    let isOwner = false;
 
     let provider = null;
     let signer = null;
@@ -198,11 +856,21 @@
         signer = await provider.getSigner();
         connectedAddress = await signer.getAddress();
         connected_addr.innerText = connectedAddress;
+
         const network = await provider.getNetwork();
         network_name.innerText = network.name + " (" + network.chainId + ")";
-        // instantiate token contract
-        tokenContract = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, signer);
-        // start watchers
+
+        // Instantiate token contract with full ABI
+        tokenContract = new ethers.Contract(CONTRACT_ADDRESS, SADICOIN_ABI, signer);
+
+        // Check if connected address is owner
+        const contractOwner = await tokenContract.owner();
+        isOwner = (connectedAddress.toLowerCase() === contractOwner.toLowerCase());
+        if (isOwner) {
+          document.getElementById('admin_section').style.display = 'block';
+        }
+
+        // Start watchers
         watchTokenTransfers();
         await updateBalances();
       } catch (err) {
@@ -260,12 +928,51 @@
       }
     }
 
+    // Admin: Mint SADI tokens
+    async function adminMint() {
+      if (!isOwner) return alert("Only contract owner can mint");
+      const to = mint_address.value;
+      const amt = mint_amount.value;
+      if (!to || !amt) return alert("Fill all fields");
+
+      try {
+        const amtWei = ethers.parseUnits(amt.toString(), TOKEN_DECIMALS);
+        const tx = await tokenContract.mint(to, amtWei);
+        mint_res.innerText = "Minting... Tx: " + tx.hash;
+        await tx.wait();
+        mint_res.innerText = "Success! Minted " + amt + " SADI to " + to;
+        updateBalances();
+      } catch (err) {
+        console.error(err);
+        mint_res.innerText = "Error: " + (err.message || err);
+      }
+    }
+
+    // User: Burn SADI tokens
+    async function userBurn() {
+      if (!connectedAddress) return alert("Connect wallet first");
+      const amt = burn_amount.value;
+      if (!amt) return alert("Enter amount to burn");
+
+      try {
+        const amtWei = ethers.parseUnits(amt.toString(), TOKEN_DECIMALS);
+        const tx = await tokenContract.burn(amtWei);
+        burn_res.innerText = "Burning... Tx: " + tx.hash;
+        await tx.wait();
+        burn_res.innerText = "Success! Burned " + amt + " SADI";
+        updateBalances();
+      } catch (err) {
+        console.error(err);
+        burn_res.innerText = "Error: " + (err.message || err);
+      }
+    }
+
     // Watch token Transfer events to refresh balance automatically
     function watchTokenTransfers(){
       if(!tokenContract) return;
       tokenContract.on("Transfer", (from, to, value, event) => {
-        // refresh if connected address involved
-        if (from.toLowerCase() === connectedAddress.toLowerCase() || to.toLowerCase() === connectedAddress.toLowerCase()) {
+        if (from.toLowerCase() === connectedAddress.toLowerCase() ||
+            to.toLowerCase() === connectedAddress.toLowerCase()) {
           setTimeout(updateBalances, 1500);
         }
       });
@@ -292,11 +999,9 @@
       doc.save(`${tx.id}.pdf`);
     }
 
-    // ---------------- MoonPay Integration (frontend fallback) ----------------
+    // ---------------- MoonPay Integration ----------------
     function openMoonPayBuy(){
       if(!connectedAddress) return alert("Connect MetaMask first");
-      // Frontend direct buy link (public-key flow)
-      // Replace currencyCode and baseCurrencyAmount as needed
       const usdAmount = prompt("Enter USD amount to buy (frontend fallback):", "50");
       if(!usdAmount) return;
       const url = `https://buy.moonpay.com?apiKey=${encodeURIComponent(MOONPAY_PUBLIC_KEY)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(connectedAddress)}&baseCurrencyAmount=${encodeURIComponent(usdAmount)}`;
@@ -304,24 +1009,7 @@
     }
 
     function openMoonPaySell(){
-      // Sell/off-ramp via MoonPay requires backend / KYC flow; provide guidance
-      alert("Off-ramp / Sell requires a server-side (backend) integration with MoonPay to create signed ephemeral tokens and handle KYC callbacks. Implement /api/moonpay/sell on your backend and open the returned URL here.");
-      // Example frontend pattern (backend-assisted):
-      // fetch(`/api/moonpay/sell?address=${connectedAddress}`).then(r=>r.json()).then(d=>window.open(d.url))
-    }
-
-    // ---------------- Fallback: link to backend-assisted buy if available ----------------
-    async function openSwap(){
-      if(!currentUser) return alert("Login first");
-      try {
-        const res = await fetch(`/api/moonpay-url?currency=usd&address=${encodeURIComponent(currentUser)}`);
-        if (!res.ok) throw new Error("Backend MoonPay not available");
-        const data = await res.json();
-        window.open(data.url, "_blank");
-      } catch (err) {
-        console.warn("Backend MoonPay failed, falling back:", err);
-        openMoonPayBuy();
-      }
+      alert("Off-ramp requires backend integration. Contact support.");
     }
 
     // ---------------- Init & periodic updates ----------------
@@ -335,16 +1023,17 @@
       wallet_info.innerText=`Address: ${u.wallet.address}\nBalance: USD ${balanceUSD}\n${cur} ≈ ${balanceLocal}`;
     }
 
-    // When connected, also refresh balances
+    // Auto-refresh balances when connected
     setInterval(() => {
       if (connectedAddress) updateBalances();
     }, 15_000);
 
+    // Initialize
     loadRates();
-    setInterval(loadRates,1000*60*5);
+    setInterval(loadRates, 1000*60*5);
     refreshTxTable();
 
-    // Attempt to auto-detect MetaMask connection and address (non-invasive)
+    // Auto-connect if MetaMask is available
     (async function tryAutoConnect() {
       if(window.ethereum && window.ethereum.selectedAddress) {
         try {
@@ -352,29 +1041,40 @@
           signer = await provider.getSigner();
           connectedAddress = await signer.getAddress();
           connected_addr.innerText = connectedAddress;
-          tokenContract = new ethers.Contract(CONTRACT_ADDRESS, ERC20_ABI, signer);
+          tokenContract = new ethers.Contract(CONTRACT_ADDRESS, SADICOIN_ABI, signer);
+
+          // Check owner status
+          const contractOwner = await tokenContract.owner();
+          isOwner = (connectedAddress.toLowerCase() === contractOwner.toLowerCase());
+          if (isOwner) {
+            document.getElementById('admin_section').style.display = 'block';
+          }
+
           updateBalances();
           watchTokenTransfers();
         } catch(e) {
-          // ignore
+          console.error("Auto-connect failed:", e);
         }
       }
     })();
 
-    // Add small helper to detect network/account changes
+    // Handle MetaMask account/network changes
     if (window.ethereum) {
-      window.ethereum.on && window.ethereum.on('accountsChanged', (accounts) => {
+      window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {
           connected_addr.innerText = "none";
           connectedAddress = null;
+          document.getElementById('admin_section').style.display = 'none';
         } else {
           connected_addr.innerText = accounts[0];
           connectedAddress = accounts[0];
-          updateBalances();
+          // Reinitialize contract with new account
+          connectWallet();
         }
       });
-      window.ethereum.on && window.ethereum.on('chainChanged', (chainId) => {
-        network_name.innerText = chainId;
+
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload(); // Simple way to handle network changes
       });
     }
   </script>

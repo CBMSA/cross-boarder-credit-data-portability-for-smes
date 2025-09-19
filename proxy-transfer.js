@@ -1,250 +1,3 @@
-// server.js
-import express from "express";
-import bodyParser from "body-parser";
-import dotenv from "dotenv";
-import sql from "mssql";
-import crypto from "crypto";
-import querystring from "querystring";
-
-dotenv.config();
-const app = express();
-app.use(bodyParser.json());
-app.use(express.static("public"));
-
-// ---------- SQL Server Connection ----------
-const sqlConfig = {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER,
-  database: process.env.DB_NAME,
-  options: {
-    encrypt: true,
-    trustServerCertificate: false,
-  },
-};
-
-let pool;
-async function getPool() {
-  if (!pool) pool = await sql.connect(sqlConfig);
-  return pool;
-}
-
-// ---------- Wallet DB helpers ----------
-async function createUser({ name, email, phone, password }) {
-  const pool = await getPool();
-  const address = "0x" + crypto.randomBytes(20).toString("hex");
-  const balance = 100;
-
-  await pool
-    .request()
-    .input("email", sql.VarChar, email)
-    .input("name", sql.VarChar, name)
-    .input("phone", sql.VarChar, phone)
-    .input("password", sql.VarChar, password)
-    .input("address", sql.VarChar, address)
-    .input("balance", sql.Float, balance)
-    .query(`
-      INSERT INTO Users (Email, Name, Phone, Password, Address, Balance)
-      VALUES (@email, @name, @phone, @password, @address, @balance)
-    `);
-
-  return { address, balance };
-}
-
-async function findUser(email) {
-  const pool = await getPool();
-  const result = await pool
-    .request()
-    .input("email", sql.VarChar, email)
-    .query("SELECT * FROM Users WHERE Email=@email");
-  return result.recordset[0];
-}
-
-async function updateBalance(email, balance) {
-  const pool = await getPool();
-  await pool
-    .request()
-    .input("email", sql.VarChar, email)
-    .input("balance", sql.Float, balance)
-    .query("UPDATE Users SET Balance=@balance WHERE Email=@email");
-}
-
-// ---------- API routes ----------
-app.post("/api/register", async (req, res) => {
-  try {
-    const { name, email, phone, password } = req.body;
-    if (!name || !email || !phone || !password)
-      return res.status(400).json({ error: "Missing fields" });
-
-    const existing = await findUser(email);
-    if (existing) return res.status(400).json({ error: "User exists" });
-
-    const wallet = await createUser({ name, email, phone, password });
-    res.json({ message: "Registered", wallet });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Register failed" });
-  }
-});
-
-app.post("/api/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await findUser(email);
-    if (!user || user.Password !== password) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-    res.json({ message: "Login successful", wallet: { address: user.Address, balance: user.Balance } });
-  } catch (err) {
-    res.status(500).json({ error: "Login failed" });
-  }
-});
-
-app.get("/api/wallet/:email", async (req, res) => {
-  try {
-    const user = await findUser(req.params.email);
-    if (!user) return res.status(404).json({ error: "Not found" });
-    res.json({ address: user.Address, balance: user.Balance });
-  } catch (err) {
-    res.status(500).json({ error: "Wallet fetch failed" });
-  }
-});
-
-app.post("/api/send", async (req, res) => {
-  try {
-    const { fromEmail, toAddr, amount } = req.body;
-    const user = await findUser(fromEmail);
-    if (!user) return res.status(404).json({ error: "Sender not found" });
-
-    if (user.Balance < amount)
-      return res.status(400).json({ error: "Insufficient balance" });
-
-    const newBalance = user.Balance - amount;
-    await updateBalance(fromEmail, newBalance);
-
-    res.json({ message: `Sent ${amount} SADI to ${toAddr}` });
-  } catch (err) {
-    res.status(500).json({ error: "Send failed" });
-  }
-});
-
-// ---------- MoonPay ----------
-app.get("/api/moonpay-url", (req, res) => {
-  const baseUrl = "https://buy.moonpay.com";
-  const params = {
-    apiKey: process.env.MOONPAY_PUBLISHABLE_KEY,
-    currencyCode: req.query.currency || "eth",
-    walletAddress: req.query.address,
-  };
-
-  const query = querystring.stringify(params);
-  const url = `${baseUrl}?${query}`;
-
-  const signature = crypto
-    .createHmac("sha256", process.env.MOONPAY_SECRET_KEY)
-    .update(url)
-    .digest("base64");
-
-  const signedUrl = `${url}&signature=${encodeURIComponent(signature)}`;
-  res.json({ url: signedUrl });
-});
-
-app.post("/api/moonpay-webhook", (req, res) => {
-  const rawBody = JSON.stringify(req.body);
-  const signature = req.headers["moonpay-signature"];
-
-  const expected = crypto
-    .createHmac("sha256", process.env.MOONPAY_WEBHOOK_KEY)
-    .update(rawBody)
-    .digest("hex");
-
-  if (signature !== expected) {
-    return res.status(401).send("Invalid webhook signature");
-  }
-
-  console.log("MoonPay webhook event:", req.body);
-  res.send("ok");
-});
-
-// ---------- Start ----------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
-
-
-// Load environment variables
-require('dotenv').config();
-
-const express = require('express');
-const bodyParser = require('body-parser');
-const sql = require('mssql');
-const axios = require('axios');
-const WebSocket = require('ws');
-
-const app = express();
-app.use(bodyParser.json());
-
-// Get environment variables
-const {
-  DB_USER,
-  DB_PASSWORD,
-  DB_SERVER,
-  DB_NAME,
-  JWT_SECRET
-} = process.env;
-
-// Warn for missing values instead of exiting
-let missingVars = [];
-if (!DB_USER) missingVars.push('DB_USER');
-if (!DB_PASSWORD) missingVars.push('DB_PASSWORD');
-if (!DB_SERVER) missingVars.push('DB_SERVER');
-if (!DB_NAME) missingVars.push('DB_NAME');
-if (!JWT_SECRET) missingVars.push('JWT_SECRET');
-
-if (missingVars.length > 0) {
-  console.warn(`⚠️ Warning: Missing environment variables: ${missingVars.join(', ')}`);
-  console.warn('Your app may not work properly until you set these in your .env file or hosting environment.');
-}
-
-// Database config
-const dbConfig = {
-  user: DB_USER || 'placeholder_user',
-  password: DB_PASSWORD || 'placeholder_password',
-  server: DB_SERVER || 'localhost',
-  database: DB_NAME || 'placeholder_db',
-  options: {
-    encrypt: true,
-    trustServerCertificate: true
-  }
-};
-
-// Example connection test
-(async () => {
-  try {
-    if (DB_USER && DB_PASSWORD && DB_SERVER && DB_NAME) {
-      await sql.connect(dbConfig);
-      console.log('✅ Database connected');
-    } else {
-      console.log('⏭️ Skipping DB connection (missing credentials)');
-    }
-  } catch (err) {
-    console.error('❌ Database connection error:', err.message);
-  }
-})();
-
-app.get('/', (req, res) => {
-  res.send('Proxy Transfer Service is running');
-});
-
-app.listen(3000, () => {
-  console.log('🚀 Server listening on port 3000');
-});
-
-
-
-
-// server.js  — SADC CBDC Backend (Production-Ready)
-// Node >= 18 (fetch available); if Node 16, install `node-fetch` and swap to axios where needed.
-
 require('dotenv').config();
 
 const express = require('express');
@@ -268,11 +21,13 @@ const {
   DB_SERVER,
   DB_NAME,
   MOVE_VM_ADDRESS,               // e.g. 4.222.217.84:8080
-  APIX_TOKEN,                    // Bearer <token string> (just the token, NOT prefixed with "Bearer ")
   JWT_SECRET,                    // set strong secret
   BACKEND,                       // public URL of this server (optional)
   KORA_API_BASE = 'https://api.korapay.com',
   KORA_SECRET_KEY,               // secret key from Kora
+  MOONPAY_PUBLISHABLE_KEY,
+  MOONPAY_SECRET_KEY,
+  MOONPAY_WEBHOOK_KEY,
 } = process.env;
 
 if (!DB_USER || !DB_PASSWORD || !DB_SERVER || !DB_NAME) {
@@ -375,34 +130,12 @@ async function migrate() {
       CreatedAt DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET()
     );
 
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE name='Transfers' AND type='U')
-    CREATE TABLE Transfers (
-      Id INT IDENTITY PRIMARY KEY,
-      WalletAddress NVARCHAR(200),
-      Amount DECIMAL(38,18),
-      BankCode NVARCHAR(50),
-      AccountNumber NVARCHAR(100),
-      Status NVARCHAR(50),
-      Timestamp DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET()
-    );
-
     IF NOT EXISTS (SELECT * FROM sys.objects WHERE name='P2PTransactions' AND type='U')
     CREATE TABLE P2PTransactions (
       Id INT IDENTITY PRIMARY KEY,
       FromWallet NVARCHAR(200),
       ToWallet NVARCHAR(200),
       Amount DECIMAL(38,18),
-      Timestamp DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET()
-    );
-
-    IF NOT EXISTS (SELECT * FROM sys.objects WHERE name='InterbankSettlements' AND type='U')
-    CREATE TABLE InterbankSettlements (
-      Id INT IDENTITY PRIMARY KEY,
-      FromAccount NVARCHAR(200),
-      ToAccount NVARCHAR(200),
-      Amount DECIMAL(38,18),
-      BankCode NVARCHAR(50),
-      Status NVARCHAR(50),
       Timestamp DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET()
     );
   `);
@@ -498,7 +231,6 @@ app.get('/api/wallet', auth, async (req, res) => {
       .query(`SELECT TOP(1) Email, BalanceSadi FROM Users WHERE Id=@Id`);
     if (!rs.recordset.length) return res.status(404).json({ error: 'User not found' });
 
-    // In this simple design, wallet "address" is the email (replace with EVM address if needed)
     res.json({
       address: rs.recordset[0].Email,
       balance: rs.recordset[0].BalanceSadi?.toString(),
@@ -564,7 +296,6 @@ app.post('/api/wallet/transfer', auth, async (req, res) => {
     await tx.commit();
     await writeAudit('WALLET_TRANSFER', { from: me.recordset[0].Email, to, amount: amt });
 
-    // notify via websocket
     io.emit('wallet:transfer', { from: me.recordset[0].Email, to, amount: amt });
 
     res.json({ status: 'ok' });
@@ -651,10 +382,50 @@ app.post('/api/payouts/disburse', auth, async (req, res) => {
 
 // Korapay webhook (configure in Kora dashboard)
 app.post('/webhook/kora', express.json(), async (req, res) => {
-  // TODO: validate HMAC signature per Kora docs (header + shared secret)
   await writeAudit('KORA_WEBHOOK', req.body);
   io.emit('payout:update', req.body);
   res.json({ received: true });
+});
+
+// ---------- MoonPay ----------
+const cryptoLib = require('crypto');
+const querystring = require('querystring');
+
+app.get("/api/moonpay-url", (req, res) => {
+  const baseUrl = "https://buy.moonpay.com";
+  const params = {
+    apiKey: MOONPAY_PUBLISHABLE_KEY,
+    currencyCode: req.query.currency || "eth",
+    walletAddress: req.query.address,
+  };
+
+  const query = querystring.stringify(params);
+  const url = `${baseUrl}?${query}`;
+
+  const signature = cryptoLib
+    .createHmac("sha256", MOONPAY_SECRET_KEY)
+    .update(url)
+    .digest("base64");
+
+  const signedUrl = `${url}&signature=${encodeURIComponent(signature)}`;
+  res.json({ url: signedUrl });
+});
+
+app.post("/api/moonpay-webhook", (req, res) => {
+  const rawBody = JSON.stringify(req.body);
+  const signature = req.headers["moonpay-signature"];
+
+  const expected = cryptoLib
+    .createHmac("sha256", MOONPAY_WEBHOOK_KEY)
+    .update(rawBody)
+    .digest("hex");
+
+  if (signature !== expected) {
+    return res.status(401).send("Invalid webhook signature");
+  }
+
+  console.log("MoonPay webhook event:", req.body);
+  res.send("ok");
 });
 
 // ---------- Move VM proxied actions ----------
@@ -673,7 +444,6 @@ app.post('/move/transfer', async (req, res) => {
   }
 });
 
-// Move VM events -> feed
 app.get('/blockchain-feed', async (_req, res) => {
   if (!MOVE_VM_ADDRESS) return res.status(500).json({ error: 'MOVE_VM_ADDRESS not set' });
   try {
@@ -694,82 +464,6 @@ setInterval(async () => {
     // silent poll error
   }
 }, 5000);
-
-// ---------- APIX: Live Transfer ----------
-app.post('/api/live-transfer', async (req, res) => {
-  const { account_id, destination_account_id, amount, narration } = req.body || {};
-  if (!account_id || !destination_account_id || !amount)
-    return res.status(400).json({ error: 'Missing required fields' });
-  if (!APIX_TOKEN) return res.status(500).json({ error: 'APIX_TOKEN not set' });
-
-  try {
-    const apiUrl = `https://api.apixplatform.com/opencore-transactions/v1/deposits/${encodeURIComponent(
-      account_id
-    )}/transfer`;
-    const response = await axios.post(
-      apiUrl,
-      { destination_account_id, amount, narration },
-      {
-        headers: {
-          'X-Authorization': `Bearer ${APIX_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 20_000,
-      }
-    );
-
-    const pool = await ensurePool();
-    await pool
-      .request()
-      .input('WalletAddress', sql.NVarChar(200), String(account_id))
-      .input('Amount', sql.Decimal(38, 18), String(amount))
-      .input('BankCode', sql.NVarChar(50), String(destination_account_id))
-      .input('AccountNumber', sql.NVarChar(100), String(destination_account_id))
-      .input('Status', sql.NVarChar(50), 'LIVE_SENT')
-      .query(
-        `INSERT INTO Transfers (WalletAddress, Amount, BankCode, AccountNumber, Status)
-         VALUES (@WalletAddress, @Amount, @BankCode, @AccountNumber, @Status)`
-      );
-
-    await writeAudit('APIX_LIVE_TRANSFER', { req: { account_id, destination_account_id, amount }, resp: response.data });
-    io.emit('apix:transfer', { account_id, destination_account_id, amount });
-
-    res.json({ message: 'Live transfer completed', data: response.data });
-  } catch (e) {
-    console.error('APIX transfer failed:', e.response?.data || e.message);
-    await writeAudit('APIX_LIVE_TRANSFER_ERROR', { error: e.response?.data || e.message });
-    res.status(502).json({ error: 'Live transfer failed', details: e.response?.data || e.message });
-  }
-});
-
-// ---------- Interbank settlement (record) ----------
-app.post('/interbank/settlement', async (req, res) => {
-  const { centralBankAccount, commercialBankAccount, amount, bankCode } = req.body || {};
-  if (!centralBankAccount || !commercialBankAccount || !amount || !bankCode)
-    return res.status(400).json({ error: 'Missing fields' });
-
-  try {
-    const pool = await ensurePool();
-    await pool
-      .request()
-      .input('FromAccount', sql.NVarChar(200), centralBankAccount)
-      .input('ToAccount', sql.NVarChar(200), commercialBankAccount)
-      .input('Amount', sql.Decimal(38, 18), String(amount))
-      .input('BankCode', sql.NVarChar(50), bankCode)
-      .input('Status', sql.NVarChar(50), 'SETTLED')
-      .query(
-        `INSERT INTO InterbankSettlements (FromAccount, ToAccount, Amount, BankCode, Status)
-         VALUES (@FromAccount, @ToAccount, @Amount, @BankCode, @Status)`
-      );
-
-    await writeAudit('INTERBANK_SETTLEMENT', { centralBankAccount, commercialBankAccount, amount, bankCode });
-    io.emit('interbank:settlement', { centralBankAccount, commercialBankAccount, amount });
-    res.json({ message: 'Interbank settlement recorded' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Interbank settlement failed' });
-  }
-});
 
 // ---------- Admin (restrict behind auth in real prod) ----------
 app.get('/admin/audit', async (_req, res) => {

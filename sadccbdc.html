@@ -2,285 +2,173 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sadicoin Treasures Wallet — ETH & SADI</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f9f9f9; }
-    .mono { font-family: monospace; }
-    .small-muted { font-size: 0.9rem; color: #666; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sadicoin Wallet</title>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.1/dist/web3.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #f0f2f5; }
+  h1 { color: #333; }
+  button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+  input { padding: 8px; margin: 5px; width: 300px; }
+  .section { background: #fff; padding: 15px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+</style>
 </head>
 <body>
-  <div class="container">
-    <header class="d-flex align-items-center justify-content-between mb-4">
-      <h3>SADC Wallet — ETH Budget & SADI Token</h3>
-      <div>
-        <button id="connectBtn" class="btn btn-primary">Connect MetaMask</button>
-        <span id="status" class="ms-2 small-muted"></span>
-      </div>
-    </header>
 
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="card p-3">
-          <h5>Account</h5>
-          <div><strong>Address:</strong> <span id="account" class="mono">-</span></div>
-          <div><strong>Network:</strong> <span id="network">-</span></div>
-          <div><strong>ETH Balance:</strong> <span id="ethBalance">-</span></div>
-        </div>
+<h1>Sadicoin Wallet</h1>
 
-        <div class="card p-3 mt-3">
-          <h5>SADI Token</h5>
-          <div><strong>Contract:</strong> <span id="contractAddress" class="mono">CONTRACT_ADDRESS</span></div>
-          <div><strong>Symbol:</strong> <span id="tokenSymbol">SADI</span></div>
-          <div><strong>Decimals:</strong> <span id="tokenDecimals">18</span></div>
-          <div><strong>Your SADI balance:</strong> <span id="tokenBalance">-</span></div>
-          <div><strong>Your Escrow (off-ramp):</strong> <span id="tokenEscrow">0</span></div>
+<div class="section">
+  <h3>Connect Wallet</h3>
+  <button onclick="connectWallet()">Connect MetaMask</button>
+  <p id="account">Account: Not connected</p>
+</div>
 
-          <hr>
-          <h6>Wallet → Wallet (SADI)</h6>
-          <input id="toAddr" class="form-control mb-2" placeholder="Recipient address" />
-          <input id="sendAmt" class="form-control mb-2" placeholder="Amount (SADI)" />
-          <button id="sendBtn" class="btn btn-success w-100">Send SADI</button>
-        </div>
-      </div>
+<div class="section">
+  <h3>Check Balance</h3>
+  <input type="text" id="balanceAddress" placeholder="Enter address">
+  <button onclick="getBalance()">Get Balance</button>
+  <p id="balanceResult"></p>
+</div>
 
-      <div class="col-md-6">
-        <div class="card p-3">
-          <h5>On-Ramp (Fiat → SADI)</h5>
-          <p class="small-muted">This creates a request your operator watches. Operator should call finalizeOnRamp after fiat settles.</p>
-          <input id="onRampAmt" class="form-control mb-2" placeholder="Amount SADI to request" />
-          <input id="onRampRef" class="form-control mb-2" placeholder="Fiat reference / invoice id" />
-          <button id="onRampBtn" class="btn btn-primary w-100">Request On-Ramp</button>
-        </div>
-
-        <div class="card p-3 mt-3">
-          <h5>Off-Ramp (SADI → Fiat)</h5>
-          <p class="small-muted">This transfers tokens to contract escrow; operator should finalize off-ramp to burn escrow and pay fiat out-of-band.</p>
-          <input id="offRampAmt" class="form-control mb-2" placeholder="Amount SADI to off-ramp" />
-          <input id="offRampRef" class="form-control mb-2" placeholder="Fiat ref / bank details" />
-          <button id="offRampBtn" class="btn btn-warning w-100">Request Off-Ramp</button>
-        </div>
-
-        <div class="card p-3 mt-3">
-          <h5>Swap</h5>
-          <p class="small-muted">Swap uses on-chain configured rate SADI/ETH (set by RATE_MANAGER role). Contract must hold ETH liquidity for SADI→ETH swaps.</p>
-          <div class="mb-2">
-            <input id="swapSadiAmt" class="form-control mb-2" placeholder="SADI → ETH amount (SADI)" />
-            <button id="swapSadiBtn" class="btn btn-outline-primary w-100">Swap SADI → ETH</button>
-          </div>
-          <div class="mb-2">
-            <input id="swapEthAmt" class="form-control mb-2" placeholder="ETH → SADI amount (ETH)" />
-            <button id="swapEthBtn" class="btn btn-outline-secondary w-100">Swap ETH → SADI (send ETH)</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="alerts" class="mt-3"></div>
-
-    <footer class="mt-4 small-muted">
-      <p>Deploy the <code>SadiBridge</code> contract, update the CONTRACT_ADDRESS in this HTML, and set roles via multisig. Never expose private keys in code. Use Chainlink oracles in production.</p>
-    </footer>
-  </div>
+<div class="section">
+  <h3>Transfer Tokens</h3>
+  <input type="text" id="transferTo" placeholder="Recipient address">
+  <input type="text" id="transferAmount" placeholder="Amount (in tokens)">
+  <button onclick="transferTokens()">Transfer</button>
+  <p id="transferResult"></p>
+</div>
 
 <script>
-  // ===== CONFIG - REPLACE THIS WITH YOUR DEPLOYED CONTRACT ADDRESS =====
-  const CONTRACT_ADDRESS = "0xREPLACE_WITH_YOUR_CONTRACT_ADDRESS";
-  // Minimal ABI matching SadiBridge functions used by UI
-  const CONTRACT_ABI = [
-    "function balanceOf(address) view returns (uint256)",
-    "function decimals() view returns (uint8)",
-    "function symbol() view returns (string)",
-    "function requestOnRamp(uint256 amount, string calldata fiatRef)",
-    "function requestOffRamp(uint256 amount, string calldata fiatRef)",
-    "function escrow(address) view returns (uint256)",
-    "function swapSadiForEth(uint256 sadiAmount, uint256 minEthOut)",
-    "function swapEthForSadi(uint256 minSadiOut) payable",
-    "function transfer(address to, uint256 amount) returns (bool)",
-    "event OnRampRequested(address indexed user, uint256 amount, string fiatRef)",
-    "event OffRampRequested(address indexed user, uint256 amount, string fiatRef)",
-    "event SwapSadiForEth(address indexed user, uint256 sadiAmount, uint256 ethAmount)",
-    "event SwapEthForSadi(address indexed user, uint256 ethAmount, uint256 sadiAmount)"
-  ];
+// ====== CONFIGURATION ======
+const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS";
+const CONTRACT_ABI = [
+  // Citizens Wallet ABI
+  {
+    "inputs": [], "stateMutability": "nonpayable", "type": "constructor"
+  },
+  {"inputs": [], "name": "ECDSAInvalidSignature", "type": "error"},
+  {"inputs": [{"internalType": "uint256","name": "length","type": "uint256"}],
+   "name": "ECDSAInvalidSignatureLength","type": "error"},
+  {"inputs": [{"internalType": "bytes32","name": "s","type": "bytes32"}],
+   "name": "ECDSAInvalidSignatureS","type": "error"},
+  {"inputs": [{"internalType": "address","name": "spender","type": "address"},
+              {"internalType": "uint256","name": "allowance","type": "uint256"},
+              {"internalType": "uint256","name": "needed","type": "uint256"}],
+   "name": "ERC20InsufficientAllowance","type": "error"},
+  {"inputs": [{"internalType": "address","name": "sender","type": "address"},
+              {"internalType": "uint256","name": "balance","type": "uint256"},
+              {"internalType": "uint256","name": "needed","type": "uint256"}],
+   "name": "ERC20InsufficientBalance","type": "error"},
+  {"inputs": [{"internalType": "address","name": "approver","type": "address"}],
+   "name": "ERC20InvalidApprover","type": "error"},
+  {"inputs": [{"internalType": "address","name": "receiver","type": "address"}],
+   "name": "ERC20InvalidReceiver","type": "error"},
+  {"inputs": [{"internalType": "address","name": "sender","type": "address"}],
+   "name": "ERC20InvalidSender","type": "error"},
+  {"inputs": [{"internalType": "address","name": "spender","type": "address"}],
+   "name": "ERC20InvalidSpender","type": "error"},
+  {"inputs": [{"internalType": "uint256","name": "deadline","type": "uint256"}],
+   "name": "ERC2612ExpiredSignature","type": "error"},
+  {"inputs": [{"internalType": "address","name": "signer","type": "address"},
+              {"internalType": "address","name": "owner","type": "address"}],
+   "name": "ERC2612InvalidSigner","type": "error"},
+  {"inputs": [{"internalType": "address","name": "account","type": "address"},
+              {"internalType": "uint256","name": "currentNonce","type": "uint256"}],
+   "name": "InvalidAccountNonce","type": "error"},
+  {"inputs": [], "name": "InvalidShortString","type": "error"},
+  {"inputs": [{"internalType": "address","name": "owner","type": "address"}],
+   "name": "OwnableInvalidOwner","type": "error"},
+  {"inputs": [{"internalType": "address","name": "account","type": "address"}],
+   "name": "OwnableUnauthorizedAccount","type": "error"},
+  {"inputs": [{"internalType": "string","name": "str","type": "string"}],
+   "name": "StringTooLong","type": "error"},
+  {"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "owner","type": "address"},
+                                 {"indexed": true,"internalType": "address","name": "spender","type": "address"},
+                                 {"indexed": false,"internalType": "uint256","name": "value","type": "uint256"}],
+   "name": "Approval","type": "event"},
+  {"anonymous": false,"inputs": [], "name": "EIP712DomainChanged","type": "event"},
+  {"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "previousOwner","type": "address"},
+                                 {"indexed": true,"internalType": "address","name": "newOwner","type": "address"}],
+   "name": "OwnershipTransferred","type": "event"},
+  {"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "from","type": "address"},
+                                 {"indexed": true,"internalType": "address","name": "to","type": "address"},
+                                 {"indexed": false,"internalType": "uint256","name": "value","type": "uint256"}],
+   "name": "Transfer","type": "event"},
+  {"inputs": [], "name": "decimals","outputs": [{"internalType": "uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+  {"inputs": [{"internalType":"address","name":"account","type":"address"}],
+   "name": "balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"address","name":"to","type":"address"},
+             {"internalType":"uint256","name":"value","type":"uint256"}],
+   "name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"address","name":"from","type":"address"},
+             {"internalType":"address","name":"to","type":"address"},
+             {"internalType":"uint256","name":"value","type":"uint256"}],
+   "name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],
+   "name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}
+];
 
-  let provider, signer, account, contract;
-  const connectBtn = document.getElementById("connectBtn");
-  const accountEl = document.getElementById("account");
-  const networkEl = document.getElementById("network");
-  const ethBalanceEl = document.getElementById("ethBalance");
-  const tokenBalanceEl = document.getElementById("tokenBalance");
-  const tokenEscrowEl = document.getElementById("tokenEscrow");
-  const contractAddressEl = document.getElementById("contractAddress");
-  contractAddressEl.innerText = CONTRACT_ADDRESS;
+// ====== WEB3 & CONTRACT ======
+let web3;
+let contract;
+let account;
 
-  function showAlert(msg, type="info") {
-    const div = document.createElement("div");
-    div.className = `alert alert-${type} mt-2`;
-    div.innerText = msg;
-    document.getElementById("alerts").appendChild(div);
-    setTimeout(()=>div.remove(), 8000);
-  }
-
-  async function connect() {
-    if (!window.ethereum) { alert("MetaMask not detected"); return; }
-    provider = new ethers.BrowserProvider(window.ethereum);
-    try {
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      account = await signer.getAddress();
-      accountEl.innerText = account;
-      const network = await provider.getNetwork();
-      networkEl.innerText = `${network.name} (chainId: ${network.chainId})`;
-
-      // instantiate contract connected with signer
-      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-      // display balances
-      await refreshBalances();
-
-      // event reload helpers
-      window.ethereum.on("accountsChanged", ()=> location.reload());
-      window.ethereum.on("chainChanged", ()=> location.reload());
-      showAlert("Connected to MetaMask", "success");
-    } catch (err) {
-      console.error(err);
-      showAlert("Connection error: " + (err?.message || err), "danger");
+async function connectWallet() {
+    if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            account = accounts[0];
+            document.getElementById('account').innerText = "Account: " + account;
+            contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+        } catch (err) {
+            alert("Connection failed: " + err.message);
+        }
+    } else {
+        alert("Please install MetaMask!");
     }
-  }
+}
 
-  async function refreshBalances() {
+// ====== BACKEND ALCHMEY CALL ======
+async function callAlchemy(method, params) {
+    const response = await fetch('/alchemy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method, params })
+    });
+    const data = await response.json();
+    return data.result;
+}
+
+// ====== GET BALANCE ======
+async function getBalance() {
+    const address = document.getElementById('balanceAddress').value || account;
+    if (!address) return alert("No address provided!");
+    
     try {
-      const ethBal = await provider.getBalance(account);
-      ethBalanceEl.innerText = ethers.formatEther(ethBal) + " ETH";
-
-      const decimals = await contract.decimals();
-      const rawBal = await contract.balanceOf(account);
-      const bal = Number(ethers.formatUnits(rawBal, decimals));
-      tokenBalanceEl.innerText = `${bal} SADI`;
-
-      const escrowRaw = await contract.escrow(account);
-      const escrowVal = Number(ethers.formatUnits(escrowRaw, decimals));
-      tokenEscrowEl.innerText = `${escrowVal} SADI`;
+        const balance = await contract.methods.balanceOf(address).call();
+        document.getElementById('balanceResult').innerText = `Balance: ${balance}`;
     } catch (err) {
-      console.error("refreshBalances:", err);
+        document.getElementById('balanceResult').innerText = "Error: " + err.message;
     }
-  }
+}
 
-  connectBtn.onclick = connect;
+// ====== TRANSFER TOKENS ======
+async function transferTokens() {
+    const to = document.getElementById('transferTo').value;
+    const amount = document.getElementById('transferAmount').value;
+    if (!to || !amount) return alert("Recipient and amount required!");
+    if (!contract || !account) return alert("Connect your wallet first!");
 
-  // Send SADI wallet->wallet
-  document.getElementById("sendBtn").onclick = async () => {
-    if (!contract) return showAlert("Connect wallet first", "warning");
-    const to = document.getElementById("toAddr").value.trim();
-    const amt = document.getElementById("sendAmt").value.trim();
-    if (!ethers.isAddress(to)) return showAlert("Invalid recipient address", "warning");
-    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return showAlert("Invalid amount", "warning");
     try {
-      const decimals = await contract.decimals();
-      const amount = ethers.parseUnits(amt, decimals);
-      const tx = await contract.transfer(to, amount);
-      showAlert("Transfer sent, waiting confirmation...", "info");
-      await tx.wait();
-      showAlert("Transfer confirmed: " + tx.hash, "success");
-      await refreshBalances();
+        const tx = await contract.methods.transfer(to, amount).send({ from: account });
+        document.getElementById('transferResult').innerText = "Transaction Success: " + tx.transactionHash;
     } catch (err) {
-      console.error(err);
-      showAlert("Send failed: " + (err?.message || err), "danger");
+        document.getElementById('transferResult').innerText = "Error: " + err.message;
     }
-  };
-
-  // Request On-Ramp (emit event)
-  document.getElementById("onRampBtn").onclick = async () => {
-    if (!contract) return showAlert("Connect wallet first", "warning");
-    const amt = document.getElementById("onRampAmt").value.trim();
-    const ref = document.getElementById("onRampRef").value.trim() || "";
-    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return showAlert("Invalid amount", "warning");
-    try {
-      const decimals = await contract.decimals();
-      const amount = ethers.parseUnits(amt, decimals);
-      const tx = await contract.requestOnRamp(amount, ref);
-      showAlert("OnRamp request emitted; operator will finalize after fiat settlement", "info");
-      await tx.wait();
-      showAlert("Request tx mined: " + tx.hash, "success");
-    } catch (err) {
-      console.error(err);
-      showAlert("OnRamp request failed: " + (err?.message || err), "danger");
-    }
-  };
-
-  // Request Off-Ramp (approve + transfer into escrow contract)
-  document.getElementById("offRampBtn").onclick = async () => {
-    if (!contract) return showAlert("Connect wallet first", "warning");
-    const amt = document.getElementById("offRampAmt").value.trim();
-    const ref = document.getElementById("offRampRef").value.trim() || "";
-    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return showAlert("Invalid amount", "warning");
-    try {
-      const decimals = await contract.decimals();
-      const amount = ethers.parseUnits(amt, decimals);
-
-      // We call requestOffRamp which itself transfers tokens into escrow in this contract.
-      // Depending on token design you might need to approve then a separate transferFrom — here contract uses _transfer, so no prior approve needed
-      // If your deployed contract requires approve then change flow accordingly.
-      const tx = await contract.requestOffRamp(amount, ref);
-      showAlert("OffRamp request sent; operator will finalize payout", "info");
-      await tx.wait();
-      showAlert("OffRamp request tx mined: " + tx.hash, "success");
-      await refreshBalances();
-    } catch (err) {
-      console.error(err);
-      showAlert("OffRamp request failed: " + (err?.message || err), "danger");
-    }
-  };
-
-  // Swap SADI -> ETH
-  document.getElementById("swapSadiBtn").onclick = async () => {
-    if (!contract) return showAlert("Connect wallet first", "warning");
-    const amt = document.getElementById("swapSadiAmt").value.trim();
-    if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return showAlert("Invalid amount", "warning");
-    try {
-      const decimals = await contract.decimals();
-      const amount = ethers.parseUnits(amt, decimals);
-      // For safety we pass minEthOut = 0 here; in production compute expected using on-chain rate and set slippage tolerance
-      const tx = await contract.swapSadiForEth(amount, 0);
-      showAlert("Swap transaction sent. Wait for confirmation and ETH credit.", "info");
-      await tx.wait();
-      showAlert("Swap confirmed: " + tx.hash, "success");
-      await refreshBalances();
-    } catch (err) {
-      console.error(err);
-      showAlert("Swap failed: " + (err?.message || err), "danger");
-    }
-  };
-
-  // Swap ETH -> SADI (user sends ETH value)
-  document.getElementById("swapEthBtn").onclick = async () => {
-    if (!contract) return showAlert("Connect wallet first", "warning");
-    const ethAmt = document.getElementById("swapEthAmt").value.trim();
-    if (!ethAmt || isNaN(Number(ethAmt)) || Number(ethAmt) <= 0) return showAlert("Invalid ETH amount", "warning");
-    try {
-      const value = ethers.parseEther(ethAmt);
-      const tx = await contract.swapEthForSadi(0, { value }); // minSadiOut=0 for now; in production compute expected and set slippage
-      showAlert("Swap (ETH→SADI) tx sent. Waiting confirmation...", "info");
-      await tx.wait();
-      showAlert("Swap confirmed: " + tx.hash, "success");
-      await refreshBalances();
-    } catch (err) {
-      console.error(err);
-      showAlert("Swap (ETH→SADI) failed: " + (err?.message || err), "danger");
-    }
-  };
-
-  // auto update balances every 20s while connected
-  setInterval(() => {
-    if (contract && account) refreshBalances();
-  }, 20000);
+}
 </script>
+
 </body>
 </html>
-
-

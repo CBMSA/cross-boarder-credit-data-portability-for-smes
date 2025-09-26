@@ -1,936 +1,234 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sadicoin Treasures Wallet</title>
+  <title>SadiCoin Banking Platform</title>
+
+  <!-- CSS / Libraries -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    body { font-family: 'Segoe UI'; padding: 20px; background-color: #f9f9f9; }
-    nav a { margin-right: 15px; text-decoration: none; color: #0d6efd; font-weight: bold; }
-    .logo { height: 60px; }
-    .dashboard-section { display:none; margin-top:30px; }
-    .section-divider { border-top: 1px solid #ccc; margin: 30px 0; }
+    body { font-family: 'Segoe UI'; background:#f9f9f9; padding:20px; }
+    nav a { margin-right:10px; font-weight:600; }
+    .logo { height:60px; }
+    #dashboard { margin-top:40px; }
+    .exchange-table td, .exchange-table th { padding:6px 12px; }
   </style>
 </head>
 <body>
-  <header class="d-flex align-items-center justify-content-between mb-4">
-    <img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
-    <h3>SADC Wallet</h3>
-  </header>
+<header class="d-flex align-items-center justify-content-between mb-4">
+  <img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
+  <h3>SADC Wallet</h3>
+</header>
 
-  <nav class="mb-4">
-    <a href="#register" class="btn">Register</a>
-    <a href="#login" class="btn">Login</a>
-    <a href="#dashboard" class="btn">Dashboard</a>
-  </nav>
+<nav class="mb-4">
+  <a href="#register" class="btn btn-outline-primary">Register</a>
+  <a href="#login" class="btn btn-outline-primary">Login</a>
+  <a href="#transactions" class="btn btn-outline-primary">Transactions</a>
+  <a href="#dashboard" class="btn btn-outline-primary">Dashboard</a>
+</nav>
 
-  <!-- Registration -->
-  <div id="register">
-    <h4>Account Registration</h4>
-    <select id="role" class="form-control mb-2">
-      <option value="user">User</option>
-      <option value="srb_admin">SRB Admin</option>
-      <option value="regional_bank">Regional Central Bank</option>
-      <option value="national_treasury">National Treasury</option>
-    </select>
-    <input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
-    <input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
-    <input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
-    <input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
-    <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
-  </div>
+<!-- Registration -->
+<div id="register" class="mb-5">
+  <h4>Account Registration</h4>
+  <select id="role" class="form-control mb-2">
+    <option value="user">User</option>
+    <option value="srb_admin">SRB Admin</option>
+    <option value="regional_bank">Regional Central Bank</option>
+    <option value="national_treasury">National Treasury</option>
+  </select>
+  <input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
+  <input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
+  <input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
+  <input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
+  <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
+</div>
 
-  <!-- Login -->
-  <div id="login" class="mt-5">
-    <h4>Login</h4>
-    <input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
-    <input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
-    <button class="btn btn-success w-100" onclick="loginUser()">Login</button>
-    <p id="loginError" class="text-danger"></p>
-  </div>
+<!-- Login -->
+<div id="login" class="mb-5">
+  <h4>Login</h4>
+  <input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
+  <input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
+  <button class="btn btn-success w-100" onclick="loginUser()">Login</button>
+  <p id="loginError" class="text-danger"></p>
+</div>
 
-  <!-- Dashboard -->
-  <div id="dashboard" class="dashboard-section">
-    <h4>Wallet Dashboard</h4>
-    <p>Balance: <span id="balance">0</span> SADC</p>
+<!-- Transactions -->
+<div id="transactions" class="mb-5" style="display:none;">
+  <h4>Send SADICOIN</h4>
+  <p>Balance: <span id="balance">0</span> SADC</p>
+  <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
+  <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
+  <button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
+  <button class="btn btn-success w-100 mb-2" onclick="mintTokens()">Mint Tokens</button>
+  <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
+  <div id="qr"></div>
+</div>
 
-    <!-- Live Exchange Rates -->
-    <div class="mb-3">
-      <h5>Live Exchange Rates</h5>
-      <table class="table table-bordered">
-        <thead>
-          <tr><th>Currency</th><th>Rate</th></tr>
-        </thead>
-        <tbody id="exchangeRates">
-          <tr><td>ZAR</td><td id="rateZAR">Loading...</td></tr>
-          <tr><td>USD</td><td id="rateUSD">Loading...</td></tr>
-        </tbody>
-      </table>
-    </div>
+<!-- Dashboard with live exchange & history -->
+<div id="dashboard" style="display:none;">
+  <h4>SADC Dashboard</h4>
+  <button class="btn btn-outline-secondary mb-3" onclick="downloadPDF()">Download Statement (PDF)</button>
+  <h5>Live Exchange Rates (SADC vs Major)</h5>
+  <table class="table table-bordered exchange-table">
+    <thead><tr><th>Currency</th><th>Rate</th></tr></thead>
+    <tbody id="exchangeRates"></tbody>
+  </table>
+  <h5 class="mt-4">Transaction History</h5>
+  <ul id="txHistory" class="list-group"></ul>
+</div>
 
-    <!-- Transaction History -->
-    <div class="mb-3">
-      <h5>Transaction History</h5>
-      <table class="table table-bordered" id="txHistoryTable">
-        <thead>
-          <tr><th>Date</th><th>Type</th><th>Amount</th><th>Recipient / Details</th></tr>
-        </thead>
-        <tbody id="txHistory">
-        </tbody>
-      </table>
-      <button class="btn btn-outline-primary" onclick="downloadTxPDF()">Download PDF</button>
-    </div>
+<!-- Crossmint Mint Button -->
+<div class="mt-5">
+  <h4>Mint SadiCoin NFT</h4>
+  <button id="mintBtn" class="btn btn-primary">Mint via Crossmint</button>
+</div>
 
-    <div class="section-divider"></div>
+<footer class="mt-5 text-center">
+  <p>&copy; 2025 SCB - SadiCoin. All rights reserved.</p>
+</footer>
 
-    <!-- Send & Mint -->
-    <div class="mb-3">
-      <h5>Send SADICOIN</h5>
-      <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
-      <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
-      <button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
-      <button class="btn btn-success w-100 mb-2" onclick="mintTokens()">Mint Tokens</button>
-      <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
-    </div>
+<script>
+/* ====== Configuration ====== */
+const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS";
+const CONTRACT_ABI = [ /* paste your ABI here */ ];
+const CROSSMINT_CLIENT_KEY =
+  "ck_production_A61GAYiM5f6ZWHBNjq4rs7WhdQpr2xvhMqxzUFrT2QYcXMMQvcjs6QzoEvnnJwzCAbJJsG4aE9wEhE657oVKimAtHx6221daZpRXeemK4nXMoLto2GDK2JYWbRXQA8aYmGM4N87hg2EkALSctosJPzuyJeWxwWGLVEVrmbx5BZJPegpM9ofaBUFyjNhodFU4mAUWNPgDQNjG4Z1HdzPpNe9v";
 
-    <div class="section-divider"></div>
+let web3, contract, currentAccount=null;
+let users={}, currentUser=null;
+let txHistory=[];
 
-    <!-- Fiat Purchase -->
-    <div class="mb-3">
-      <h5>Buy SADICOIN with Fiat</h5>
-      <input type="text" id="fiatAmount" class="form-control mb-2" placeholder="Amount in ZAR">
-      <input type="text" id="bankAccount" class="form-control mb-2" placeholder="Bank Account Number (optional)">
-      <button class="btn btn-primary w-100" onclick="buySadicoin()">Buy & Mint</button>
-      <div id="fiatResult" class="alert alert-info mt-2" style="display:none;"></div>
-    </div>
+/* ====== Web3 Init ====== */
+async function initWeb3(){
+  if(window.ethereum){
+    web3=new Web3(window.ethereum);
+    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
+    currentAccount=accounts[0];
+    contract=new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+    updateBalance();
+    setInterval(updateBalance,10000);
+    loadRates();
+  }else alert("Install MetaMask");
+}
 
-    <div class="section-divider"></div>
+/* ====== User System ====== */
+function registerUser(){
+  const role=document.getElementById("role").value;
+  const name=document.getElementById("name").value;
+  const id=document.getElementById("idNumber").value;
+  const wallet=document.getElementById("walletAddress").value;
+  const pw=document.getElementById("password").value;
+  if(!name||!id||!wallet||!pw) return alert("All fields required");
+  users[id]={role,name,wallet,password:pw};
+  alert("Registered. Please login.");
+}
 
-    <!-- Swap SADICOIN -->
-    <div class="mb-3">
-      <h5>Swap SADICOIN</h5>
-      <input type="text" id="swap_from" class="form-control mb-2" placeholder="From Currency (e.g., SADI)">
-      <input type="text" id="swap_to" class="form-control mb-2" placeholder="To Currency (e.g., USD)">
-      <input type="number" id="swap_amt" class="form-control mb-2" placeholder="Amount">
-      <p>Estimated Rate: <span id="swapRate">0</span></p>
-      <button class="btn btn-warning w-100" onclick="performSwap()">Swap via MoonPay</button>
-    </div>
-  </div>
+function loginUser(){
+  const id=document.getElementById("loginId").value;
+  const pw=document.getElementById("loginPassword").value;
+  if(!users[id]||users[id].password!==pw){
+    document.getElementById("loginError").innerText="Login failed";
+    return;
+  }
+  currentUser=users[id];
+  document.getElementById("transactions").style.display="block";
+  document.getElementById("dashboard").style.display="block";
+  updateBalance();
+}
 
-  <footer class="mt-5 text-center">
-    <p>&copy; 2025 SCB - SadiCoin. All rights reserved.</p>
-  </footer>
+/* ====== Blockchain ====== */
+async function updateBalance(){
+  if(contract && currentAccount){
+    const bal = await contract.methods.balanceOf(currentAccount).call();
+    document.getElementById("balance").innerText=(bal/1e18).toLocaleString();
+  }
+}
 
-  <script>
-    const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS_HERE";
-    const CONTRACT_ABI = [ 
-        {
-                "inputs": [],
-                "stateMutability": "nonpayable",
-                "type": "constructor"
-        },
-        {
-                "inputs": [],
-                "name": "ECDSAInvalidSignature",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "uint256",
-                                "name": "length",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "ECDSAInvalidSignatureLength",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "bytes32",
-                                "name": "s",
-                                "type": "bytes32"
-                        }
-                ],
-                "name": "ECDSAInvalidSignatureS",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "allowance",
-                                "type": "uint256"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "needed",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "ERC20InsufficientAllowance",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "sender",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "balance",
-                                "type": "uint256"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "needed",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "ERC20InsufficientBalance",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "approver",
-                                "type": "address"
-                        }
-                ],
-                "name": "ERC20InvalidApprover",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "receiver",
-                                "type": "address"
-                        }
-                ],
-                "name": "ERC20InvalidReceiver",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "sender",
-                                "type": "address"
-                        }
-                ],
-                "name": "ERC20InvalidSender",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                        }
-                ],
-                "name": "ERC20InvalidSpender",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "uint256",
-                                "name": "deadline",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "ERC2612ExpiredSignature",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "signer",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                        }
-                ],
-                "name": "ERC2612InvalidSigner",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "account",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "currentNonce",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "InvalidAccountNonce",
-                "type": "error"
-        },
-        {
-                "inputs": [],
-                "name": "InvalidShortString",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                        }
-                ],
-                "name": "OwnableInvalidOwner",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "account",
-                                "type": "address"
-                        }
-                ],
-                "name": "OwnableUnauthorizedAccount",
-                "type": "error"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "string",
-                                "name": "str",
-                                "type": "string"
-                        }
-                ],
-                "name": "StringTooLong",
-                "type": "error"
-        },
-        {
-                "anonymous": false,
-                "inputs": [
-                        {
-                                "indexed": true,
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                        },
-                        {
-                                "indexed": true,
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                        },
-                        {
-                                "indexed": false,
-                                "internalType": "uint256",
-                                "name": "value",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "Approval",
-                "type": "event"
-        },
-        {
-                "anonymous": false,
-                "inputs": [],
-                "name": "EIP712DomainChanged",
-                "type": "event"
-        },
-        {
-                "anonymous": false,
-                "inputs": [
-                        {
-                                "indexed": true,
-                                "internalType": "address",
-                                "name": "previousOwner",
-                                "type": "address"
-                        },
-                        {
-                                "indexed": true,
-                                "internalType": "address",
-                                "name": "newOwner",
-                                "type": "address"
-                        }
-                ],
-                "name": "OwnershipTransferred",
-                "type": "event"
-        },
-        {
-                "anonymous": false,
-                "inputs": [
-                        {
-                                "indexed": true,
-                                "internalType": "address",
-                                "name": "from",
-                                "type": "address"
-                        },
-                        {
-                                "indexed": true,
-                                "internalType": "address",
-                                "name": "to",
-                                "type": "address"
-                        },
-                        {
-                                "indexed": false,
-                                "internalType": "uint256",
-                                "name": "value",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "Transfer",
-                "type": "event"
-        },
-        {
-                "inputs": [],
-                "name": "DOMAIN_SEPARATOR",
-                "outputs": [
-                        {
-                                "internalType": "bytes32",
-                                "name": "",
-                                "type": "bytes32"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                        }
-                ],
-                "name": "allowance",
-                "outputs": [
-                        {
-                                "internalType": "uint256",
-                                "name": "",
-                                "type": "uint256"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "value",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "approve",
-                "outputs": [
-                        {
-                                "internalType": "bool",
-                                "name": "",
-                                "type": "bool"
-                        }
-                ],
-                "stateMutability": "nonpayable",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "account",
-                                "type": "address"
-                        }
-                ],
-                "name": "balanceOf",
-                "outputs": [
-                        {
-                                "internalType": "uint256",
-                                "name": "",
-                                "type": "uint256"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "decimals",
-                "outputs": [
-                        {
-                                "internalType": "uint8",
-                                "name": "",
-                                "type": "uint8"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "eip712Domain",
-                "outputs": [
-                        {
-                                "internalType": "bytes1",
-                                "name": "fields",
-                                "type": "bytes1"
-                        },
-                        {
-                                "internalType": "string",
-                                "name": "name",
-                                "type": "string"
-                        },
-                        {
-                                "internalType": "string",
-                                "name": "version",
-                                "type": "string"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "chainId",
-                                "type": "uint256"
-                        },
-                        {
-                                "internalType": "address",
-                                "name": "verifyingContract",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "bytes32",
-                                "name": "salt",
-                                "type": "bytes32"
-                        },
-                        {
-                                "internalType": "uint256[]",
-                                "name": "extensions",
-                                "type": "uint256[]"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "moonPayWallet",
-                "outputs": [
-                        {
-                                "internalType": "address",
-                                "name": "",
-                                "type": "address"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "name",
-                "outputs": [
-                        {
-                                "internalType": "string",
-                                "name": "",
-                                "type": "string"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                        }
-                ],
-                "name": "nonces",
-                "outputs": [
-                        {
-                                "internalType": "uint256",
-                                "name": "",
-                                "type": "uint256"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "owner",
-                "outputs": [
-                        {
-                                "internalType": "address",
-                                "name": "",
-                                "type": "address"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "owner",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "address",
-                                "name": "spender",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "value",
-                                "type": "uint256"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "deadline",
-                                "type": "uint256"
-                        },
-                        {
-                                "internalType": "uint8",
-                                "name": "v",
-                                "type": "uint8"
-                        },
-                        {
-                                "internalType": "bytes32",
-                                "name": "r",
-                                "type": "bytes32"
-                        },
-                        {
-                                "internalType": "bytes32",
-                                "name": "s",
-                                "type": "bytes32"
-                        }
-                ],
-                "name": "permit",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "renounceOwnership",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "symbol",
-                "outputs": [
-                        {
-                                "internalType": "string",
-                                "name": "",
-                                "type": "string"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [],
-                "name": "totalSupply",
-                "outputs": [
-                        {
-                                "internalType": "uint256",
-                                "name": "",
-                                "type": "uint256"
-                        }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "to",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "value",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "transfer",
-                "outputs": [
-                        {
-                                "internalType": "bool",
-                                "name": "",
-                                "type": "bool"
-                        }
-                ],
-                "stateMutability": "nonpayable",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "from",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "address",
-                                "name": "to",
-                                "type": "address"
-                        },
-                        {
-                                "internalType": "uint256",
-                                "name": "value",
-                                "type": "uint256"
-                        }
-                ],
-                "name": "transferFrom",
-                "outputs": [
-                        {
-                                "internalType": "bool",
-                                "name": "",
-                                "type": "bool"
-                        }
-                ],
-                "stateMutability": "nonpayable",
-                "type": "function"
-        },
-        {
-                "inputs": [
-                        {
-                                "internalType": "address",
-                                "name": "newOwner",
-                                "type": "address"
-                        }
-                ],
-                "name": "transferOwnership",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-        }
-] ];
-    const MOONPAY_PUBLISHABLE_KEY = 'pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k';
-    let web3, contract, currentAccount = null, users = {}, currentUser = null;
-    let txHistory = [];
+async function sendTransaction(){
+  const to=document.getElementById("toAccount").value;
+  const amount=parseFloat(document.getElementById("amount").value);
+  if(!to||isNaN(amount)) return alert("Invalid input");
+  const decimals=await contract.methods.decimals().call();
+  const value=web3.utils.toBN(amount*Math.pow(10,decimals));
+  contract.methods.transfer(to,value).send({from:currentAccount})
+    .on('receipt', r=>{
+      txHistory.push({to,amount,date:new Date().toLocaleString()});
+      renderHistory();
+    });
+}
 
-    // ===== Initialize Web3 =====
-    async function initWeb3(){
-      if(window.ethereum){
-        web3 = new Web3(window.ethereum);
-        try{
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          currentAccount = accounts[0];
-          contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
-          updateBalance();
-          fetchExchangeRates();
-          setInterval(updateBalance, 10000);
-          setInterval(fetchExchangeRates, 15000);
-        } catch(err){ console.error("Access denied", err); }
-      } else alert("Install MetaMask");
-    }
+async function mintTokens(){
+  const amount=prompt("Enter amount to mint:");
+  if(!amount) return;
+  const decimals=await contract.methods.decimals().call();
+  const value=web3.utils.toBN(amount*Math.pow(10,decimals));
+  await contract.methods.mint(currentAccount,value).send({from:currentAccount})
+    .on('receipt', r=>{
+      txHistory.push({to:currentAccount,amount,date:new Date().toLocaleString(),mint:true});
+      renderHistory();
+    });
+}
 
-    async function updateBalance(){
-      if(contract && currentAccount){
-        const bal = await contract.methods.balanceOf(currentAccount).call();
-        document.getElementById("balance").innerText = (bal / 1e18).toLocaleString();
-      }
-    }
+/* ====== Dashboard ====== */
+function renderHistory(){
+  const ul=document.getElementById("txHistory");
+  ul.innerHTML="";
+  txHistory.forEach(tx=>{
+    const li=document.createElement("li");
+    li.className="list-group-item";
+    li.textContent=`${tx.date}: ${tx.mint?"Mint":"Send"} ${tx.amount} SADC to ${tx.to}`;
+    ul.appendChild(li);
+  });
+}
 
-    // ===== User System =====
-    function registerUser(){
-      const role=document.getElementById("role").value;
-      const name=document.getElementById("name").value;
-      const id=document.getElementById("idNumber").value;
-      const wallet=document.getElementById("walletAddress").value;
-      const password=document.getElementById("password").value;
-      if(!name||!id||!wallet||!password) return alert("All fields required");
-      users[id]={id,name,role,wallet,password};
-      alert("Registered. Login to continue.");
-    }
+async function loadRates(){
+  try{
+    const r=await fetch("https://api.exchangerate.host/latest?base=USD");
+    const data=await r.json();
+    const tbody=document.getElementById("exchangeRates");
+    tbody.innerHTML="";
+    ["ZAR","EUR","GBP"].forEach(cur=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${cur}</td><td>${(1/data.rates[cur]).toFixed(4)} SADC</td>`;
+      tbody.appendChild(tr);
+    });
+  }catch(e){console.error(e);}
+}
 
-    function loginUser(){
-      const id=document.getElementById("loginId").value;
-      const password=document.getElementById("loginPassword").value;
-      if(!users[id] || users[id].password!==password){
-        document.getElementById("loginError").innerText="Login failed";
-        return;
-      }
-      currentUser = users[id];
-      document.getElementById("dashboard").style.display="block";
-      updateBalance();
-    }
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF();
+  doc.text("SadiCoin Transaction Statement",20,20);
+  txHistory.forEach((tx,i)=>{
+    doc.text(`${i+1}. ${tx.date} - ${tx.amount} SADC ${tx.mint?"Minted":"Sent to "+tx.to}`,20,30+10*i);
+  });
+  doc.save("sadicoin_statement.pdf");
+}
 
-    // ===== Live Exchange Rates =====
-    async function fetchExchangeRates(){
-      try{
-        // Mock API rates (replace with real API)
-        const rateZAR = 0.50 + Math.random()*0.02;
-        const rateUSD = 0.035 + Math.random()*0.002;
-        document.getElementById("rateZAR").innerText = rateZAR.toFixed(2);
-        document.getElementById("rateUSD").innerText = rateUSD.toFixed(3);
+/* ====== Crossmint Mint (client side) ====== */
+document.getElementById("mintBtn").addEventListener("click", async ()=>{
+  const recipient = prompt("Wallet or email of recipient:");
+  if(!recipient) return;
+  const res = await fetch("YOUR_BACKEND_URL/mint", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      recipient,
+      metadata:{name:"SadiCoin NFT", image:"https://example.com/sadicoin.png"}
+    })
+  });
+  const out = await res.json();
+  alert("Mint request submitted! Check console for details.");
+  console.log(out);
+});
 
-        // For swap rate preview
-        const from = document.getElementById("swap_from").value.trim().toUpperCase();
-        const to = document.getElementById("swap_to").value.trim().toUpperCase();
-        const amt = parseFloat(document.getElementById("swap_amt").value);
-        if(from && to && amt){
-          const estRate = rateUSD; // simple mock
-          document.getElementById("swapRate").innerText = estRate.toFixed(4);
-        }
-      }catch(err){ console.error(err); }
-    }
-
-    // ===== Transaction History =====
-    function addTxHistory(type, amount, details){
-      const date = new Date().toLocaleString();
-      txHistory.push({date,type,amount,details});
-      const row = `<tr><td>${date}</td><td>${type}</td><td>${amount}</td><td>${details}</td></tr>`;
-      document.getElementById("txHistory").innerHTML += row;
-    }
-
-    function downloadTxPDF(){
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      doc.text("Sadicoin Transaction History", 10, 10);
-      let y = 20;
-      txHistory.forEach(tx=>{
-        doc.text(`${tx.date} | ${tx.type} | ${tx.amount} | ${tx.details}`, 10, y);
-        y+=10;
-      });
-      doc.save("tx_history.pdf");
-    }
-
-    // ===== On-chain Transaction =====
-    async function sendTransaction(){
-      const to=document.getElementById("toAccount").value;
-      const amount=parseFloat(document.getElementById("amount").value);
-      if(!to||isNaN(amount)) return alert("Invalid input");
-      const decimals = await contract.methods.decimals().call();
-      const value = web3.utils.toBN(amount * Math.pow(10, decimals));
-      contract.methods.transfer(to,value).send({from:currentAccount})
-      .on('transactionHash', hash=>{
-        document.getElementById("txResult").style.display='block';
-        document.getElementById("txResult").innerText=`Transaction sent. Hash: ${hash}`;
-      })
-      .on('receipt', receipt=>{
-        updateBalance();
-        addTxHistory("Send", amount, to);
-      })
-      .on('error', err=>alert("Tx failed: "+err.message));
-    }
-
-    async function mintTokens(){
-      const amount = prompt("Enter amount to mint:");
-      if(!amount) return;
-      const decimals = await contract.methods.decimals().call();
-      const value = web3.utils.toBN(amount * Math.pow(10, decimals));
-      try{
-        await contract.methods.mint(currentAccount, value).send({from:currentAccount});
-        updateBalance();
-        addTxHistory("Mint", amount, "Self");
-      } catch(err){ alert("Minting failed: "+err.message); }
-    }
-
-    // ===== Fiat Purchase =====
-    async function loadMoonPay(){
-      if(window.MoonPay) return window.MoonPay;
-      return new Promise((resolve,reject)=>{
-        const script=document.createElement('script');
-        script.src="https://buy.moonpay.com/js/sdk/latest.js";
-        script.onload=()=>resolve(window.MoonPay);
-        script.onerror=reject;
-        document.body.appendChild(script);
-      });
-    }
-
-    async function buySadicoin(){
-      const amountZAR = parseFloat(document.getElementById("fiatAmount").value);
-      if(isNaN(amountZAR) || amountZAR<=0) return alert("Enter a valid amount");
-      const bankAccount = document.getElementById("bankAccount").value.trim();
-      try{
-        const MoonPaySDK = await loadMoonPay();
-        const purchase = new MoonPaySDK({
-          flow: 'buy',
-          environment: 'sandbox',
-          variant: 'overlay',
-          params: {
-            apiKey: MOONPAY_PUBLISHABLE_KEY,
-            currencyCode: 'SADI',
-            baseCurrencyAmount: amountZAR,
-            defaultCurrencyCode: 'ZAR',
-            email: currentUser ? currentUser.id+'@example.com' : 'user@example.com'
-          }
-        });
-        purchase.on('success', async (tx) => {
-          const decimals = await contract.methods.decimals().call();
-          const tokenAmount = web3.utils.toBN(amountZAR * 1e18);
-          await contract.methods.mint(currentAccount, tokenAmount).send({from:currentAccount});
-          updateBalance();
-          document.getElementById("fiatResult").style.display='block';
-          document.getElementById("fiatResult").innerText=`Purchased & minted ${amountZAR} SADC successfully!`;
-          addTxHistory("Fiat Purchase", amountZAR, bankAccount || "MoonPay");
-
-          if(bankAccount) alert(`Real-time bank transfer initiated for ZAR ${amountZAR} to ${bankAccount}`);
-        });
-        purchase.show();
-      }catch(err){ alert("Purchase failed: "+err.message); }
-    }
-
-    // ===== Swap via MoonPay =====
-    async function performSwap(){
-      const from=document.getElementById("swap_from").value.trim().toUpperCase();
-      const to=document.getElementById("swap_to").value.trim().toUpperCase();
-      const amt=document.getElementById("swap_amt").value;
-      if(!from||!to||!amt) return alert("Enter from, to, amount");
-
-      const MoonPaySDK = await loadMoonPay();
-      const swapInstance = new MoonPaySDK({
-        flow:'swap',
-        environment:'sandbox',
-        variant:'overlay',
-        params:{apiKey:MOONPAY_PUBLISHABLE_KEY, baseCurrencyCode:from, baseCurrencyAmount:amt, defaultCurrencyCode:to}
-      });
-
-      swapInstance.on('success', (tx)=>{
-        addTxHistory("Swap", amt, `${from} → ${to}`);
-        alert(`Swap completed: ${amt} ${from} → ${to}`);
-      });
-      swapInstance.show();
-    }
-
-    window.addEventListener('load', initWeb3);
-  </script>
+window.addEventListener('load',initWeb3);
+</script>
 </body>
 </html>
 

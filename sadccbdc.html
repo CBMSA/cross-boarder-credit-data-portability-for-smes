@@ -69,7 +69,7 @@
   <div id="qr"></div>
 </div>
 
-<!-- Dashboard with live exchange & history -->
+<!-- Dashboard -->
 <div id="dashboard" style="display:none;">
   <h4>SADC Dashboard</h4>
   <button class="btn btn-outline-secondary mb-3" onclick="downloadPDF()">Download Statement (PDF)</button>
@@ -82,10 +82,15 @@
   <ul id="txHistory" class="list-group"></ul>
 </div>
 
-<!-- Crossmint Mint Button -->
+<!-- Moonpay Buy -->
 <div class="mt-5">
-  <h4>Mint SadiCoin NFT</h4>
-  <button id="mintBtn" class="btn btn-primary">Mint via Crossmint</button>
+  <h4>Buy/Sell SadiCoin</h4>
+  <input type="number" id="moonpayAmount" class="form-control mb-2" placeholder="Amount in USD">
+  <select id="moonpayCurrency" class="form-control mb-2">
+    <option value="usd">USD</option>
+    <option value="zar">ZAR</option>
+  </select>
+  <button class="btn btn-warning w-100 mb-2" onclick="buySadiCoin()">Buy SadiCoin</button>
 </div>
 
 <footer class="mt-5 text-center">
@@ -96,9 +101,6 @@
 /* ====== Configuration ====== */
 const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS";
 const CONTRACT_ABI = [ /* paste your ABI here */ ];
-const CROSSMINT_CLIENT_KEY =
-  "ck_production_A61GAYiM5f6ZWHBNjq4rs7WhdQpr2xvhMqxzUFrT2QYcXMMQvcjs6QzoEvnnJwzCAbJJsG4aE9wEhE657oVKimAtHx6221daZpRXeemK4nXMoLto2GDK2JYWbRXQA8aYmGM4N87hg2EkALSctosJPzuyJeWxwWGLVEVrmbx5BZJPegpM9ofaBUFyjNhodFU4mAUWNPgDQNjG4Z1HdzPpNe9v";
-
 let web3, contract, currentAccount=null;
 let users={}, currentUser=null;
 let txHistory=[];
@@ -210,25 +212,29 @@ function downloadPDF(){
   doc.save("sadicoin_statement.pdf");
 }
 
-/* ====== Crossmint Mint (client side) ====== */
-document.getElementById("mintBtn").addEventListener("click", async ()=>{
-  const recipient = prompt("Wallet or email of recipient:");
-  if(!recipient) return;
-  const res = await fetch("YOUR_BACKEND_URL/mint", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      recipient,
-      metadata:{name:"SadiCoin NFT", image:"https://example.com/sadicoin.png"}
+/* ====== Moonpay Integration ====== */
+async function buySadiCoin() {
+  const amount = document.getElementById('moonpayAmount').value;
+  const currency = document.getElementById('moonpayCurrency').value;
+  if (!amount) return alert("Enter an amount");
+
+  const res = await fetch('/api/moonpay', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      type: 'buy',
+      walletAddress: currentAccount,
+      amount,
+      currency
     })
   });
-  const out = await res.json();
-  alert("Mint request submitted! Check console for details.");
-  console.log(out);
-});
 
-window.addEventListener('load',initWeb3);
+  const data = await res.json();
+  console.log("Moonpay Response:", data);
+  alert("Check console for transaction info!");
+}
+
+window.addEventListener('load', initWeb3);
 </script>
 </body>
 </html>
-

@@ -3,103 +3,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SadiCoin Banking Platform</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SadiCoin Banking Platform</title>
 
-<!-- CSS / Libraries -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- CSS / Libraries -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/moralis/dist/moralis.js"></script>
 
-<style>
-body { font-family: 'Segoe UI'; background:#f9f9f9; padding:20px; }
-nav a { margin-right:10px; font-weight:600; }
-.logo { height:60px; }
-#dashboard { margin-top:40px; }
-.exchange-table td, .exchange-table th { padding:6px 12px; }
-</style>
+  <style>
+    body { font-family: 'Segoe UI'; background:#f9f9f9; padding:20px; }
+    nav a { margin-right:10px; font-weight:600; }
+    .logo { height:60px; }
+    #dashboard { margin-top:40px; }
+    .exchange-table td, .exchange-table th { padding:6px 12px; }
+  </style>
 </head>
 <body>
 <header class="d-flex align-items-center justify-content-between mb-4">
-<img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
-<h3>SADC Wallet</h3>
+  <img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
+  <h3>SADC Wallet</h3>
 </header>
 
 <nav class="mb-4">
-<a href="#register" class="btn btn-outline-primary">Register</a>
-<a href="#login" class="btn btn-outline-primary">Login</a>
-<a href="#transactions" class="btn btn-outline-primary">Transactions</a>
-<a href="#dashboard" class="btn btn-outline-primary">Dashboard</a>
+  <a href="#register" class="btn btn-outline-primary">Register</a>
+  <a href="#login" class="btn btn-outline-primary">Login</a>
+  <a href="#transactions" class="btn btn-outline-primary">Transactions</a>
+  <a href="#dashboard" class="btn btn-outline-primary">Dashboard</a>
 </nav>
 
 <!-- Registration -->
 <div id="register" class="mb-5">
-<h4>Account Registration</h4>
-<select id="role" class="form-control mb-2">
-<option value="user">User</option>
-<option value="srb_admin">SRB Admin</option>
-<option value="regional_bank">Regional Central Bank</option>
-<option value="national_treasury">National Treasury</option>
-</select>
-<input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
-<input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
-<input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
-<input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
-<button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
+  <h4>Account Registration</h4>
+  <select id="role" class="form-control mb-2">
+    <option value="user">User</option>
+    <option value="srb_admin">SRB Admin</option>
+    <option value="regional_bank">Regional Central Bank</option>
+    <option value="national_treasury">National Treasury</option>
+  </select>
+  <input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
+  <input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
+  <input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
+  <input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
+  <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
 </div>
 
 <!-- Login -->
 <div id="login" class="mb-5">
-<h4>Login</h4>
-<input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
-<input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
-<button class="btn btn-success w-100" onclick="loginUser()">Login</button>
-<p id="loginError" class="text-danger"></p>
+  <h4>Login</h4>
+  <input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
+  <input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
+  <button class="btn btn-success w-100" onclick="loginUser()">Login</button>
+  <p id="loginError" class="text-danger"></p>
 </div>
 
 <!-- Transactions -->
 <div id="transactions" class="mb-5" style="display:none;">
-<h4>Send SADICOIN / On-Ramp / Off-Ramp</h4>
-<p>Balance: <span id="balance">0</span> SADC</p>
-<input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
-<input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
-<button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
-<button class="btn btn-success w-100 mb-2" onclick="mintTokens()">Mint Tokens</button>
-<button class="btn btn-primary w-100 mb-2" onclick="onRamp()">Buy SADC (On-Ramp)</button>
-<button class="btn btn-warning w-100 mb-2" onclick="offRamp()">Sell SADC (Off-Ramp)</button>
-<div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
-<div id="qr"></div>
+  <h4>Send SADICOIN</h4>
+  <p>Balance: <span id="balance">0</span> SADC</p>
+  <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
+  <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
+  <button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
+  <button class="btn btn-success w-100 mb-2" onclick="mintTokens()">Mint Tokens</button>
+  <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
+  <div id="qr"></div>
 </div>
 
-<!-- Dashboard -->
+<!-- Dashboard with live exchange & history -->
 <div id="dashboard" style="display:none;">
-<h4>SADC Dashboard</h4>
-<button class="btn btn-outline-secondary mb-3" onclick="downloadPDF()">Download Statement (PDF)</button>
-<h5>Live Exchange Rates (SADC vs Major)</h5>
-<table class="table table-bordered exchange-table">
-<thead><tr><th>Currency</th><th>Rate</th></tr></thead>
-<tbody id="exchangeRates"></tbody>
-</table>
-<h5 class="mt-4">Transaction History</h5>
-<ul id="txHistory" class="list-group"></ul>
+  <h4>SADC Dashboard</h4>
+  <button class="btn btn-outline-secondary mb-3" onclick="downloadPDF()">Download Statement (PDF)</button>
+  <h5>Live Exchange Rates (SADC vs Major)</h5>
+  <table class="table table-bordered exchange-table">
+    <thead><tr><th>Currency</th><th>Rate</th></tr></thead>
+    <tbody id="exchangeRates"></tbody>
+  </table>
+  <h5 class="mt-4">Transaction History</h5>
+  <ul id="txHistory" class="list-group"></ul>
 </div>
 
 <!-- Crossmint Mint Button -->
 <div class="mt-5">
-<h4>Mint SadiCoin NFT</h4>
-<button id="mintBtn" class="btn btn-primary">Mint via Crossmint</button>
+  <h4>Mint SadiCoin NFT</h4>
+  <button id="mintBtn" class="btn btn-primary">Mint via Crossmint</button>
+</div>
+
+<!-- On-ramp / Off-ramp -->
+<div class="mt-5">
+  <h4>Deposit / Withdraw Fiat</h4>
+  <button class="btn btn-warning mb-2" onclick="depositFiat()">Deposit via MoonPay</button>
+  <button class="btn btn-danger mb-2" onclick="withdrawFiat()">Withdraw via MoonPay</button>
 </div>
 
 <footer class="mt-5 text-center">
-<p>&copy; 2025 SCB - SadiCoin. All rights reserved.</p>
+  <p>&copy; 2025 SCB - SadiCoin. All rights reserved.</p>
 </footer>
 
 <script>
 /* ====== Configuration ====== */
-const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS";
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "YOUR_CONTRACT_ADDRESS";
 const CONTRACT_ABI = [ /* paste your ABI here */ ];
+const CROSSMINT_CLIENT_KEY = import.meta.env.VITE_CROSSMINT_CLIENT_KEY || "YOUR_CROSSMINT_KEY";
+const MOONPAY_PUBLISHABLE_KEY = import.meta.env.VITE_MOONPAY_PUBLISHABLE_KEY || "pk_live_XXXX";
+const MOONPAY_SECRET_KEY = import.meta.env.VITE_MOONPAY_SECRET_KEY || "sk_live_XXXX";
+const MORALIS_API_KEY = import.meta.env.VITE_MORALIS_API_KEY || "YOUR_MORALIS_KEY";
+
 let web3, contract, currentAccount=null;
 let users={}, currentUser=null;
 let txHistory=[];
@@ -189,15 +200,21 @@ function renderHistory(){
 
 async function loadRates(){
   try{
-    const r=await fetch("https://api.exchangerate.host/latest?base=USD");
-    const data=await r.json();
+    Moralis.start({ apiKey: MORALIS_API_KEY });
+
+    // Live rates for fiat and crypto
+    const currencies = ["USD","EUR","ZAR","BTC","ETH"];
     const tbody=document.getElementById("exchangeRates");
     tbody.innerHTML="";
-    ["ZAR","EUR","GBP"].forEach(cur=>{
+
+    for(const cur of currencies){
+      const res = await Moralis.EvmApi.token.getTokenPrice({ address: CONTRACT_ADDRESS, chain: "0x1" });
+      const price = res?.data?.nativePrice?.value || 1;
       const tr=document.createElement("tr");
-      tr.innerHTML=`<td>${cur}</td><td>${(1/data.rates[cur]).toFixed(4)} SADC</td>`;
+      tr.innerHTML=`<td>${cur}</td><td>${price} SADC</td>`;
       tbody.appendChild(tr);
-    });
+    }
+
   }catch(e){console.error(e);}
 }
 
@@ -211,51 +228,37 @@ function downloadPDF(){
   doc.save("sadicoin_statement.pdf");
 }
 
-/* ====== On-Ramp / Off-Ramp ====== */
-async function onRamp(){
-  const amount = prompt("Enter USD amount to buy SADC:");
-  if(!amount) return;
-  const res = await fetch('/api/moonpay', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'buy', amount, wallet: currentAccount})
-  });
-  const data = await res.json();
-  alert("On-Ramp request submitted!");
-  console.log(data);
-}
-
-async function offRamp(){
-  const amount = prompt("Enter SADC amount to sell for USD:");
-  if(!amount) return;
-  const res = await fetch('/api/moonpay', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'sell', amount, wallet: currentAccount})
-  });
-  const data = await res.json();
-  alert("Off-Ramp request submitted!");
-  console.log(data);
-}
-
 /* ====== Crossmint Mint ====== */
 document.getElementById("mintBtn").addEventListener("click", async ()=>{
   const recipient = prompt("Wallet or email of recipient:");
   if(!recipient) return;
-  const metadata = {name:"SadiCoin NFT", image:"https://example.com/sadicoin.png"};
-
-  const res = await fetch("/api/crossmint/mint", {
+  const res = await fetch("/mint", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({recipient, metadata})
+    body:JSON.stringify({
+      recipient,
+      metadata:{name:"SadiCoin NFT", image:"https://example.com/sadicoin.png"},
+      clientKey: CROSSMINT_CLIENT_KEY
+    })
   });
   const out = await res.json();
   alert("Mint request submitted! Check console for details.");
   console.log(out);
 });
 
-window.addEventListener('load', initWeb3);
+/* ====== MoonPay On-ramp / Off-ramp ====== */
+function depositFiat(){
+  window.open(`https://buy.moonpay.com?apiKey=${MOONPAY_PUBLISHABLE_KEY}&currencyCode=usd`, "_blank");
+}
+function withdrawFiat(){
+  window.open(`https://sell.moonpay.com?apiKey=${MOONPAY_PUBLISHABLE_KEY}&currencyCode=usd`, "_blank");
+}
+
+window.addEventListener('load',initWeb3);
 </script>
 </body>
 </html>
+
+
+
 

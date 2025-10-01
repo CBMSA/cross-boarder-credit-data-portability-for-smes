@@ -247,7 +247,61 @@ async function loadSwaps(){
 // On-ramp / off-ramp widgets
 function openMoonpayWidget(amount, wallet){window.open(`https://buy.moonpay.com?apiKey=${MOONPAY_PUBLISHABLE_KEY}&currencyCode=usd&baseCurrencyAmount=${amount}&walletAddress=${wallet}`,'_blank');}
 function openCrossmintWidget(recipient){window.open(`https://www.crossmint.io/checkout?clientKey=${CROSSMINT_CLIENT_KEY}&recipient=${recipient}`,'_blank');}
-async function depositViaWidgetAndApi(){const amt=Number(document.getElementById('onRampAmount').value);if(!amt) return alert('Enter deposit amount'); if(!currentAccount) return alert('Connect wallet'); openMoonpayWidget(amt,currentAccount); try{const res=await fetch('/api/deposit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:currentAccount,amount:amt,source:'moonpay'})}); const j=await res.json(); document.getElementById('onOffResult').innerText='Deposit initiated (server): '+(
+async function depositViaWidgetAndApi(){const amt=Number(document.getElementById('onRampAmount').value);if(!amt) return alert('Enter deposit amount'); if(!currentAccount) return alert('Connect wallet'); openMoonpayWidget(amt,currentAccount); try{const res=await fetch('/api/deposit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:currentAccount,amount:amt,source:'moonpay'})}); const j=await res.json(); document.getElementById('onOffResult').innerText='Deposit initiated (server): '+((j.id||JSON.stringify(j));}catch(e){console.error(e);alert('Deposit failed');}}
+
+async function withdrawViaWidgetAndApi(){
+  const amt=Number(document.getElementById('offRampAmount').value);
+  if(!amt) return alert('Enter withdraw amount'); 
+  if(!currentAccount) return alert('Connect wallet'); 
+  openCrossmintWidget(currentAccount);
+  try{
+    const res=await fetch('/api/withdraw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:currentAccount,amount:amt,dest:'bank'})});
+    const j=await res.json();
+    document.getElementById('onOffResult').innerText='Withdraw initiated (server): '+(j.id||JSON.stringify(j));
+  }catch(e){console.error(e);alert('Withdraw failed');}
+}
+
+// Crossmint mint NFT
+document.getElementById('mintBtn').addEventListener('click',async ()=>{
+  const recipient=prompt('Enter wallet address or email for NFT:');
+  if(!recipient) return;
+  try{
+    const res=await fetch('/api/crossmint/mint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient,metadata:{name:'SadiCoin NFT',description:'SADC CBDC sample',image:'https://example.com/sadicoin.png'}})});
+    const j=await res.json();
+    document.getElementById('mintResult').innerText='Mint request created (server): '+(j.id||JSON.stringify(j));
+  }catch(e){console.error(e);alert('Mint failed');}
+});
+
+// PDF download
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text('SadiCoin Transaction Statement', 20, 20);
+  txHistory.forEach((t,i)=>{doc.text(`${i+1}. ${t.date} - ${t.type} ${t.amount} to ${t.to}`,20,30+i*8);});
+  doc.save('sadicoin_statement.pdf');
+}
+
+// Refresh all data
+async function refreshData(){
+  if(currentAccount && contract) await updateBalance();
+  await loadRates();
+  await loadSwaps();
+  renderHistory();
+}
+
+window.addEventListener('load',async ()=>{
+  const cur=sessionStorage.getItem('sadc_current_user');
+  if(cur){document.getElementById('transactions').style.display=''; document.getElementById('dashboard').style.display='';}
+  setInterval(refreshData,60000);
+  await refreshData();
+});
+
+window._sadic={depositViaWidgetAndApi,withdrawViaWidgetAndApi,openMoonpayWidget,openCrossmintWidget,refreshData};
+</script>
+</body>
+</html>
+
+
 
 
 <!DOCTYPE html>

@@ -1,264 +1,503 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SadiCoin Banking Platform</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SadiCoin — SADC CBDC Wallet</title>
 
-  <!-- CSS / Libraries -->
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Web3 and utilities -->
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://unpkg.com/moralis/dist/moralis.js"></script>
 
   <style>
-    body { font-family: 'Segoe UI'; background:#f9f9f9; padding:20px; }
-    nav a { margin-right:10px; font-weight:600; }
-    .logo { height:60px; }
-    #dashboard { margin-top:40px; }
-    .exchange-table td, .exchange-table th { padding:6px 12px; }
+    body { font-family: "Segoe UI", Roboto, Arial; background:#f7f7f9; padding:20px; }
+    .logo { height:48px; margin-right:10px; }
+    nav a { margin-right:8px; }
+    .timestamp { font-size:0.85rem; color: #666; }
+    .card { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   </style>
 </head>
 <body>
-<header class="d-flex align-items-center justify-content-between mb-4">
-  <img src="ChatGPT Image Sep 11, 2025, 03_15_36 PM.png" alt="SCB Logo" class="logo">
-  <h3>SADC Wallet</h3>
-</header>
+  <header class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center">
+      <img src="file_00000000968061f89abd9d3d435098f1.png" alt="SCB Logo" class="logo">
+      <h3 class="mb-0">SADC Wallet</h3>
+    </div>
+    <div>
+      <button id="connectWalletBtn" class="btn btn-outline-primary">Connect Wallet</button>
+    </div>
+  </header>
 
-<nav class="mb-4">
-  <a href="#register" class="btn btn-outline-primary">Register</a>
-  <a href="#login" class="btn btn-outline-primary">Login</a>
-  <a href="#transactions" class="btn btn-outline-primary">Transactions</a>
-  <a href="#dashboard" class="btn btn-outline-primary">Dashboard</a>
-</nav>
+  <nav class="mb-4">
+    <a href="#register" class="btn btn-sm btn-outline-secondary">Register</a>
+    <a href="#login" class="btn btn-sm btn-outline-secondary">Login</a>
+    <a href="#transactions" class="btn btn-sm btn-outline-secondary">Transactions</a>
+    <a href="#dashboard" class="btn btn-sm btn-outline-secondary">Dashboard</a>
+  </nav>
 
-<!-- Registration -->
-<div id="register" class="mb-5">
-  <h4>Account Registration</h4>
-  <select id="role" class="form-control mb-2">
-    <option value="user">User</option>
-    <option value="srb_admin">SRB Admin</option>
-    <option value="regional_bank">Regional Central Bank</option>
-    <option value="national_treasury">National Treasury</option>
-  </select>
-  <input type="text" id="name" class="form-control mb-2" placeholder="Full Name">
-  <input type="text" id="idNumber" class="form-control mb-2" placeholder="National ID">
-  <input type="text" id="walletAddress" class="form-control mb-2" placeholder="Wallet Address">
-  <input type="password" id="password" class="form-control mb-2" placeholder="Create Password">
-  <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
-</div>
+  <!-- Registration -->
+  <div id="register" class="card mb-4 p-3">
+    <h5>Account Registration</h5>
+    <select id="role" class="form-control mb-2">
+      <option value="user">User</option>
+      <option value="srb_admin">SRB Admin</option>
+      <option value="regional_bank">Regional Central Bank</option>
+      <option value="national_treasury">National Treasury</option>
+    </select>
+    <input id="regName" class="form-control mb-2" placeholder="Full Name" />
+    <input id="regNationalId" class="form-control mb-2" placeholder="National ID" />
+    <input id="regWallet" class="form-control mb-2" placeholder="Wallet Address (optional)" />
+    <input id="regPassword" type="password" class="form-control mb-2" placeholder="Password" />
+    <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
+    <div id="regResult" class="mt-2 small text-success"></div>
+  </div>
 
-<!-- Login -->
-<div id="login" class="mb-5">
-  <h4>Login</h4>
-  <input type="text" id="loginId" class="form-control mb-2" placeholder="ID Number">
-  <input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
-  <button class="btn btn-success w-100" onclick="loginUser()">Login</button>
-  <p id="loginError" class="text-danger"></p>
-</div>
+  <!-- Login -->
+  <div id="login" class="card mb-4 p-3">
+    <h5>Login</h5>
+    <input id="loginNationalId" class="form-control mb-2" placeholder="National ID" />
+    <input id="loginPassword" type="password" class="form-control mb-2" placeholder="Password" />
+    <button class="btn btn-dark w-100" onclick="biometricLogin()">Login</button>
+    <div id="loginResult" class="mt-2"></div>
+  </div>
 
-<!-- Transactions -->
-<div id="transactions" class="mb-5" style="display:none;">
-  <h4>Send SADICOIN</h4>
-  <p>Balance: <span id="balance">0</span> SADC</p>
-  <input type="text" id="toAccount" class="form-control mb-2" placeholder="Recipient Wallet Address">
-  <input type="number" id="amount" class="form-control mb-2" placeholder="Amount (SADICOIN)">
-  <button class="btn btn-dark w-100 mb-2" onclick="sendTransaction()">Send</button>
-  <button class="btn btn-success w-100 mb-2" onclick="mintTokens()">Mint Tokens</button>
-  <div id="txResult" class="alert alert-info mt-3" style="display:none;"></div>
-  <div id="qr"></div>
-</div>
+  <!-- Transactions -->
+  <div id="transactions" class="card mb-4 p-3" style="display:none;">
+    <h5>Wallet Actions</h5>
+    <p class="mb-2">Balance: <strong id="balance">0</strong> SADC</p>
+    <input id="toWallet" class="form-control mb-2" placeholder="Recipient Wallet Address" />
+    <input id="transferAmount" type="number" class="form-control mb-2" placeholder="Amount (SADICOIN)" />
+    <div class="d-grid gap-2">
+      <button class="btn btn-outline-info" onclick="checkBalance()">Check Balance</button>
+      <button class="btn btn-dark" onclick="transferFunds()">Transfer</button>
+      <button class="btn btn-success" onclick="mintTokens()">Mint Tokens (contract)</button>
+    </div>
+    <div id="transferResult" class="mt-2"></div>
+    <div class="qrcode mt-3" id="walletQR"></div>
+    <div id="walletIdLabel" class="small text-muted mt-2"></div>
+  </div>
 
-<!-- Dashboard with live exchange & history -->
-<div id="dashboard" style="display:none;">
-  <h4>SADC Dashboard</h4>
-  <button class="btn btn-outline-secondary mb-3" onclick="downloadPDF()">Download Statement (PDF)</button>
-  <h5>Live Exchange Rates (SADC vs Major)</h5>
-  <table class="table table-bordered exchange-table">
-    <thead><tr><th>Currency</th><th>Rate</th></tr></thead>
-    <tbody id="exchangeRates"></tbody>
-  </table>
-  <h5 class="mt-4">Transaction History</h5>
-  <ul id="txHistory" class="list-group"></ul>
-</div>
+  <!-- Dashboard -->
+  <div id="dashboard" class="card mb-4 p-3" style="display:none;">
+    <h5>Dashboard</h5>
 
-<!-- Crossmint Mint Button -->
-<div class="mt-5">
-  <h4>Mint SadiCoin NFT</h4>
-  <button id="mintBtn" class="btn btn-primary">Mint via Crossmint</button>
-</div>
+    <!-- Exchange Rates -->
+    <div class="mb-3">
+      <h6 class="mb-2">Live Exchange Rates (fiat & crypto)</h6>
+      <table class="table table-sm">
+        <thead><tr><th>Pair</th><th>Price (USD)</th></tr></thead>
+        <tbody id="exchangeRates"></tbody>
+      </table>
+      <div id="ratesUpdated" class="timestamp">Last updated: -</div>
+    </div>
 
-<!-- On-ramp / Off-ramp -->
-<div class="mt-5">
-  <h4>Deposit / Withdraw Fiat</h4>
-  <button class="btn btn-warning mb-2" onclick="depositFiat()">Deposit via MoonPay</button>
-  <button class="btn btn-danger mb-2" onclick="withdrawFiat()">Withdraw via MoonPay</button>
-</div>
+    <!-- Swap & ETF rates -->
+    <div class="mb-3">
+      <h6 class="mb-2">Swap / ETF-like Rates</h6>
+      <table class="table table-sm">
+        <thead><tr><th>Pair / Index</th><th>Price (USD)</th></tr></thead>
+        <tbody id="swapRates"></tbody>
+      </table>
+      <div id="swapsUpdated" class="timestamp">Last updated: -</div>
+    </div>
 
-<footer class="mt-5 text-center">
-  <p>&copy; 2025 SCB - SadiCoin. All rights reserved.</p>
-</footer>
+    <!-- On-Ramp / Off-Ramp (separate section) -->
+    <div class="mb-3">
+      <h6 class="mb-2">Fiat On-Ramp / Off-Ramp</h6>
+      <div class="row g-2">
+        <div class="col-md-6">
+          <input id="onRampAmount" type="number" class="form-control" placeholder="Amount (USD)" />
+        </div>
+        <div class="col-md-6">
+          <button class="btn btn-success w-100" onclick="depositViaWidgetAndApi()">Deposit (On-Ramp)</button>
+        </div>
+        <div class="col-md-6 mt-2">
+          <input id="offRampAmount" type="number" class="form-control" placeholder="Amount (SADC)" />
+        </div>
+        <div class="col-md-6 mt-2">
+          <button class="btn btn-warning w-100" onclick="withdrawViaWidgetAndApi()">Withdraw (Off-Ramp)</button>
+        </div>
+      </div>
+      <div id="onOffResult" class="mt-2"></div>
+    </div>
 
-<script>
-/* ====== Configuration ====== */
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "YOUR_CONTRACT_ADDRESS";
-const CONTRACT_ABI = [ /* paste your ABI here */ ];
-const CROSSMINT_CLIENT_KEY = import.meta.env.VITE_CROSSMINT_CLIENT_KEY || "YOUR_CROSSMINT_KEY";
-const MOONPAY_PUBLISHABLE_KEY = import.meta.env.VITE_MOONPAY_PUBLISHABLE_KEY || "pk_live_XXXX";
-const MOONPAY_SECRET_KEY = import.meta.env.VITE_MOONPAY_SECRET_KEY || "sk_live_XXXX";
-const MORALIS_API_KEY = import.meta.env.VITE_MORALIS_API_KEY || "YOUR_MORALIS_KEY";
+    <!-- Transaction History -->
+    <div>
+      <h6 class="mb-2">Transaction History</h6>
+      <ul id="txHistory" class="list-group"></ul>
+    </div>
+  </div>
 
-let web3, contract, currentAccount=null;
-let users={}, currentUser=null;
-let txHistory=[];
+  <!-- Mint NFT -->
+  <div class="card mb-4 p-3">
+    <h5>Mint SadiCoin NFT</h5>
+    <button id="mintBtn" class="btn btn-primary">Mint via Crossmint (server)</button>
+    <div id="mintResult" class="mt-2"></div>
+  </div>
 
-/* ====== Web3 Init ====== */
-async function initWeb3(){
-  if(window.ethereum){
-    web3=new Web3(window.ethereum);
-    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
-    currentAccount=accounts[0];
-    contract=new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
-    updateBalance();
-    setInterval(updateBalance,10000);
-    loadRates();
-  }else alert("Install MetaMask");
-}
+  <footer class="text-center small text-muted mt-4">
+    &copy; 2025 SCB - SadiCoin. All rights reserved.
+  </footer>
 
-/* ====== User System ====== */
-function registerUser(){
-  const role=document.getElementById("role").value;
-  const name=document.getElementById("name").value;
-  const id=document.getElementById("idNumber").value;
-  const wallet=document.getElementById("walletAddress").value;
-  const pw=document.getElementById("password").value;
-  if(!name||!id||!wallet||!pw) return alert("All fields required");
-  users[id]={role,name,wallet,password:pw};
-  alert("Registered. Please login.");
-}
+  <!-- ======= SCRIPT: Frontend logic (drop-in file) ======= -->
+  <script>
+  // ------------- CONFIG -------------
+  // NOTE: Only publishable/client keys go in the frontend. Secret keys MUST live in Vercel envs and be used server-side.
+  const MORALIS_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjYxM2NjNWRlLTgwMDYtNDZjMi1iZTNjLTc1YWEzMGYwYzY0MCIsIm9yZ0lkIjoiNDczMTgzIiwidXNlcklkIjoiNDg2NzcxIiwidHlwZUlkIjoiMzdmOTk1NzUtNjc5MC00Yjk3LTkxYzYtMjM1ODQ5ZmEzZjIwIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NTkyNTc2MTEsImV4cCI6NDkxNTAxNzYxMX0.VLA7b9Asj5MsWFABLIv6gcN87iZG8uYa1YzhzqiCHOY";
+  const MOONPAY_PUBLISHABLE_KEY = "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k"; // public
+  const CROSSMINT_CLIENT_KEY = "ck_production_A61GAYiM5f6ZWHBNjq4rs7WhdQpr2xvhMqxzUFrT2QYcXMMQvcjs6QzoEvnnJwzCAbJJsG4aE9wEhE657oVKimAtHx6221daZpRXeemK4nXMoLto2GDK2JYWbRXQA8aYmGM4N87hg2EkALSctosJPzuyJeWxwWGLVEVrmbx5BZJPegpM9ofaBUFyjNhodFU4mAUWNPgDQNjG4Z1HdzPpNe9v"; // client (public)
+  const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS"; // replace
+  const CONTRACT_ABI = [ /* paste your ABI here or leave blank for now */ ];
 
-function loginUser(){
-  const id=document.getElementById("loginId").value;
-  const pw=document.getElementById("loginPassword").value;
-  if(!users[id]||users[id].password!==pw){
-    document.getElementById("loginError").innerText="Login failed";
-    return;
-  }
-  currentUser=users[id];
-  document.getElementById("transactions").style.display="block";
-  document.getElementById("dashboard").style.display="block";
-  updateBalance();
-}
+  // ------------- STATE -------------
+  let web3 = null;
+  let contract = null;
+  let currentAccount = null;
+  let txHistory = [];
 
-/* ====== Blockchain ====== */
-async function updateBalance(){
-  if(contract && currentAccount){
-    const bal = await contract.methods.balanceOf(currentAccount).call();
-    document.getElementById("balance").innerText=(bal/1e18).toLocaleString();
-  }
-}
-
-async function sendTransaction(){
-  const to=document.getElementById("toAccount").value;
-  const amount=parseFloat(document.getElementById("amount").value);
-  if(!to||isNaN(amount)) return alert("Invalid input");
-  const decimals=await contract.methods.decimals().call();
-  const value=web3.utils.toBN(amount*Math.pow(10,decimals));
-  contract.methods.transfer(to,value).send({from:currentAccount})
-    .on('receipt', r=>{
-      txHistory.push({to,amount,date:new Date().toLocaleString()});
-      renderHistory();
-    });
-}
-
-async function mintTokens(){
-  const amount=prompt("Enter amount to mint:");
-  if(!amount) return;
-  const decimals=await contract.methods.decimals().call();
-  const value=web3.utils.toBN(amount*Math.pow(10,decimals));
-  await contract.methods.mint(currentAccount,value).send({from:currentAccount})
-    .on('receipt', r=>{
-      txHistory.push({to:currentAccount,amount,date:new Date().toLocaleString(),mint:true});
-      renderHistory();
-    });
-}
-
-/* ====== Dashboard ====== */
-function renderHistory(){
-  const ul=document.getElementById("txHistory");
-  ul.innerHTML="";
-  txHistory.forEach(tx=>{
-    const li=document.createElement("li");
-    li.className="list-group-item";
-    li.textContent=`${tx.date}: ${tx.mint?"Mint":"Send"} ${tx.amount} SADC to ${tx.to}`;
-    ul.appendChild(li);
-  });
-}
-
-async function loadRates(){
-  try{
-    Moralis.start({ apiKey: MORALIS_API_KEY });
-
-    // Live rates for fiat and crypto
-    const currencies = ["USD","EUR","ZAR","BTC","ETH"];
-    const tbody=document.getElementById("exchangeRates");
-    tbody.innerHTML="";
-
-    for(const cur of currencies){
-      const res = await Moralis.EvmApi.token.getTokenPrice({ address: CONTRACT_ADDRESS, chain: "0x1" });
-      const price = res?.data?.nativePrice?.value || 1;
-      const tr=document.createElement("tr");
-      tr.innerHTML=`<td>${cur}</td><td>${price} SADC</td>`;
-      tbody.appendChild(tr);
+  // ------------- Wallet connect -------------
+  document.getElementById('connectWalletBtn').addEventListener('click', async () => {
+    try {
+      if(!window.ethereum) return alert('Install MetaMask or other web3 wallet');
+      web3 = new Web3(window.ethereum);
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      currentAccount = accounts[0];
+      document.getElementById('walletIdLabel').innerText = 'Wallet: ' + currentAccount;
+      // init contract if ABI provided
+      if(CONTRACT_ABI && CONTRACT_ADDRESS && CONTRACT_ABI.length) {
+        contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+      }
+      // If user is registered and did not provide wallet, save it to their profile
+    } catch (err) {
+      console.error(err);
+      alert('Wallet connect failed');
     }
-
-  }catch(e){console.error(e);}
-}
-
-function downloadPDF(){
-  const { jsPDF } = window.jspdf;
-  const doc=new jsPDF();
-  doc.text("SadiCoin Transaction Statement",20,20);
-  txHistory.forEach((tx,i)=>{
-    doc.text(`${i+1}. ${tx.date} - ${tx.amount} SADC ${tx.mint?"Minted":"Sent to "+tx.to}`,20,30+10*i);
   });
-  doc.save("sadicoin_statement.pdf");
-}
 
-/* ====== Crossmint Mint ====== */
-document.getElementById("mintBtn").addEventListener("click", async ()=>{
-  const recipient = prompt("Wallet or email of recipient:");
-  if(!recipient) return;
-  const res = await fetch("/mint", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      recipient,
-      metadata:{name:"SadiCoin NFT", image:"https://example.com/sadicoin.png"},
-      clientKey: CROSSMINT_CLIENT_KEY
-    })
+  // ------------- Register / Login (localStorage) -------------
+  function registerUser(){
+    const role = document.getElementById('role').value;
+    const name = document.getElementById('regName').value.trim();
+    const id = document.getElementById('regNationalId').value.trim();
+    const wallet = document.getElementById('regWallet').value.trim() || null;
+    const pw = document.getElementById('regPassword').value;
+
+    if(!name || !id || !pw) return alert('Name, ID and password required');
+    const users = JSON.parse(localStorage.getItem('sadc_users') || '{}');
+    if(users[id]) return alert('User already exists');
+    users[id] = { name, role, wallet, password: pw };
+    localStorage.setItem('sadc_users', JSON.stringify(users));
+    document.getElementById('regResult').innerText = 'Registered. Please Login.';
+  }
+
+  function biometricLogin(){
+    const id = document.getElementById('loginNationalId').value.trim();
+    const pw = document.getElementById('loginPassword').value;
+    const users = JSON.parse(localStorage.getItem('sadc_users') || '{}');
+    if(!users[id] || users[id].password !== pw){
+      document.getElementById('loginResult').innerText = '';
+      document.getElementById('loginResult').className = 'text-danger mt-2';
+      document.getElementById('loginResult').innerText = 'Login failed';
+      return;
+    }
+    // success
+    document.getElementById('loginResult').innerText = 'Login successful';
+    document.getElementById('transactions').style.display = '';
+    document.getElementById('dashboard').style.display = '';
+    // store current user in session
+    sessionStorage.setItem('sadc_current_user', id);
+    // if user didn't set wallet but wallet connected, optionally save
+    try { if(currentAccount) { users[id].wallet = users[id].wallet || currentAccount; localStorage.setItem('sadc_users', JSON.stringify(users)); } } catch(e){}
+    refreshData();
+  }
+
+  // ------------- Blockchain functions -------------
+  async function updateBalance(){
+    if(!contract || !currentAccount) return;
+    try {
+      const bal = await contract.methods.balanceOf(currentAccount).call();
+      const display = (Number(bal) / 1e18).toLocaleString();
+      document.getElementById('balance').innerText = display;
+    } catch (e) {
+      console.warn('updateBalance failed', e);
+    }
+  }
+
+  async function transferFunds(){
+    const to = document.getElementById('toWallet').value.trim();
+    const amount = Number(document.getElementById('transferAmount').value);
+    if(!to || !amount) return alert('Fill recipient and amount');
+    try {
+      const decimals = await contract.methods.decimals().call();
+      const value = web3.utils.toBN(amount * Math.pow(10, decimals));
+      contract.methods.transfer(to, value.toString()).send({ from: currentAccount })
+        .on('receipt', r => {
+          txHistory.unshift({ date: new Date().toLocaleString(), type: 'Send', amount, to });
+          renderHistory();
+          document.getElementById('transferResult').innerText = 'Transfer confirmed';
+        })
+        .on('error', e => {
+          console.error(e);
+          document.getElementById('transferResult').innerText = 'Transfer failed';
+        });
+    } catch (e) {
+      console.error(e);
+      alert('Transfer error');
+    }
+  }
+
+  async function mintTokens(){
+    const amount = prompt('Enter amount to mint:');
+    if(!amount) return;
+    try {
+      const decimals = await contract.methods.decimals().call();
+      const value = web3.utils.toBN(amount * Math.pow(10, decimals));
+      contract.methods.mint(currentAccount, value.toString()).send({ from: currentAccount })
+        .on('receipt', r => {
+          txHistory.unshift({ date: new Date().toLocaleString(), type: 'Mint', amount, to: currentAccount });
+          renderHistory();
+        })
+        .on('error', e => { console.error(e); alert('Mint failed'); });
+    } catch (e) {
+      console.error(e);
+      alert('Mint failed');
+    }
+  }
+
+  // ------------- Render tx history -------------
+  function renderHistory(){
+    const ul = document.getElementById('txHistory');
+    ul.innerHTML = '';
+    txHistory.forEach(tx => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      li.textContent = `${tx.date} — ${tx.type} ${tx.amount} to ${tx.to}`;
+      ul.appendChild(li);
+    });
+  }
+
+  // ------------- Moralis: live rates & swaps -------------
+  // NOTE: Moralis key hardcoded as requested
+  async function loadRates(){
+    try {
+      // Example Moralis market-data/prices endpoint (returns many tokens); we map a handful
+      const res = await fetch('https://deep-index.moralis.io/api/v2.2/market-data/prices?quoteCurrency=usd', {
+        headers: { 'X-API-Key': MORALIS_API_KEY }
+      });
+      if(!res.ok) throw new Error('Moralis rates failed');
+      const data = await res.json();
+
+      // We will show BTC, ETH, USDC and SADC (SADC may not be present -> handle gracefully)
+      const pairs = [
+        { key: 'BTC', label: 'BTC' },
+        { key: 'ETH', label: 'ETH' },
+        { key: 'USDC', label: 'USDC' },
+        // If you have SADC on an exchange, replace symbol or address accordingly
+        { key: 'SADC', label: 'SADICOIN' }
+      ];
+
+      const tbody = document.getElementById('exchangeRates');
+      tbody.innerHTML = '';
+      pairs.forEach(p => {
+        const priceObj = data[p.key] || data[p.key.toLowerCase()] || null;
+        const price = priceObj && priceObj.usd ? Number(priceObj.usd).toFixed(4) : 'N/A';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.label}</td><td>${price}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('ratesUpdated').innerText = 'Last updated: ' + new Date().toLocaleString();
+    } catch (e) {
+      console.error('loadRates', e);
+    }
+  }
+
+  async function loadSwaps(){
+    try {
+      // Use Moralis swap-prices endpoint - returns array of pairs
+      // Example endpoint (note: some Moralis endpoints are versioned; check your account docs if needed)
+      const res = await fetch('https://deep-index.moralis.io/api/v2.2/market-data/swap-prices?pairs=eth/usdc,btc/usdc', {
+        headers: { 'X-API-Key': MORALIS_API_KEY }
+      });
+      if(!res.ok) throw new Error('Moralis swaps failed');
+      const data = await res.json();
+
+      const tbody = document.getElementById('swapRates');
+      tbody.innerHTML = '';
+      if(Array.isArray(data) && data.length){
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${row.pair}</td><td>${Number(row.price).toFixed(6)}</td>`;
+          tbody.appendChild(tr);
+        });
+      } else {
+        // Fallback: show some token prices using token price endpoint
+        const fallbackPairs = [
+          { base: 'ETH', quote: 'USDC' },
+          { base: 'BTC', quote: 'USDC' }
+        ];
+        for(const p of fallbackPairs){
+          const priceRes = await fetch(`https://deep-index.moralis.io/api/v2.2/market-data/price?symbol=${p.base}&convert=USD`, {
+            headers:{ 'X-API-Key': MORALIS_API_KEY }
+          });
+          const pr = await priceRes.json();
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${p.base}/${p.quote}</td><td>${pr?.usd ? Number(pr.usd).toFixed(6) : 'N/A'}</td>`;
+          tbody.appendChild(tr);
+        }
+      }
+      document.getElementById('swapsUpdated').innerText = 'Last updated: ' + new Date().toLocaleString();
+    } catch (e) {
+      console.error('loadSwaps', e);
+    }
+  }
+
+  // ------------- MoonPay & Crossmint On-Ramp / Off-Ramp ----------------
+  // We'll implement both UX paths:
+  //  - Open widget (client-side, using publishable keys)
+  //  - Call server-side endpoint to create/record the transaction or call secret-key endpoints
+
+  // Open MoonPay checkout widget (client-side) - publishable key only
+  function openMoonpayWidget(amountUsd = 10, walletAddress = '') {
+    // MoonPay widget url — guide: https://www.moonpay.com
+    // We pass publishable key; secret work must happen on server (backend webhook handling etc)
+    const url = new URL('https://buy.moonpay.com');
+    url.searchParams.set('apiKey', MOONPAY_PUBLISHABLE_KEY);
+    url.searchParams.set('currencyCode', 'usd');
+    url.searchParams.set('baseCurrencyAmount', String(amountUsd));
+    if(walletAddress) url.searchParams.set('walletAddress', walletAddress);
+    window.open(url.toString(), '_blank', 'noopener');
+  }
+
+  // Crossmint widget (example) — Crossmint has client-side widgets but many flows require backend
+  function openCrossmintWidget(recipient, metadata) {
+    // If you use Crossmint's hosted checkout you can open their link or use their JS widget.
+    // Here we call a hosted checkout URL as a basic example (replace with your integration)
+    const url = new URL('https://www.crossmint.io/checkout'); // example placeholder
+    url.searchParams.set('clientKey', CROSSMINT_CLIENT_KEY);
+    if(recipient) url.searchParams.set('recipient', recipient);
+    window.open(url.toString(), '_blank', 'noopener');
+  }
+
+  // Combined UX: open widget AND call your server endpoint (/api/deposit) to record/create server-side order
+  async function depositViaWidgetAndApi(){
+    try {
+      const amount = Number(document.getElementById('onRampAmount').value);
+      if(!amount) return alert('Enter deposit amount in USD');
+      if(!currentAccount) return alert('Connect your wallet first');
+
+      // 1) Open Moonpay widget (quick UX)
+      openMoonpayWidget(amount, currentAccount);
+
+      // 2) Also call your backend to create a server-side record / call Moonpay secret API
+      // This endpoint must be implemented server-side on Vercel and use MOONPAY_SECRET_KEY
+      const res = await fetch('/api/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: currentAccount, amount, source: 'moonpay' })
+      });
+      const j = await res.json();
+      document.getElementById('onOffResult').innerText = 'Deposit initiated (server): ' + (j.id || JSON.stringify(j));
+    } catch (e) {
+      console.error(e);
+      alert('Deposit failed (client)');
+    }
+  }
+
+  async function withdrawViaWidgetAndApi(){
+    try {
+      const amount = Number(document.getElementById('offRampAmount').value);
+      if(!amount) return alert('Enter withdraw amount in SADC');
+      if(!currentAccount) return alert('Connect your wallet first');
+
+      // 1) Optionally open Crossmint or another hosted withdraw page for UX
+      openCrossmintWidget(currentAccount, { name: 'SadiCoin Withdraw' });
+
+      // 2) Call server-side endpoint to create withdraw / off-ramp using secret keys (Crossmint / MoonPay)
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: currentAccount, amount, dest: 'bank' })
+      });
+      const j = await res.json();
+      document.getElementById('onOffResult').innerText = 'Withdraw initiated (server): ' + (j.id || JSON.stringify(j));
+    } catch (e) {
+      console.error(e);
+      alert('Withdraw failed (client)');
+    }
+  }
+
+  // ------------- Crossmint mint (uses server endpoint that holds secret) -------------
+  document.getElementById('mintBtn').addEventListener('click', async () => {
+    try {
+      const recipient = prompt('Enter wallet address or email to receive NFT:');
+      if(!recipient) return;
+      // call serverless mint endpoint; server must use CROSSMINT secret key
+      const res = await fetch('/api/crossmint/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient,
+          metadata: { name: 'SadiCoin NFT', description: 'SADC CBDC sample', image: 'https://example.com/sadicoin.png' }
+        })
+      });
+      const j = await res.json();
+      document.getElementById('mintResult').innerText = 'Mint request created (server): ' + (j.id || JSON.stringify(j));
+    } catch (e) {
+      console.error(e);
+      alert('Mint request failed (client)');
+    }
   });
-  const out = await res.json();
-  alert("Mint request submitted! Check console for details.");
-  console.log(out);
-});
 
-/* ====== MoonPay On-ramp / Off-ramp ====== */
-function depositFiat(){
-  window.open(`https://buy.moonpay.com?apiKey=${MOONPAY_PUBLISHABLE_KEY}&currencyCode=usd`, "_blank");
-}
-function withdrawFiat(){
-  window.open(`https://sell.moonpay.com?apiKey=${MOONPAY_PUBLISHABLE_KEY}&currencyCode=usd`, "_blank");
-}
+  // ------------- Utilities: PDF, QR -------------
+  function downloadPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text('SadiCoin Transaction Statement', 20, 20);
+    txHistory.forEach((t,i) => {
+      doc.text(`${i+1}. ${t.date} - ${t.type} ${t.amount} to ${t.to}`, 20, 30 + i*8);
+    });
+    doc.save('sadicoin_statement.pdf');
+  }
 
-window.addEventListener('load',initWeb3);
-</script>
+  // ------------- Auto-refresh & initial loader -------------
+  async function refreshData(){
+    if(currentAccount && contract) await updateBalance();
+    await loadRates();
+    await loadSwaps();
+    renderHistory();
+  }
+
+  // run on page load (safe, won't break if wallet not connected)
+  window.addEventListener('load', async () => {
+    // try to show stored user session
+    const cur = sessionStorage.getItem('sadc_current_user');
+    if(cur) {
+      document.getElementById('transactions').style.display='';
+      document.getElementById('dashboard').style.display='';
+      // optionally load user info...
+    }
+    // auto refresh periodically
+    setInterval(refreshData, 60000);
+    // initial load
+    await refreshData();
+  });
+
+  // Expose a few functions to console for testing
+  window._sadic = {
+    depositViaWidgetAndApi,
+    withdrawViaWidgetAndApi,
+    openMoonpayWidget,
+    openCrossmintWidget,
+    refreshData
+  };
+  </script>
 </body>
 </html>
-
-
 
 

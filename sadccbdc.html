@@ -2,6 +2,257 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SadiCoin — SADC CBDC Wallet</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family:'Segoe UI',Arial,sans-serif; background:#f7f7f9; padding:20px;}
+    .logo { height:48px; margin-right:10px; }
+    nav a { margin-right:8px; }
+    .card { box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+    .timestamp { font-size:0.85rem; color:#666;}
+  </style>
+</head>
+<body>
+<header class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center">
+    <img src="file_00000000968061f89abd9d3d435098f1.png" alt="SCB Logo" class="logo">
+    <h3 class="mb-0">SADC Wallet</h3>
+  </div>
+  <div>
+    <button id="connectWalletBtn" class="btn btn-outline-primary">Connect Wallet</button>
+  </div>
+</header>
+
+<nav class="mb-4">
+  <a href="#register" class="btn btn-sm btn-outline-secondary">Register</a>
+  <a href="#login" class="btn btn-sm btn-outline-secondary">Login</a>
+  <a href="#transactions" class="btn btn-sm btn-outline-secondary">Transactions</a>
+  <a href="#dashboard" class="btn btn-sm btn-outline-secondary">Dashboard</a>
+</nav>
+
+<!-- Registration -->
+<div id="register" class="card mb-4 p-3">
+  <h5>Account Registration</h5>
+  <select id="role" class="form-control mb-2">
+    <option value="user">User</option>
+    <option value="srb_admin">SRB Admin</option>
+    <option value="regional_bank">Regional Central Bank</option>
+    <option value="national_treasury">National Treasury</option>
+  </select>
+  <input id="regName" class="form-control mb-2" placeholder="Full Name" />
+  <input id="regNationalId" class="form-control mb-2" placeholder="National ID" />
+  <input id="regWallet" class="form-control mb-2" placeholder="Wallet Address (optional)" />
+  <input id="regPassword" type="password" class="form-control mb-2" placeholder="Password" />
+  <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
+  <div id="regResult" class="mt-2 small text-success"></div>
+</div>
+
+<!-- Login -->
+<div id="login" class="card mb-4 p-3">
+  <h5>Login</h5>
+  <input id="loginNationalId" class="form-control mb-2" placeholder="National ID" />
+  <input id="loginPassword" type="password" class="form-control mb-2" placeholder="Password" />
+  <button class="btn btn-dark w-100" onclick="biometricLogin()">Login</button>
+  <div id="loginResult" class="mt-2"></div>
+</div>
+
+<!-- Transactions -->
+<div id="transactions" class="card mb-4 p-3" style="display:none;">
+  <h5>Wallet Actions</h5>
+  <p class="mb-2">Balance: <strong id="balance">0</strong> SADC</p>
+  <input id="toWallet" class="form-control mb-2" placeholder="Recipient Wallet Address" />
+  <input id="transferAmount" type="number" class="form-control mb-2" placeholder="Amount (SADICOIN)" />
+  <div class="d-grid gap-2">
+    <button class="btn btn-outline-info" onclick="updateBalance()">Check Balance</button>
+    <button class="btn btn-dark" onclick="transferFunds()">Transfer</button>
+    <button class="btn btn-success" onclick="mintTokens()">Mint Tokens</button>
+  </div>
+  <div id="transferResult" class="mt-2"></div>
+  <div id="walletQR" class="qrcode mt-3"></div>
+  <div id="walletIdLabel" class="small text-muted mt-2"></div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="card mb-4 p-3" style="display:none;">
+  <h5>Dashboard</h5>
+
+  <div class="mb-3">
+    <h6 class="mb-2">Live Exchange Rates (fiat & crypto)</h6>
+    <table class="table table-sm">
+      <thead><tr><th>Pair</th><th>Price (USD)</th></tr></thead>
+      <tbody id="exchangeRates"></tbody>
+    </table>
+    <div id="ratesUpdated" class="timestamp">Last updated: -</div>
+  </div>
+
+  <div class="mb-3">
+    <h6 class="mb-2">Swap / ETF Rates</h6>
+    <table class="table table-sm">
+      <thead><tr><th>Pair / Index</th><th>Price (USD)</th></tr></thead>
+      <tbody id="swapRates"></tbody>
+    </table>
+    <div id="swapsUpdated" class="timestamp">Last updated: -</div>
+  </div>
+
+  <div class="mb-3">
+    <h6 class="mb-2">Fiat On-Ramp / Off-Ramp</h6>
+    <div class="row g-2">
+      <div class="col-md-6"><input id="onRampAmount" type="number" class="form-control" placeholder="Amount (USD)" /></div>
+      <div class="col-md-6"><button class="btn btn-success w-100" onclick="depositViaWidgetAndApi()">Deposit</button></div>
+      <div class="col-md-6 mt-2"><input id="offRampAmount" type="number" class="form-control" placeholder="Amount (SADC)" /></div>
+      <div class="col-md-6 mt-2"><button class="btn btn-warning w-100" onclick="withdrawViaWidgetAndApi()">Withdraw</button></div>
+    </div>
+    <div id="onOffResult" class="mt-2"></div>
+  </div>
+
+  <div>
+    <h6 class="mb-2">Transaction History</h6>
+    <ul id="txHistory" class="list-group"></ul>
+  </div>
+</div>
+
+<!-- Mint NFT -->
+<div class="card mb-4 p-3">
+  <h5>Mint SadiCoin NFT</h5>
+  <button id="mintBtn" class="btn btn-primary">Mint via Crossmint</button>
+  <div id="mintResult" class="mt-2"></div>
+</div>
+
+<footer class="text-center small text-muted mt-4">
+  &copy; 2025 SCB - SadiCoin. All rights reserved.
+</footer>
+
+<script>
+const MORALIS_API_KEY = "YOUR_MORALIS_KEY_HERE"; // frontend-only
+const MOONPAY_PUBLISHABLE_KEY = "YOUR_MOONPAY_PUB_KEY";
+const CROSSMINT_CLIENT_KEY = "YOUR_CROSSMINT_CLIENT_KEY";
+const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS";
+const CONTRACT_ABI = []; // paste ABI
+
+let web3=null, contract=null, currentAccount=null, txHistory=[];
+
+document.getElementById('connectWalletBtn').addEventListener('click', async ()=>{
+  if(!window.ethereum) return alert('Install MetaMask');
+  web3=new Web3(window.ethereum);
+  const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
+  currentAccount=accounts[0];
+  document.getElementById('walletIdLabel').innerText='Wallet: '+currentAccount;
+  if(CONTRACT_ABI.length) contract=new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+});
+
+function registerUser(){
+  const role=document.getElementById('role').value;
+  const name=document.getElementById('regName').value.trim();
+  const id=document.getElementById('regNationalId').value.trim();
+  const wallet=document.getElementById('regWallet').value.trim()||null;
+  const pw=document.getElementById('regPassword').value;
+  if(!name||!id||!pw) return alert('Name, ID and password required');
+  const users=JSON.parse(localStorage.getItem('sadc_users')||'{}');
+  if(users[id]) return alert('User exists');
+  users[id]={name,role,wallet,password:pw};
+  localStorage.setItem('sadc_users',JSON.stringify(users));
+  document.getElementById('regResult').innerText='Registered. Please login.';
+}
+
+function biometricLogin(){
+  const id=document.getElementById('loginNationalId').value.trim();
+  const pw=document.getElementById('loginPassword').value;
+  const users=JSON.parse(localStorage.getItem('sadc_users')||'{}');
+  if(!users[id]||users[id].password!==pw){document.getElementById('loginResult').innerText='Login failed';return;}
+  document.getElementById('loginResult').innerText='Login successful';
+  document.getElementById('transactions').style.display='';
+  document.getElementById('dashboard').style.display='';
+  sessionStorage.setItem('sadc_current_user',id);
+  if(currentAccount) {users[id].wallet=users[id].wallet||currentAccount; localStorage.setItem('sadc_users',JSON.stringify(users));}
+  refreshData();
+}
+
+async function updateBalance(){
+  if(!contract||!currentAccount) return;
+  try{
+    const bal=await contract.methods.balanceOf(currentAccount).call();
+    document.getElementById('balance').innerText=(bal/1e18).toLocaleString();
+  }catch(e){console.warn(e);}
+}
+
+async function transferFunds(){
+  const to=document.getElementById('toWallet').value.trim();
+  const amt=Number(document.getElementById('transferAmount').value);
+  if(!to||!amt) return alert('Fill recipient and amount');
+  try{
+    const decimals=await contract.methods.decimals().call();
+    const value=web3.utils.toBN(amt*Math.pow(10,decimals));
+    contract.methods.transfer(to,value.toString()).send({from:currentAccount})
+      .on('receipt',r=>{
+        txHistory.unshift({date:new Date().toLocaleString(),type:'Send',amount:amt,to});
+        renderHistory();
+      })
+      .on('error',e=>{console.error(e);alert('Transfer failed');});
+  }catch(e){console.error(e);}
+}
+
+async function mintTokens(){
+  const amt=prompt('Amount to mint:'); if(!amt) return;
+  try{
+    const decimals=await contract.methods.decimals().call();
+    const value=web3.utils.toBN(amt*Math.pow(10,decimals));
+    contract.methods.mint(currentAccount,value.toString()).send({from:currentAccount})
+      .on('receipt',r=>{
+        txHistory.unshift({date:new Date().toLocaleString(),type:'Mint',amount:amt,to:currentAccount});
+        renderHistory();
+      }).on('error',e=>{console.error(e);alert('Mint failed');});
+  }catch(e){console.error(e);}
+}
+
+function renderHistory(){
+  const ul=document.getElementById('txHistory'); ul.innerHTML='';
+  txHistory.forEach(tx=>{
+    const li=document.createElement('li'); li.className='list-group-item';
+    li.textContent=`${tx.date} — ${tx.type} ${tx.amount} to ${tx.to}`;
+    ul.appendChild(li);
+  });
+}
+
+async function loadRates(){
+  try{
+    const res=await fetch('https://deep-index.moralis.io/api/v2.2/market-data/prices?quoteCurrency=usd',{headers:{'X-API-Key':MORALIS_API_KEY}});
+    const data=await res.json();
+    const pairs=[{key:'BTC',label:'BTC'},{key:'ETH',label:'ETH'},{key:'USDC',label:'USDC'},{key:'SADC',label:'SADICOIN'}];
+    const tbody=document.getElementById('exchangeRates'); tbody.innerHTML='';
+    pairs.forEach(p=>{
+      const priceObj=data[p.key]||data[p.key.toLowerCase()]||null;
+      const price=priceObj&&priceObj.usd?Number(priceObj.usd).toFixed(4):'N/A';
+      const tr=document.createElement('tr'); tr.innerHTML=`<td>${p.label}</td><td>${price}</td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('ratesUpdated').innerText='Last updated: '+new Date().toLocaleString();
+  }catch(e){console.error(e);}
+}
+
+async function loadSwaps(){
+  try{
+    const res=await fetch('https://deep-index.moralis.io/api/v2.2/market-data/swap-prices?pairs=eth/usdc,btc/usdc',{headers:{'X-API-Key':MORALIS_API_KEY}});
+    const data=await res.json();
+    const tbody=document.getElementById('swapRates'); tbody.innerHTML='';
+    if(Array.isArray(data)&&data.length){data.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.pair}</td><td>${Number(r.price).toFixed(6)}</td>`;tbody.appendChild(tr);});}
+    document.getElementById('swapsUpdated').innerText='Last updated: '+new Date().toLocaleString();
+  }catch(e){console.error(e);}
+}
+
+// On-ramp / off-ramp widgets
+function openMoonpayWidget(amount, wallet){window.open(`https://buy.moonpay.com?apiKey=${MOONPAY_PUBLISHABLE_KEY}&currencyCode=usd&baseCurrencyAmount=${amount}&walletAddress=${wallet}`,'_blank');}
+function openCrossmintWidget(recipient){window.open(`https://www.crossmint.io/checkout?clientKey=${CROSSMINT_CLIENT_KEY}&recipient=${recipient}`,'_blank');}
+async function depositViaWidgetAndApi(){const amt=Number(document.getElementById('onRampAmount').value);if(!amt) return alert('Enter deposit amount'); if(!currentAccount) return alert('Connect wallet'); openMoonpayWidget(amt,currentAccount); try{const res=await fetch('/api/deposit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:currentAccount,amount:amt,source:'moonpay'})}); const j=await res.json(); document.getElementById('onOffResult').innerText='Deposit initiated (server): '+(
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SadiCoin — SADC CBDC Wallet</title>

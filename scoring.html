@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Cricket Scoring DApp — Prototype</title>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; margin: 0; background:#0f172a; color:#e6eef8; }
+    .app { display: grid; grid-template-columns: 1fr 360px; gap: 12px; height: 100vh; padding: 12px; }
+    .panel { background: linear-gradient(180deg,#0b1220, #071022); border-radius: 12px; padding: 12px; box-shadow: 0 6px 18px rgba(2,6,23,.6); }
+    video { width:100%; height: auto; border-radius:12px; background: black; }
+    canvas { position: absolute; left:12px; top:12px; pointer-events:none; }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; }
+    button { background:#2563eb; border:none; padding:8px 10px; border-radius:8px; color:white; cursor:pointer; }
+    button.secondary { background:#1f2937; }
+    .log { max-height:60vh; overflow:auto; padding:8px; font-size:14px; }
+    .score { font-size:18px; margin-bottom:8px; }
+    .badge { background:#0b1220; padding:6px 8px; border-radius:999px; display:inline-block; }
+    .small { font-size:13px; opacity:.85 }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel" id="main">
+      <div style="position:relative">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between">
+        <div class="controls">
+          <button id="startBtn">Start</button>
+          <button id="stopBtn" class="secondary">Stop</button>
+          <button id="exportBtn">Export JSON</button>
+          <button id="resetBtn" class="secondary">Reset</button>
+        </div>
+        <div class="small">Frame interval: <span id="interval">200ms</span></div>
+      </div>
+      <hr />
+      <div style="display:flex; gap:12px; align-items:center">
+        <div class="badge">Detected Events: <span id="detectedCount">0</span></div>
+        <div class="badge">Confirmed Score: <span id="scoreText">0/0 (0.0)</span></div>
+      </div>
+
+      <div style="margin-top:10px; display:flex; gap:8px; align-items:center">
+        <button id="markRun">Mark Run</button>
+        <button id="markWicket">Mark Wicket</button>
+        <button id="markWide">Mark Wide</button>
+        <button id="markNoBall">Mark No-ball</button>
+        <button id="markPenalty">Mark Penalty</button>
+      </div>
+
+      <h3 style="margin-top:12px">Detection log / manual review</h3>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="panel" id="side">
+      <h2>Scorecard</h2>
+      <div class="score" id="scorecard">Overs: 0.0<br/>Runs: 0<br/>Wickets: 0</div>
+
+      <h3>Configuration</h3>
+      <label class="small">Model interval (ms)</label>
+      <input id="modelInterval" type="range" min="100" max="1000" step="50" value="200" />
+      <div style="height:8px"></div>
+
+      <h3>Models</h3>
+      <div class="small">Using TensorFlow.js <span class="badge">coco-ssd</span> (sports ball) + <span class="badge">MoveNet</span> pose detection.</div>
+      <div style="height:10px"></div>
+      <div style="display:flex; gap:8px; flex-direction:column">
+        <button id="toggleDraw" class="secondary">Toggle Draw Boxes</button>
+        <button id="manualConfirm" class="secondary">Auto-confirm events (off)</button>
+      </div>
+
+      <h3 style="margin-top:12px">Quick tips</h3>
+      <div class="small">• For production, collect labeled clips (ball, wicket, stump, crease) and train a custom detector for stumps & ball trajectory.<br/>• Mobile: prefer native app or WebRTC camera constraints to 720p for speed.<br/>• Always allow manual override — AI will miss or misclassify events.</div>
+    </div>
+  </div>
+
+  <!-- TensorFlow.js + models from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@0.0.9"></script>
+  <script>
+    // Prototype AI Cricket Scoring DApp (single-file prototype)
+    // NOTE: This is a prototype demonstrating how to wire camera -> TF models -> heuristic scoring + manual override UI.
+    // It is NOT production-level accuracy. Use this to collect data, iterate, and replace heuristics with custom models.
+
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    const logEl = document.getElementById('log');
+    const detectedCountEl = document.getElementById('detectedCount');
+    const scoreTextEl = document.getElementById('scoreText');
+    const scorecardEl = document.getElementById('scorecard');
+
+    let cocoModel = null;
+    let poseModel = null;
+    let running = false;
+    let drawBoxes = true;
+    let autoConfirm = false;
+    let modelInterval = 200;
+
+    // Simple score state
+    const state = {
+      runs: 0,
+      wickets: 0,
+      balls: 0, // legal balls
+      events: []
+    };
+
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+        log('Camera ready: ' + video.videoWidth + 'x' + video.videoHeight);
+      } catch (e) {
+        alert('Camera access failed: ' + e.message);
+      }
+    }
+
+    async function loadModels() {
+      log('Loading coco-ssd...');
+      cocoModel = await cocoSsd.load();
+      log('Loaded coco-ssd');
+
+      log('Loading pose-detection MoveNet (Lightning)...');
+      const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+      poseModel = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+      log('Loaded pose model');
+    }
+
+    function log(txt, level='info'){
+      const now = new Date().toLocaleTimeString();
+      const el = document.createElement('div');
+      el.innerHTML = `<span class="small">[${now}]</span> ${txt}`;
+      logEl.prepend(el);
+      // keep count
+      detectedCountEl.textContent = state.events.length;
+    }
+
+    function updateScoreUI(){
+      const overs = Math.floor(state.balls / 6) + '.' + (state.balls % 6);
+      scoreTextEl.textContent = `${state.runs}/${state.wickets} (${overs})`;
+      scorecardEl.innerHTML = `Overs: ${overs}<br/>Runs: ${state.runs}<br/>Wickets: ${state.wickets}`;
+    }
+
+    // Very simple heuristics combining ball detection + pose movement to guess a "run"
+    let frameCount = 0;
+    let lastBallDetection = null; // {time, box}
+    let lastPose = null;
+
+    async function detectLoop(){
+      if (!running) return;
+      if (!cocoModel || !poseModel) return;
+
+      // draw video frame to overlay for visualization
+      ctx.clearRect(0,0,overlay.width, overlay.height);
+
+      // Run models in parallel (not blocking UI) — note: tf.js runs on main thread by default; performance will vary
+      const img = tf.browser.fromPixels(video);
+      const cocoPromise = cocoModel.detect(video, 5);
+      const posePromise = poseModel.estimatePoses(video, {flipHorizontal:false});
+
+      const [cocoResults, poses] = await Promise.all([cocoPromise, posePromise]);
+
+      // Draw boxes for coco
+      let foundBall = null;
+      cocoResults.forEach(r => {
+        if (r.class === 'sports ball') {
+          foundBall = r;
+          if (drawBoxes) drawBox(r.bbox, r.class, r.score);
+        } else {
+          if (drawBoxes) drawBox(r.bbox, r.class, r.score, '#444');
+        }
+      });
+
+      // Draw pose keypoints
+      if (poses && poses.length>0) {
+        const p = poses[0];
+        if (drawBoxes) drawPose(p);
+        // compare to lastPose for movement
+        if (lastPose) {
+          const dy = p.keypoints[0].y - lastPose.keypoints[0].y;
+          // if big lateral movement, user probably ran
+        }
+        lastPose = p;
+      }
+
+      // Heuristic 1: Ball detected near batsman area -> possibly delivered ball
+      if (foundBall) {
+        const now = Date.now();
+        lastBallDetection = {time: now, box: foundBall.bbox};
+        log(`Ball detected (score ${Math.round(foundBall.score*100)}%). Heuristic: possible delivery.`);
+
+        // After ball detection, look for quick pose movement within 1.5s to indicate a run
+        setTimeout(()=>{
+          if (!lastPose) return;
+          // naive heuristic: if nose x movement > threshold -> consider run
+          // (In practice, detect both batsmen movement & ball crossing crease)
+          getLatestPose().then(poseLater=>{
+            if (!poseLater) return;
+            const noseNow = poseLater.keypoints.find(k=>k.name==='nose' || k.part==='nose');
+            const noseBefore = lastPose.keypoints.find(k=>k.name==='nose' || k.part==='nose');
+            if (noseNow && noseBefore) {
+              const dx = Math.abs(noseNow.x - noseBefore.x);
+              const dxPct = dx / overlay.width;
+              if (dxPct > 0.05) {
+                // candidate run
+                const ev = { type: 'candidate_run', time: new Date().toISOString(), details: {dxPct}};
+                state.events.push(ev);
+                if (autoConfirm) confirmRun(1, 'auto'); else log('Candidate run detected — please confirm.');
+                detectedCountEl.textContent = state.events.length;
+              }
+            }
+          });
+        }, 800);
+      }
+
+      img.dispose();
+      frameCount++;
+      // schedule next
+      setTimeout(()=>{ if (running) requestAnimationFrame(detectLoop); }, modelInterval);
+    }
+
+    async function getLatestPose(){
+      try {
+        const poses = await poseModel.estimatePoses(video, {flipHorizontal:false});
+        if (poses && poses.length) return poses[0];
+      } catch(e){ console.warn(e); }
+      return null;
+    }
+
+    function drawBox(bbox, label, score, color='#ffb86b'){
+      const [x,y,w,h] = bbox;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x,y,w,h);
+      ctx.fillStyle = color;
+      ctx.font = '14px monospace';
+      ctx.fillText(`${label} ${Math.round(score*100)}%`, x+4, y+14);
+    }
+
+    function drawPose(pose){
+      ctx.fillStyle = '#7ee787';
+      ctx.strokeStyle = '#7ee787';
+      ctx.lineWidth = 2;
+      pose.keypoints.forEach(k=>{
+        if (k.score>0.4) ctx.beginPath(), ctx.arc(k.x, k.y, 3, 0, Math.PI*2), ctx.fill();
+      });
+    }
+
+    // Manual event functions
+    function confirmRun(runs=1, source='manual'){
+      state.runs += runs;
+      state.balls += 1;
+      state.events.push({type:'run', runs, time:new Date().toISOString(), source});
+      log(`Run +${runs} (source: ${source})`);
+      updateScoreUI();
+    }
+    function confirmWicket(source='manual'){
+      state.wickets += 1;
+      state.balls += 1;
+      state.events.push({type:'wicket', time:new Date().toISOString(), source});
+      log('Wicket!');
+      updateScoreUI();
+    }
+    function confirmWide(){
+      state.runs += 1;
+      state.events.push({type:'wide', time:new Date().toISOString(), source:'manual'});
+      log('Wide ball +1');
+      updateScoreUI();
+    }
+    function confirmNoBall(){
+      state.runs += 1;
+      state.events.push({type:'no-ball', time:new Date().toISOString(), source:'manual'});
+      log('No-ball +1');
+      updateScoreUI();
+    }
+    function confirmPenalty(pen){
+      state.runs += pen;
+      state.events.push({type:'penalty', runs:pen, time:new Date().toISOString(), source:'manual'});
+      log(`Penalty +${pen}`);
+      updateScoreUI();
+    }
+
+    // UI wiring
+    document.getElementById('startBtn').onclick = async ()=>{
+      if (!video.srcObject) await initCamera();
+      if (!cocoModel || !poseModel) await loadModels();
+      running = true;
+      detectLoop();
+      log('Detection started');
+    };
+    document.getElementById('stopBtn').onclick = ()=>{ running=false; log('Detection stopped'); };
+    document.getElementById('toggleDraw').onclick = ()=>{ drawBoxes = !drawBoxes; log('Toggle draw: '+drawBoxes); };
+    document.getElementById('manualConfirm').onclick = ()=>{ autoConfirm = !autoConfirm; document.getElementById('manualConfirm').textContent = autoConfirm? 'Auto-confirm events (on)':'Auto-confirm events (off)'; };
+    document.getElementById('markRun').onclick = ()=>{ const r = prompt('Runs scored?', '1'); confirmRun(Number(r||1), 'manual'); };
+    document.getElementById('markWicket').onclick = ()=>{ confirmWicket('manual'); };
+    document.getElementById('markWide').onclick = ()=>{ confirmWide(); };
+    document.getElementById('markNoBall').onclick = ()=>{ confirmNoBall(); };
+    document.getElementById('markPenalty').onclick = ()=>{ const p = prompt('Penalty runs?', '5'); confirmPenalty(Number(p||5)); };
+
+    document.getElementById('exportBtn').onclick = ()=>{
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state, null, 2));
+      const a = document.createElement('a'); a.setAttribute('href', dataStr); a.setAttribute('download', 'score-export.json'); document.body.appendChild(a); a.click(); a.remove();
+    };
+
+    document.getElementById('resetBtn').onclick = ()=>{ if(confirm('Reset scoreboard?')){ state.runs=0; state.wickets=0; state.balls=0; state.events=[]; updateScoreUI(); log('State reset'); detectedCountEl.textContent = 0; } };
+
+    document.getElementById('modelInterval').oninput = (e)=>{ modelInterval = Number(e.target.value); document.getElementById('interval').textContent = modelInterval + 'ms'; };
+
+    // initial UI
+    updateScoreUI();
+    log('Prototype loaded — press Start');
+  </script>
+</body>
+</html>
+

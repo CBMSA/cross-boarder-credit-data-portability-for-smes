@@ -2,238 +2,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>On-Chain IDE</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
-
-  <!-- Solc-js (latest) -->
-  <script src="https://binaries.soliditylang.org/bin/soljson-latest.js"></script>
-
-  <!-- Web3Modal -->
-  <script src="https://unpkg.com/@web3modal/wagmi@3.5.8/dist/index.js"></script>
-  <script src="https://unpkg.com/@web3modal/ethereum@3.5.8/dist/index.js"></script>
-  <script src="https://unpkg.com/@web3modal/html@3.5.8/dist/index.js"></script>
-
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
-    textarea { width: 100%; height: 250px; }
-    button { margin: 6px; padding: 10px 20px; cursor: pointer; }
-    input, select { padding: 6px; margin: 5px; width: 100%; }
-    #status { margin-top: 10px; font-weight: bold; color: #333; }
-    .output-box { background: #fff; border: 1px solid #ddd; padding: 10px; margin-top: 10px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SadiCoin Smart Contract Studio</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/solc@0.8.21/soljson.js"></script>
 </head>
-<body>
-  <h1>⚡ Smart Contract IDE (Browser DApp)</h1>
 
-  <!-- Wallet Connect -->
-  <w3m-button></w3m-button>
-  <div id="status"></div>
+<body class="bg-dark text-light p-4">
+  <div class="container">
+    <h1 class="text-center mb-4">⚙️ SadiCoin Smart Contract Studio</h1>
 
-  <h3>Write or Paste Solidity Code</h3>
-  <textarea id="code">
+    <div id="status" class="alert alert-secondary text-center">⏳ Loading Solidity compiler...</div>
+
+    <!-- Wallet -->
+    <div class="text-center mb-3">
+      <button id="connectBtn" class="btn btn-success">🔗 Connect Wallet</button>
+      <span id="walletAddress" class="ms-2"></span>
+    </div>
+
+    <!-- Solidity Code -->
+    <textarea id="code" class="form-control bg-black text-success" rows="10">
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.0;
 
 contract HelloWorld {
-    string public greet = "Hello from browser IDE!";
+    string public message = "Hello, SadiCoin!";
+
+    function setMessage(string calldata newMsg) external {
+        message = newMsg;
+    }
 }
-  </textarea><br>
-  <button onclick="compile()">Compile</button>
+    </textarea>
 
-  <h3>Deploy Compiled Contract</h3>
-  <button onclick="estimateGas()">Estimate Gas</button>
-  <button onclick="deploy()">Deploy</button>
-  <div id="gasEstimate"></div>
+    <div class="mt-3 text-center">
+      <button class="btn btn-warning" onclick="compile()">🧩 Compile</button>
+      <button class="btn btn-primary" onclick="deploy()">🚀 Deploy</button>
+    </div>
 
-  <h3>Deploy Directly from GitHub Repo</h3>
-  <input id="repoOwner" placeholder="Repo owner (e.g. openzeppelin)" />
-  <input id="repoName" placeholder="Repo name (e.g. contracts)" />
-  <input id="filePath" placeholder="Path (e.g. contracts/token/ERC20.sol)" />
-  <input id="branch" placeholder="Branch (default: main)" />
-  <button onclick="deployFromGithub()">Fetch & Deploy</button>
+    <div class="mt-4">
+      <h4>📄 ABI</h4>
+      <pre id="abiBox" class="bg-black p-2 text-success"></pre>
 
-  <h3>Compiled Output</h3>
-  <button onclick="downloadABI()">Download ABI</button>
-  <button onclick="downloadBytecode()">Download Bytecode</button>
-  <div class="output-box" id="abiBox"></div>
-  <div class="output-box" id="bytecodeBox"></div>
+      <h4>💾 Bytecode</h4>
+      <pre id="bytecodeBox" class="bg-black p-2 text-info"></pre>
 
-  <h3>Etherscan Verification</h3>
-  <input id="etherscanKey" placeholder="Etherscan API Key" />
-  <select id="network">
-    <option value="mainnet">Ethereum Mainnet</option>
-    <option value="sepolia">Sepolia</option>
-    <option value="goerli">Goerli</option>
-    <option value="holesky">Holesky</option>
-  </select>
-  <button onclick="verifyOnEtherscan()">Verify Contract</button>
-  <div id="verifyStatus"></div>
+      <h4>🏷️ Contract Address</h4>
+      <pre id="addressBox" class="bg-black p-2 text-warning"></pre>
+    </div>
 
-  <script>
-    let provider, signer, abi, bytecode, deployedAddress, sourceCode;
-    let contractName, compilerVersion;
+    <hr class="border-secondary"/>
 
-    // ✅ Init Web3Modal
-    const projectId = "0e5a4393cfd93d81c53e7682f059b4d5"; // Replace
-    const { createWeb3Modal, defaultWagmiConfig } = window.w3m;
-    const chains = [window.w3m.ethereumChains.sepolia, window.w3m.ethereumChains.mainnet];
-    const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata: {
-      name: "On-Chain IDE", description: "Frontend Solidity IDE", url: "https://example.com",
-      icons: ["https://ethereum.org/favicon.ico"]
-    }});
-    const modal = createWeb3Modal({ wagmiConfig, projectId, chains });
+    <!-- Verification -->
+    <h3>🔍 Verify Contract on Etherscan</h3>
+    <input id="etherscanKey" class="form-control bg-black text-light mb-2" placeholder="Enter your Etherscan API key" />
+    <button class="btn btn-info" onclick="verifyContract()">✅ Verify</button>
+    <pre id="verifyResult" class="bg-black p-2 text-light mt-2"></pre>
 
-    async function connectWallet() {
-      try {
-        const accounts = await wagmiConfig.connectors[0].getProvider().request({ method: "eth_requestAccounts" });
-        provider = new ethers.BrowserProvider(wagmiConfig.connectors[0].getProvider());
-        signer = await provider.getSigner();
-        document.getElementById("status").innerText = "Wallet connected: " + accounts[0];
-      } catch (err) {
-        document.getElementById("status").innerText = "Wallet connect failed: " + err.message;
+  </div>
+
+<script>
+let web3, accounts, abi, bytecode, contractName, compilerVersion, sourceCode, deployedAddress;
+
+// ✅ Detect compiler ready
+window.addEventListener('load', () => {
+  const check = setInterval(() => {
+    if (window.Module && window.Module.compile) {
+      clearInterval(check);
+      document.getElementById('status').textContent = "✅ Solidity compiler ready!";
+      document.getElementById('status').className = "alert alert-success text-center";
+    }
+  }, 500);
+});
+
+// ✅ Wallet connect
+async function connectWallet() {
+  if (window.ethereum) {
+    web3 = new Web3(window.ethereum);
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    accounts = await web3.eth.getAccounts();
+    document.getElementById('walletAddress').textContent = accounts[0];
+  } else {
+    alert("Please install MetaMask or use a WalletConnect-supported wallet.");
+  }
+}
+document.getElementById('connectBtn').addEventListener('click', connectWallet);
+
+// ✅ Compile Solidity
+async function compile() {
+  try {
+    sourceCode = document.getElementById("code").value;
+    const solcReady = await new Promise((resolve) => {
+      if (window.Module && window.Module.compile) return resolve(window.Module);
+      const check = setInterval(() => {
+        if (window.Module && window.Module.compile) {
+          clearInterval(check);
+          resolve(window.Module);
+        }
+      }, 500);
+    });
+
+    const solc = solcReady;
+    const input = {
+      language: "Solidity",
+      sources: { "Contract.sol": { content: sourceCode } },
+      settings: {
+        outputSelection: { "*": { "*": ["abi", "evm.bytecode.object"] } }
       }
+    };
+
+    const output = JSON.parse(solc.compile(JSON.stringify(input)));
+    if (output.errors) {
+      const errors = output.errors.filter(e => e.severity === "error");
+      if (errors.length) throw new Error(errors.map(e => e.formattedMessage).join("\n"));
     }
 
-    // ✅ Compile Solidity
-    async function compile() {
-      sourceCode = document.getElementById("code").value;
-      const solc = await new Promise((resolve) => {
-        window.Module = { onRuntimeInitialized: () => resolve(solc) };
-        window.solc = solc;
-      });
+    const contractData = output.contracts["Contract.sol"];
+    contractName = Object.keys(contractData)[0];
+    abi = contractData[contractName].abi;
+    bytecode = contractData[contractName].evm.bytecode.object;
+    compilerVersion = solc.version ? solc.version() : "0.8.21";
 
-      const input = {
-        language: "Solidity",
-        sources: { "Contract.sol": { content: sourceCode } },
-        settings: { outputSelection: { "*": { "*": ["*"] } } }
-      };
+    document.getElementById("abiBox").innerText = JSON.stringify(abi, null, 2);
+    document.getElementById("bytecodeBox").innerText = bytecode;
+    alert("✅ Compiled successfully: " + contractName);
+  } catch (err) {
+    alert("❌ Compile failed: " + err.message);
+  }
+}
 
-      const output = JSON.parse(solc.compile(JSON.stringify(input)));
+// ✅ Deploy Contract
+async function deploy() {
+  if (!web3 || !accounts) return alert("⚠️ Connect your wallet first.");
+  if (!abi || !bytecode) return alert("⚠️ Compile the contract first.");
 
-      if (output.errors) {
-        alert(output.errors.map(e => e.formattedMessage).join("\n"));
-        return;
-      }
+  try {
+    const contract = new web3.eth.Contract(abi);
+    const deployTx = contract.deploy({ data: "0x" + bytecode });
+    const gasEstimate = await deployTx.estimateGas();
+    const deployed = await deployTx.send({ from: accounts[0], gas: gasEstimate });
+    deployedAddress = deployed.options.address;
 
-      contractName = Object.keys(output.contracts["Contract.sol"])[0];
-      abi = output.contracts["Contract.sol"][contractName].abi;
-      bytecode = output.contracts["Contract.sol"][contractName].evm.bytecode.object;
+    document.getElementById("addressBox").innerText = deployedAddress;
+    alert("✅ Deployed successfully: " + deployedAddress);
+  } catch (err) {
+    alert("❌ Deploy failed: " + err.message);
+  }
+}
 
-      // ✅ detect compiler version from solc
-      compilerVersion = "v" + solc.version();
+// ✅ Verify Contract
+async function verifyContract() {
+  try {
+    const apiKey = document.getElementById("etherscanKey").value.trim();
+    if (!apiKey) return alert("⚠️ Enter your Etherscan API key.");
+    if (!deployedAddress) return alert("⚠️ Deploy a contract first.");
 
-      document.getElementById("abiBox").innerText = JSON.stringify(abi, null, 2);
-      document.getElementById("bytecodeBox").innerText = bytecode;
-      alert("Compiled successfully: " + contractName + " using " + compilerVersion);
-    }
+    const body = new URLSearchParams({
+      apikey: apiKey,
+      module: "contract",
+      action: "verifysourcecode",
+      contractaddress: deployedAddress,
+      sourceCode: sourceCode,
+      codeformat: "solidity-single-file",
+      contractname: "Contract.sol:" + contractName,
+      compilerversion: "v" + compilerVersion,
+      optimizationUsed: 0
+    });
 
-    // ✅ Gas Estimation
-    async function estimateGas() {
-      if (!signer) await connectWallet();
-      if (!abi || !bytecode) { alert("Compile first!"); return; }
-      try {
-        const factory = new ethers.ContractFactory(abi, bytecode, signer);
-        const gas = await factory.signer.estimateGas(factory.getDeployTransaction());
-        document.getElementById("gasEstimate").innerText = "Estimated Gas: " + gas.toString();
-      } catch (err) {
-        document.getElementById("gasEstimate").innerText = "Gas estimation failed: " + err.message;
-      }
-    }
+    const res = await fetch("https://api.etherscan.io/api", {
+      method: "POST",
+      body
+    });
 
-    // ✅ Deploy Contract
-    async function deploy() {
-      if (!signer) await connectWallet();
-      if (!abi || !bytecode) { alert("Compile first!"); return; }
-      try {
-        const factory = new ethers.ContractFactory(abi, bytecode, signer);
-        const contract = await factory.deploy();
-        document.getElementById("status").innerText = "Deploying... tx: " + contract.deploymentTransaction().hash;
-        await contract.waitForDeployment();
-        deployedAddress = contract.target;
-        document.getElementById("status").innerText = "✅ Deployed at: " + deployedAddress;
-      } catch (err) {
-        document.getElementById("status").innerText = "Deploy failed: " + err.message;
-      }
-    }
-
-    // ✅ Fetch from GitHub and Deploy
-    async function deployFromGithub() {
-      const owner = document.getElementById("repoOwner").value.trim();
-      const repo = document.getElementById("repoName").value.trim();
-      const path = document.getElementById("filePath").value.trim();
-      const branch = document.getElementById("branch").value.trim() || "main";
-      const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Fetch failed");
-        sourceCode = await res.text();
-        document.getElementById("code").value = sourceCode;
-        await compile();
-        await deploy();
-      } catch (err) {
-        document.getElementById("status").innerText = "GitHub deploy failed: " + err.message;
-      }
-    }
-
-    // ✅ Etherscan Verification (Auto contract + compiler)
-    async function verifyOnEtherscan() {
-      if (!deployedAddress) { alert("Deploy a contract first!"); return; }
-      const apiKey = document.getElementById("M2H8NC7CSVYT1KNWYK7GXZ84CHIF3BAJ3H").value.trim();
-      const network = document.getElementById("network").value;
-
-      const apiBase = {
-        mainnet: "https://api.etherscan.io/api",
-        sepolia: "https://api-sepolia.etherscan.io/api",
-        goerli: "https://api-goerli.etherscan.io/api",
-        holesky: "https://api-holesky.etherscan.io/api"
-      }[network];
-
-      const formData = new URLSearchParams();
-      formData.append("apikey", apiKey);
-      formData.append("module", "contract");
-      formData.append("action", "verifysourcecode");
-      formData.append("contractaddress", deployedAddress);
-      formData.append("sourceCode", sourceCode);
-      formData.append("codeformat", "solidity-single-file");
-      formData.append("contractname", "Contract.sol:" + contractName);
-      formData.append("compilerversion", compilerVersion);
-      formData.append("optimizationUsed", 0);
-
-      document.getElementById("verifyStatus").innerText = "Submitting verification...";
-      try {
-        const res = await fetch(apiBase, { method: "POST", body: formData });
-        const data = await res.json();
-        document.getElementById("verifyStatus").innerText = "Etherscan Response: " + JSON.stringify(data, null, 2);
-      } catch (err) {
-        document.getElementById("verifyStatus").innerText = "Verification failed: " + err.message;
-      }
-    }
-
-    // ✅ Download ABI
-    function downloadABI() {
-      if (!abi) { alert("Compile first!"); return; }
-      const blob = new Blob([JSON.stringify(abi, null, 2)], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "contract-abi.json";
-      a.click();
-    }
-
-    // ✅ Download Bytecode
-    function downloadBytecode() {
-      if (!bytecode) { alert("Compile first!"); return; }
-      const blob = new Blob([bytecode], { type: "text/plain" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "contract-bytecode.txt";
-      a.click();
-    }
-  </script>
+    const data = await res.json();
+    document.getElementById("verifyResult").textContent = JSON.stringify(data, null, 2);
+    alert("🧾 Verification submitted! Check Etherscan status soon.");
+  } catch (err) {
+    alert("❌ Verification failed: " + err.message);
+  }
+}
+</script>
 </body>
 </html>
 

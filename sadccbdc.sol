@@ -2,6 +2,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract SadiCoin is ERC20, Ownable, ReentrancyGuard {
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10 ** 18; // 1 billion SADI
+    bool public depositsEnabled = true;
+    bool public redemptionsEnabled = true;
+
+    event Deposit(address indexed user, uint256 ethAmount, uint256 tokensMinted);
+   event Redeem(address indexed user, uint256 tokenAmount, uint256 ethReturned);
+    event SupplyMinted(address indexed to, uint256 amount);
+
+    constructor()
+        ERC20("SadiCoin", "SADI")
+        Ownable(msg.sender) // <-- Fix: Pass initialOwner (deployer)
+    {
+        _mint(msg.sender, MAX_SUPPLY);
+        emit SupplyMinted(msg.sender, MAX_SUPPLY);
+    }
+
+    // ... (rest of the contract remains unchanged)
+}
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
 /*
  *  SadiCoin (SADC)
  *  1 SADI = 1 ETH (fully redeemable)

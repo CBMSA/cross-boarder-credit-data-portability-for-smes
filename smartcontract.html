@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SadiCoin Smart Contract Studio</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
@@ -10,11 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/solc@0.8.21/soljson.js"></script>
 </head>
-
 <body class="bg-dark text-light p-4">
   <div class="container">
     <h1 class="text-center mb-4">⚙️ SadiCoin Smart Contract Studio</h1>
-
     <div id="status" class="alert alert-secondary text-center">⏳ Loading Solidity compiler...</div>
 
     <!-- Wallet -->
@@ -28,18 +26,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract HelloWorld {
-    string public message = "Hello, SadiCoin!";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-    function setMessage(string calldata newMsg) external {
-        message = newMsg;
+contract SadiCoin is ERC20 {
+    constructor(uint256 initialSupply) ERC20("SadiCoin", "SADC") {
+        _mint(msg.sender, initialSupply);
     }
 }
     </textarea>
 
     <div class="mt-3 text-center">
-      <button class="btn btn-warning" onclick="compile()">🧩 Compile</button>
-      <button class="btn btn-primary" onclick="deploy()">🚀 Deploy</button>
+      <button class="btn btn-warning" onclick="compileContract()">🧩 Compile</button>
+      <button class="btn btn-primary" onclick="deployContract()">🚀 Deploy</button>
     </div>
 
     <div class="mt-4">
@@ -52,21 +50,12 @@ contract HelloWorld {
       <h4>🏷️ Contract Address</h4>
       <pre id="addressBox" class="bg-black p-2 text-warning"></pre>
     </div>
-
-    <hr class="border-secondary"/>
-
-    <!-- Verification -->
-    <h3>🔍 Verify Contract on Etherscan</h3>
-    <input id="etherscanKey" class="form-control bg-black text-light mb-2" placeholder="Enter your Etherscan API key" />
-    <button class="btn btn-info" onclick="verifyContract()">✅ Verify</button>
-    <pre id="verifyResult" class="bg-black p-2 text-light mt-2"></pre>
-
   </div>
 
 <script>
-let web3, accounts, abi, bytecode, contractName, compilerVersion, sourceCode, deployedAddress;
+let web3, accounts, abi, bytecode, contractName, sourceCode, deployedAddress;
 
-// ✅ Detect compiler ready
+// ✅ Detect Solidity compiler
 window.addEventListener('load', () => {
   const check = setInterval(() => {
     if (window.Module && window.Module.compile) {
@@ -77,43 +66,51 @@ window.addEventListener('load', () => {
   }, 500);
 });
 
-// ✅ Wallet connect
+// ✅ Wallet connect (MetaMask, OKX, WalletConnect)
 async function connectWallet() {
-  if (window.ethereum) {
-    web3 = new Web3(window.ethereum);
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+  try {
+    if (window.ethereum) {
+      web3 = new Web3(window.ethereum);
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+    } else if (window.WalletConnectProvider) {
+      const provider = new WalletConnectProvider.default({
+        rpc: { 1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY", 5: "https://goerli.infura.io/v3/YOUR_INFURA_KEY" }
+      });
+      await provider.enable();
+      web3 = new Web3(provider);
+    } else {
+      return alert("No compatible wallet detected. Install MetaMask or use WalletConnect.");
+    }
+
     accounts = await web3.eth.getAccounts();
+    if (!accounts || accounts.length === 0) return alert("No wallet accounts found");
     document.getElementById('walletAddress').textContent = accounts[0];
-  } else {
-    alert("Please install MetaMask or use a WalletConnect-supported wallet.");
+
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', function(accs){
+        accounts = accs;
+        document.getElementById('walletAddress').textContent = accounts[0] || 'Not connected';
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Wallet connection failed: " + err.message);
   }
 }
 document.getElementById('connectBtn').addEventListener('click', connectWallet);
 
-// ✅ Compile Solidity
-async function compile() {
+// ✅ Compile Solidity contract
+async function compileContract() {
   try {
     sourceCode = document.getElementById("code").value;
-    const solcReady = await new Promise((resolve) => {
-      if (window.Module && window.Module.compile) return resolve(window.Module);
-      const check = setInterval(() => {
-        if (window.Module && window.Module.compile) {
-          clearInterval(check);
-          resolve(window.Module);
-        }
-      }, 500);
-    });
-
-    const solc = solcReady;
+    const solcReady = window.Module;
     const input = {
       language: "Solidity",
       sources: { "Contract.sol": { content: sourceCode } },
-      settings: {
-        outputSelection: { "*": { "*": ["abi", "evm.bytecode.object"] } }
-      }
+      settings: { outputSelection: { "*": { "*": ["abi","evm.bytecode.object"] } } }
     };
 
-    const output = JSON.parse(solc.compile(JSON.stringify(input)));
+    const output = JSON.parse(solcReady.compile(JSON.stringify(input)));
     if (output.errors) {
       const errors = output.errors.filter(e => e.severity === "error");
       if (errors.length) throw new Error(errors.map(e => e.formattedMessage).join("\n"));
@@ -123,7 +120,6 @@ async function compile() {
     contractName = Object.keys(contractData)[0];
     abi = contractData[contractName].abi;
     bytecode = contractData[contractName].evm.bytecode.object;
-    compilerVersion = solc.version ? solc.version() : "0.8.21";
 
     document.getElementById("abiBox").innerText = JSON.stringify(abi, null, 2);
     document.getElementById("bytecodeBox").innerText = bytecode;
@@ -133,60 +129,27 @@ async function compile() {
   }
 }
 
-// ✅ Deploy Contract
-async function deploy() {
-  if (!web3 || !accounts) return alert("⚠️ Connect your wallet first.");
+// ✅ Deploy contract
+async function deployContract() {
+  if (!web3 || !accounts) return alert("⚠️ Connect wallet first.");
   if (!abi || !bytecode) return alert("⚠️ Compile the contract first.");
 
   try {
     const contract = new web3.eth.Contract(abi);
-    const deployTx = contract.deploy({ data: "0x" + bytecode });
-    const gasEstimate = await deployTx.estimateGas();
+    const initialSupply = web3.utils.toWei('1000000000', 'ether'); // 1,000,000,000 SADC
+    const deployTx = contract.deploy({ data: "0x" + bytecode, arguments: [initialSupply] });
+    const gasEstimate = await deployTx.estimateGas({ from: accounts[0] });
     const deployed = await deployTx.send({ from: accounts[0], gas: gasEstimate });
     deployedAddress = deployed.options.address;
 
     document.getElementById("addressBox").innerText = deployedAddress;
     alert("✅ Deployed successfully: " + deployedAddress);
   } catch (err) {
+    console.error(err);
     alert("❌ Deploy failed: " + err.message);
-  }
-}
-
-// ✅ Verify Contract
-async function verifyContract() {
-  try {
-    const apiKey = document.getElementById("etherscanKey").value.trim();
-    if (!apiKey) return alert("⚠️ Enter your Etherscan API key.");
-    if (!deployedAddress) return alert("⚠️ Deploy a contract first.");
-
-    const body = new URLSearchParams({
-      apikey: apiKey,
-      module: "contract",
-      action: "verifysourcecode",
-      contractaddress: deployedAddress,
-      sourceCode: sourceCode,
-      codeformat: "solidity-single-file",
-      contractname: "Contract.sol:" + contractName,
-      compilerversion: "v" + compilerVersion,
-      optimizationUsed: 0
-    });
-
-    const res = await fetch("https://api.etherscan.io/api", {
-      method: "POST",
-      body
-    });
-
-    const data = await res.json();
-    document.getElementById("verifyResult").textContent = JSON.stringify(data, null, 2);
-    alert("🧾 Verification submitted! Check Etherscan status soon.");
-  } catch (err) {
-    alert("❌ Verification failed: " + err.message);
   }
 }
 </script>
 </body>
 </html>
-
-
-
 

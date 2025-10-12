@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wi-Fi Monitor — Real Devices</title>
+<title>Wi-Fi Monitor — Professional Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 body { font-family: sans-serif; background: #f0f2f5; }
@@ -17,7 +17,7 @@ button.block-btn { background: #ef4444; color: white; border: none; padding: 2px
 </style>
 </head>
 <body class="p-6">
-<h1 class="text-3xl font-bold mb-6">Wi-Fi Monitor — Real Devices</h1>
+<h1 class="text-3xl font-bold mb-6">Wi-Fi Monitor — Professional</h1>
 
 <div class="card">
   <div class="flex justify-between items-center mb-4">
@@ -29,6 +29,7 @@ button.block-btn { background: #ef4444; color: white; border: none; padding: 2px
       <tr>
         <th>IP</th>
         <th>MAC</th>
+        <th>OS</th>
         <th>Status</th>
         <th>Action</th>
       </tr>
@@ -53,14 +54,12 @@ button.block-btn { background: #ef4444; color: white; border: none; padding: 2px
 </div>
 
 <script>
+const DEVICE_API = 'http://localhost:3000/devices';
 let lastDevices = JSON.parse(localStorage.getItem('deviceHistory') || '[]');
 let blockedDevices = JSON.parse(localStorage.getItem('blockedDevices') || '[]');
 let logLines = [];
 let alerts = [];
 
-const DEVICE_API = 'http://localhost:3000/devices';
-
-// Logging
 function addLog(msg){
   const ts = new Date().toLocaleTimeString();
   logLines.unshift(`[${ts}] ${msg}`);
@@ -68,23 +67,20 @@ function addLog(msg){
   document.getElementById('log').innerHTML = logLines.map(l=>`<div>${l}</div>`).join('');
 }
 
-// Alerts
 function addAlert(msg){
   alerts.unshift(msg);
   if(alerts.length>50) alerts.pop();
   document.getElementById('alerts').innerHTML = alerts.map(a=>`<li>${a}</li>`).join('');
 }
 
-// Render history
 function renderHistory(){
   const ul = document.getElementById('history');
-  ul.innerHTML = lastDevices.map(d=>`<li>${d.ip} - ${d.mac} - ${d.lastSeen} ${d.blocked?'[Blocked]':''}</li>`).join('');
+  ul.innerHTML = lastDevices.map(d=>`<li>${d.ip} - ${d.mac} - ${d.os||'Unknown'} - ${d.lastSeen} ${d.blocked?'[Blocked]':''}</li>`).join('');
 }
 
-// Render devices table
 function renderDevices(devices){
   if(!devices.length){
-    document.getElementById('device-list').innerHTML = '<tr><td colspan="4">No devices</td></tr>';
+    document.getElementById('device-list').innerHTML = '<tr><td colspan="5">No devices</td></tr>';
     return;
   }
 
@@ -97,16 +93,19 @@ function renderDevices(devices){
     }
     if(blockedDevices.includes(d.mac)) cls += ' blocked-device';
 
+    const osCls = d.os?.toLowerCase()==='windows'?'os-windows':
+                  d.os?.toLowerCase()==='android'?'os-android':'os-linux';
+
     return `<tr class="${cls}">
       <td>${d.ip}</td>
       <td>${d.mac}</td>
+      <td class="${osCls}">${d.os||'Unknown'}</td>
       <td>${blockedDevices.includes(d.mac)?'Blocked':'Active'}</td>
       <td>${blockedDevices.includes(d.mac)?'Blocked':`<button class="block-btn" data-mac="${d.mac}">Block</button>`}</td>
     </tr>`;
   }).join('');
   document.getElementById('device-list').innerHTML = tbody;
 
-  // Attach block handlers
   document.querySelectorAll('.block-btn').forEach(btn=>{
     btn.onclick = (e)=>{
       const mac = e.currentTarget.dataset.mac;
@@ -122,9 +121,8 @@ function renderDevices(devices){
   renderHistory();
 }
 
-// Fetch real devices
 async function fetchDevices(){
-  try {
+  try{
     const res = await fetch(DEVICE_API);
     const data = await res.json();
     const devices = data.map(d=>({...d, lastSeen: new Date().toISOString()}));
@@ -134,7 +132,6 @@ async function fetchDevices(){
   }
 }
 
-// Refresh
 function refresh(){ fetchDevices(); }
 
 document.getElementById('refresh').onclick = refresh;
@@ -143,3 +140,5 @@ refresh();
 </script>
 </body>
 </html>
+
+

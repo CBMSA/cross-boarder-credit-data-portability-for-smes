@@ -1,204 +1,102 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>WiFi Security Monitor — DApp</title>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi Monitor — Serverless Demo</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { font-family: sans-serif; background: #f0f2f5; }
+.card { background:white; border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,0.06); padding:20px; margin-bottom:20px; }
+.new-device { background: #fef3c7; }
+</style>
+</head>
+<body class="p-6">
+<h1 class="text-3xl font-bold mb-6">Wi-Fi Monitor (Serverless Demo)</h1>
 
-    <!-- Tailwind via CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+<div class="card">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold">Connected Devices</h2>
+    <button id="refresh" class="bg-blue-600 text-white px-3 py-1 rounded">Refresh</button>
+  </div>
+  <table class="w-full text-left">
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>MAC</th>
+        <th>OS</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="device-list"></tbody>
+  </table>
+</div>
 
-    <!-- Ethers.js for wallet connect -->
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.8.0/dist/ethers.umd.min.js"></script>
+<div class="card">
+  <h2 class="text-xl font-semibold mb-2">Activity Log</h2>
+  <div id="log" class="text-sm text-gray-700 max-h-60 overflow-auto"></div>
+</div>
 
-    <style>
-      html,body,#app { height: 100%; }
-      .card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(15,23,42,0.06); }
-    </style>
-  </head>
-  <body class="bg-slate-50 text-slate-800">
-    <div id="app" class="min-h-screen p-6 flex flex-col">
-      <header class="max-w-5xl mx-auto mb-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-3xl font-extrabold">WiFi Security Monitor</h1>
-            <p class="text-sm text-slate-600">Connected devices, alerts, and simple DApp authentication.</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <div id="wallet-info" class="text-sm text-slate-700">Not connected</div>
-            <button id="connect-wallet" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">Connect Wallet</button>
-          </div>
-        </div>
-      </header>
+<script>
+// Device history in localStorage
+let lastDevices = JSON.parse(localStorage.getItem('deviceHistory') || '[]');
+let logLines = [];
 
-      <main class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-        <!-- Devices -->
-        <section class="lg:col-span-2 card p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold">Connected Devices</h2>
-            <button id="refresh-devices" class="px-2 py-1 text-sm border rounded">Refresh</button>
-          </div>
-          <div id="devices-list" class="divide-y divide-slate-100"></div>
-        </section>
+// Simulate device scan
+function simulateScan(){
+  const mockDevices = [
+    { ip:'192.168.1.10', mac:'AA:BB:CC:DD:01', os:'Windows' },
+    { ip:'192.168.1.12', mac:'AA:BB:CC:DD:02', os:'Android' },
+    { ip:'192.168.1.15', mac:'AA:BB:CC:DD:03', os:'Linux' }
+  ];
+  const now = new Date().toISOString();
+  const devices = mockDevices.map(d=>{
+    const existing = lastDevices.find(ld=>ld.mac===d.mac);
+    return {...d, lastSeen: now, status: existing?'Existing':'New'};
+  });
+  return devices;
+}
 
-        <!-- Alerts -->
-        <aside class="card p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Recent Alerts</h3>
-            <button id="ack-all" class="px-2 py-1 text-sm border rounded">Acknowledge All</button>
-          </div>
-          <div id="alerts-list" class="space-y-3 overflow-auto max-h-[60vh]"></div>
-        </aside>
+function addLog(msg){
+  const ts = new Date().toLocaleTimeString();
+  logLines.unshift(`[${ts}] ${msg}`);
+  if(logLines.length>200) logLines.pop();
+  document.getElementById('log').innerHTML = logLines.map(l=>`<div>${l}</div>`).join('');
+}
 
-        <!-- Activity Log -->
-        <section class="lg:col-span-3 mt-4 card p-5">
-          <h3 class="text-lg font-semibold mb-3">Activity Log</h3>
-          <div id="log" class="text-xs text-slate-600 max-h-40 overflow-auto"></div>
-        </section>
-      </main>
+function renderDevices(devices){
+  if(!devices.length){
+    document.getElementById('device-list').innerHTML = '<tr><td colspan="4">No devices</td></tr>';
+    return;
+  }
+  document.getElementById('device-list').innerHTML = devices.map(d=>{
+    const cls = d.status==='New'?'new-device':'';
+    if(d.status==='New') addLog(`New device detected: ${d.ip} (${d.mac}) [${d.os}]`);
+    return `<tr class="${cls}">
+      <td>${d.ip}</td>
+      <td>${d.mac}</td>
+      <td>${d.os}</td>
+      <td>${d.status}</td>
+    </tr>`;
+  }).join('');
+  // Save to localStorage
+  localStorage.setItem('deviceHistory', JSON.stringify(devices));
+}
 
-      <footer class="max-w-5xl mx-auto mt-6 text-xs text-slate-500 text-center">
-        <p>
-          Demo connects to <code>/api/devices</code> and <code>/api/alerts</code>.  
-          Replace endpoints with real collectors (OpenWrt, Pi-hole, Wazuh) when backend is live.
-        </p>
-      </footer>
-    </div>
+// Refresh handler
+function refresh(){
+  const devices = simulateScan();
+  renderDevices(devices);
+}
 
-    <script>
-      const API_BASE = window.location.origin + '/api'
-      const POLL_INTERVAL = 15000
-      let devices = [], alerts = [], logLines = []
+document.getElementById('refresh').onclick = refresh;
 
-      const devicesListEl = document.getElementById('devices-list')
-      const alertsListEl = document.getElementById('alerts-list')
-      const logEl = document.getElementById('log')
-      const walletInfoEl = document.getElementById('wallet-info')
-      const connectBtn = document.getElementById('connect-wallet')
-      const refreshDevicesBtn = document.getElementById('refresh-devices')
-      const ackAllBtn = document.getElementById('ack-all')
+// Auto-refresh every 15s
+setInterval(refresh, 15000);
 
-      let provider, signer, account
-
-      function addLog(msg) {
-        const ts = new Date().toLocaleString()
-        logLines.unshift(`[${ts}] ${msg}`)
-        if (logLines.length > 200) logLines.pop()
-        logEl.innerHTML = logLines.map(l => `<div>${escapeHtml(l)}</div>`).join('')
-      }
-
-      function escapeHtml(s) {
-        return (s+'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
-      }
-
-      async function fetchDevices() {
-        try {
-          const res = await fetch(API_BASE + '/devices')
-          if (!res.ok) throw new Error(res.status)
-          devices = await res.json()
-          renderDevices()
-          addLog(`Fetched ${devices.length} devices`)
-        } catch (err) { addLog('Error fetching devices: ' + err.message) }
-      }
-
-      async function fetchAlerts() {
-        try {
-          const res = await fetch(API_BASE + '/alerts')
-          if (!res.ok) throw new Error(res.status)
-          alerts = await res.json()
-          renderAlerts()
-          addLog(`Fetched ${alerts.length} alerts`)
-        } catch (err) { addLog('Error fetching alerts: ' + err.message) }
-      }
-
-      function renderDevices() {
-        if (!devices.length) {
-          devicesListEl.innerHTML = '<div class="py-6 text-center text-slate-500">No devices found</div>'
-          return
-        }
-        devicesListEl.innerHTML = devices.map(d => `
-          <div class="py-3 flex justify-between items-center">
-            <div>
-              <div class="font-medium">${escapeHtml(d.name || d.ip)}</div>
-              <div class="text-xs text-slate-500">${d.ip} • ${d.mac}</div>
-              <div class="text-xs text-slate-400">${d.os}</div>
-            </div>
-            <div class="text-right">
-              <div class="text-xs text-slate-500">Last seen: ${d.lastSeen}</div>
-              <div class="mt-2 flex gap-2">
-                <button class="ack-btn px-2 py-1 text-xs border rounded" data-mac="${d.mac}">Acknowledge</button>
-                <button class="block-btn px-2 py-1 text-xs border rounded" data-mac="${d.mac}">Block</button>
-              </div>
-            </div>
-          </div>
-        `).join('')
-        document.querySelectorAll('.ack-btn').forEach(b => b.onclick = e => addLog('Acknowledged device ' + e.target.dataset.mac))
-        document.querySelectorAll('.block-btn').forEach(b => b.onclick = e => addLog('Block requested for ' + e.target.dataset.mac))
-      }
-
-      function renderAlerts() {
-        if (!alerts.length) {
-          alertsListEl.innerHTML = '<div class="text-slate-500">No alerts</div>'
-          return
-        }
-        alertsListEl.innerHTML = alerts.map(a => `
-          <div class="p-3 border rounded">
-            <div class="flex justify-between">
-              <div>
-                <div class="font-medium">${escapeHtml(a.title)}</div>
-                <div class="text-xs text-slate-500">${escapeHtml(a.details)}</div>
-              </div>
-              <div class="text-xs font-semibold ${a.severity === 'High' ? 'text-red-600' : 'text-amber-600'}">${escapeHtml(a.severity)}</div>
-            </div>
-            <div class="mt-2 flex gap-2">
-              <button class="alert-ack px-2 py-1 text-xs border rounded" data-id="${a.id}">Acknowledge</button>
-              <button class="alert-ignore px-2 py-1 text-xs border rounded" data-id="${a.id}">Ignore</button>
-            </div>
-          </div>
-        `).join('')
-        document.querySelectorAll('.alert-ack').forEach(b => b.onclick = e => addLog('Acknowledged alert ' + e.target.dataset.id))
-        document.querySelectorAll('.alert-ignore').forEach(b => b.onclick = e => addLog('Ignored alert ' + e.target.dataset.id))
-      }
-
-      ackAllBtn.onclick = () => addLog('Acknowledge all alerts clicked')
-      refreshDevicesBtn.onclick = fetchDevices
-
-      async function connectWallet() {
-        if (!window.ethereum) {
-          alert('Please install MetaMask to connect your wallet.')
-          return
-        }
-        try {
-          provider = new ethers.BrowserProvider(window.ethereum)
-          const accounts = await provider.send('eth_requestAccounts', [])
-          account = accounts[0]
-          walletInfoEl.textContent = truncateAddr(account)
-          connectBtn.textContent = 'Disconnect'
-          signer = await provider.getSigner()
-          addLog('Wallet connected: ' + account)
-        } catch (err) { addLog('Wallet connection error: ' + err.message) }
-      }
-
-      connectBtn.onclick = async () => {
-        if (!account) return connectWallet()
-        account = null
-        walletInfoEl.textContent = 'Not connected'
-        connectBtn.textContent = 'Connect Wallet'
-        addLog('Wallet disconnected')
-      }
-
-      function truncateAddr(a) { return a.slice(0,6) + '...' + a.slice(-4) }
-
-      async function poll() {
-        await Promise.all([fetchDevices(), fetchAlerts()])
-      }
-
-      (function init() {
-        addLog('UI starting')
-        poll()
-        setInterval(poll, POLL_INTERVAL)
-      })()
-    </script>
-  </body>
+// Initial load
+refresh();
+</script>
+</body>
 </html>

@@ -1,0 +1,276 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>WiFi Security Monitor — DApp</title>
+
+    <!-- Tailwind via CDN (for quick static hosting). Replace with a build process in production. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Ethers.js for wallet connect (optional) -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.8.0/dist/ethers.umd.min.js"></script>
+
+    <style>
+      html,body,#app { height: 100%; }
+      .card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(15,23,42,0.06); }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <div id="app" class="min-h-screen p-6 flex flex-col">
+      <header class="max-w-5xl mx-auto mb-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-extrabold">WiFi Security Monitor</h1>
+            <p class="text-sm text-slate-600">Connected devices, alerts, and simple DApp authentication.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div id="wallet-info" class="text-sm text-slate-700">Not connected</div>
+            <button id="connect-wallet" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">Connect Wallet</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <!-- Devices -->
+        <section class="lg:col-span-2 card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Connected devices</h2>
+            <div class="flex items-center gap-2">
+              <button id="refresh-devices" class="px-2 py-1 text-sm border rounded">Refresh</button>
+            </div>
+          </div>
+          <div id="devices-list" class="divide-y divide-slate-100">
+            <!-- devices inserted here -->
+          </div>
+        </section>
+
+        <!-- Alerts -->
+        <aside class="card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Recent Alerts</h3>
+            <button id="ack-all" class="px-2 py-1 text-sm border rounded">Acknowledge All</button>
+          </div>
+          <div id="alerts-list" class="space-y-3 overflow-auto max-h-[60vh]"></div>
+        </aside>
+
+        <!-- Activity / Quick actions (spans full width on small screens) -->
+        <section class="lg:col-span-3 mt-4 card p-5">
+          <h3 class="text-lg font-semibold mb-3">Activity Log</h3>
+          <div id="log" class="text-xs text-slate-600 max-h-40 overflow-auto"></div>
+        </section>
+      </main>
+
+      <footer class="max-w-5xl mx-auto mt-6 text-xs text-slate-500">
+        <p>Local demo talks to <code>/api/devices</code> and <code>/api/alerts</code>. Replace endpoints with real collectors once backend is connected. Use HTTPS + authentication in production.</p>
+      </footer>
+    </div>
+
+    <script>
+      // Configuration
+      const API_BASE = window.__API_BASE__ || '/api' // override by setting window.__API_BASE__ before this script if needed
+      const POLL_INTERVAL = 15_000
+
+      // State
+      let devices = []
+      let alerts = []
+      let logLines = []
+
+      // Wallet state (ethers.js)
+      let provider = null
+      let signer = null
+      let account = null
+
+      // DOM refs
+      const devicesListEl = document.getElementById('devices-list')
+      const alertsListEl = document.getElementById('alerts-list')
+      const logEl = document.getElementById('log')
+      const walletInfoEl = document.getElementById('wallet-info')
+      const connectBtn = document.getElementById('connect-wallet')
+      const refreshDevicesBtn = document.getElementById('refresh-devices')
+      const ackAllBtn = document.getElementById('ack-all')
+
+      // Utility: append to activity log (keeps last 200 lines)
+      function addLog(msg) {
+        const ts = new Date().toLocaleString()
+        logLines.unshift(`[${ts}] ${msg}`)
+        if (logLines.length > 200) logLines.pop()
+        logEl.innerHTML = logLines.map(l => `<div>${escapeHtml(l)}</div>`).join('')
+      }
+
+      // Safe HTML escape
+      function escapeHtml(s) {
+        return (s+'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
+      }
+
+      // Fetch devices
+      async function fetchDevices() {
+        try {
+          const res = await fetch(API_BASE + '/devices')
+          if (!res.ok) throw new Error('Network response not ok ' + res.status)
+          devices = await res.json()
+          renderDevices()
+          addLog('Fetched devices (' + devices.length + ')')
+        } catch (err) {
+          addLog('Error fetching devices: ' + err.message)
+        }
+      }
+
+      function renderDevices() {
+        if (!devices || devices.length === 0) {
+          devicesListEl.innerHTML = '<div class="py-6 text-center text-slate-500">No devices found</div>'
+          return
+        }
+        devicesListEl.innerHTML = devices.map(dev => `
+          <div class="py-3 flex items-center justify-between">
+            <div>
+              <div class="font-medium">${escapeHtml(dev.name || dev.ip || 'Unknown')}</div>
+              <div class="text-xs text-slate-500">${escapeHtml(dev.ip || '—')} • ${escapeHtml(dev.mac || '—')}</div>
+              <div class="text-xs text-slate-400 mt-1">${escapeHtml(dev.os || '')}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-slate-500">Last seen: ${escapeHtml(dev.lastSeen || '—')}</div>
+              <div class="mt-2 flex gap-2">
+                <button class="ack-btn px-2 py-1 text-xs border rounded" data-mac="${escapeHtml(dev.mac || '')}">Acknowledge</button>
+                <button class="block-btn px-2 py-1 text-xs border rounded" data-mac="${escapeHtml(dev.mac || '')}">Block</button>
+              </div>
+            </div>
+          </div>
+        `).join('')
+
+        // Attach handlers
+        document.querySelectorAll('.ack-btn').forEach(b => b.onclick = onAcknowledgeDevice)
+        document.querySelectorAll('.block-btn').forEach(b => b.onclick = onBlockDevice)
+      }
+
+      // Fetch alerts
+      async function fetchAlerts() {
+        try {
+          const res = await fetch(API_BASE + '/alerts')
+          if (!res.ok) throw new Error('Network response not ok ' + res.status)
+          alerts = await res.json()
+          renderAlerts()
+          addLog('Fetched alerts (' + alerts.length + ')')
+        } catch (err) {
+          addLog('Error fetching alerts: ' + err.message)
+        }
+      }
+
+      function renderAlerts() {
+        if (!alerts || alerts.length === 0) {
+          alertsListEl.innerHTML = '<div class="text-slate-500">No alerts</div>'
+          return
+        }
+        alertsListEl.innerHTML = alerts.map(al => `
+          <div class="p-3 border rounded">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="font-medium">${escapeHtml(al.title)}</div>
+                <div class="text-xs text-slate-500">${escapeHtml(al.details)}</div>
+              </div>
+              <div class="text-xs font-semibold ${al.severity==='High' ? 'text-red-600' : 'text-amber-600'}">${escapeHtml(al.severity || 'Low')}</div>
+            </div>
+            <div class="mt-2 flex gap-2">
+              <button class="alert-ack px-2 py-1 text-xs border rounded" data-id="${escapeHtml(al.id)}">Acknowledge</button>
+              <button class="alert-ignore px-2 py-1 text-xs border rounded" data-id="${escapeHtml(al.id)}">Ignore</button>
+            </div>
+          </div>
+        `).join('')
+
+        document.querySelectorAll('.alert-ack').forEach(b => b.onclick = onAcknowledgeAlert)
+        document.querySelectorAll('.alert-ignore').forEach(b => b.onclick = onIgnoreAlert)
+      }
+
+      // Handlers
+      function onAcknowledgeDevice(e) {
+        const mac = e.currentTarget.dataset.mac
+        // For demo: just log. Replace with a signed transaction or API call in production.
+        addLog('Acknowledged device ' + mac)
+      }
+
+      function onBlockDevice(e) {
+        const mac = e.currentTarget.dataset.mac
+        addLog('Block requested for device ' + mac)
+        // In real deployment: call the router API (OpenWrt) or firewall controller to block this MAC.
+      }
+
+      function onAcknowledgeAlert(e) {
+        const id = e.currentTarget.dataset.id
+        addLog('Acknowledged alert ' + id)
+      }
+
+      function onIgnoreAlert(e) {
+        const id = e.currentTarget.dataset.id
+        addLog('Ignored alert ' + id)
+      }
+
+      // Bulk ack
+      ackAllBtn.onclick = () => {
+        addLog('Acknowledge all alerts clicked')
+        // Could send a bulk ack request to backend
+      }
+
+      refreshDevicesBtn.onclick = fetchDevices
+
+      // Polling
+      async function poll() {
+        await Promise.all([fetchDevices(), fetchAlerts()])
+      }
+
+      // Wallet connection (optional DApp behavior)
+      async function connectWallet() {
+        if (!window.ethereum) {
+          alert('No injected Web3 provider detected (MetaMask). The DApp features require a wallet for signing actions.')
+          return
+        }
+        try {
+          provider = new ethers.BrowserProvider(window.ethereum)
+          const accounts = await provider.send('eth_requestAccounts', [])
+          account = accounts[0]
+          walletInfoEl.textContent = truncateAddr(account)
+          connectBtn.textContent = 'Disconnect'
+          addLog('Wallet connected: ' + account)
+
+          // Optional: create a signer
+          signer = await provider.getSigner()
+
+          // Example: sign a message to prove control of account (not sent anywhere)
+          // const signature = await signer.signMessage('WiFiMonitor login at ' + new Date().toISOString())
+          // addLog('Signed login message')
+
+        } catch (err) {
+          addLog('Wallet connection error: ' + (err.message || err))
+        }
+      }
+
+      function truncateAddr(a) {
+        if (!a) return ''
+        return a.slice(0,6) + '...' + a.slice(-4)
+      }
+
+      connectBtn.onclick = async () => {
+        if (!account) return connectWallet()
+        // Disconnect (soft) — refresh UI
+        account = null
+        walletInfoEl.textContent = 'Not connected'
+        connectBtn.textContent = 'Connect Wallet'
+        addLog('Wallet disconnected')
+      }
+
+      // Initialization
+      (function init() {
+        addLog('UI starting')
+        poll()
+        setInterval(poll, POLL_INTERVAL)
+      })()
+
+      // Expose a small API for debugging from console
+      window.wifiMonitor = {
+        fetchDevices, fetchAlerts, devices, alerts, addLog
+      }
+    </script>
+  </body>
+</html>
+
+

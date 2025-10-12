@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wi-Fi Monitor — Serverless Demo</title>
+<title>Wi-Fi Monitor — Real Devices</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 body { font-family: sans-serif; background: #f0f2f5; }
 .card { background:white; border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,0.06); padding:20px; margin-bottom:20px; }
 .new-device { background: #fef3c7; }
+.blocked-device { background: #f87171; color: white; }
 .os-windows { color: #1e40af; font-weight: bold; }
 .os-android { color: #16a34a; font-weight: bold; }
 .os-linux { color: #ea580c; font-weight: bold; }
+button.block-btn { background: #ef4444; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
 </style>
 </head>
 <body class="p-6">
-<h1 class="text-3xl font-bold mb-6">Wi-Fi Monitor (Serverless Demo)</h1>
+<h1 class="text-3xl font-bold mb-6">Wi-Fi Monitor — Real Devices</h1>
 
-<!-- Connected Devices -->
 <div class="card">
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-xl font-semibold">Connected Devices</h2>
@@ -28,93 +29,43 @@ body { font-family: sans-serif; background: #f0f2f5; }
       <tr>
         <th>IP</th>
         <th>MAC</th>
-        <th>OS</th>
         <th>Status</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="device-list"></tbody>
   </table>
 </div>
 
-<!-- Alerts Panel -->
 <div class="card">
   <h2 class="text-xl font-semibold mb-2">Alerts</h2>
   <ul id="alerts" class="text-sm text-gray-700 max-h-48 overflow-auto"></ul>
 </div>
 
-<!-- History Panel -->
 <div class="card">
   <h2 class="text-xl font-semibold mb-2">Device History</h2>
   <ul id="history" class="text-sm text-gray-700 max-h-48 overflow-auto"></ul>
 </div>
 
-<!-- Activity Log -->
 <div class="card">
   <h2 class="text-xl font-semibold mb-2">Activity Log</h2>
   <div id="log" class="text-sm text-gray-700 max-h-60 overflow-auto"></div>
 </div>
 
 <script>
-// Local storage for history
 let lastDevices = JSON.parse(localStorage.getItem('deviceHistory') || '[]');
+let blockedDevices = JSON.parse(localStorage.getItem('blockedDevices') || '[]');
 let logLines = [];
 let alerts = [];
 
-// Mock device scan
-function simulateScan(){
-  const mockDevices = [
-    { ip:'192.168.1.10', mac:'AA:BB:CC:DD:01', os:'Windows' },
-    { ip:'192.168.1.12', mac:'AA:BB:CC:DD:02', os:'Android' },
-    { ip:'192.168.1.15', mac:'AA:BB:CC:DD:03', os:'Linux' }
-  ];
-  const now = new Date().toISOString();
-  return mockDevices.map(d=>{
-    const existing = lastDevices.find(ld=>ld.mac===d.mac);
-    return {...d, lastSeen: now, status: existing?'Existing':'New'};
-  });
-}
+const DEVICE_API = 'http://localhost:3000/devices';
 
-// Log helper
+// Logging
 function addLog(msg){
   const ts = new Date().toLocaleTimeString();
   logLines.unshift(`[${ts}] ${msg}`);
   if(logLines.length>200) logLines.pop();
   document.getElementById('log').innerHTML = logLines.map(l=>`<div>${l}</div>`).join('');
-}
-
-// Render devices table
-function renderDevices(devices){
-  if(!devices.length){
-    document.getElementById('device-list').innerHTML = '<tr><td colspan="4">No devices</td></tr>';
-    return;
-  }
-  const tbody = devices.map(d=>{
-    const cls = d.status==='New'?'new-device':'';
-    if(d.status==='New'){
-      addLog(`New device detected: ${d.ip} (${d.mac}) [${d.os}]`);
-      addAlert(`New device detected: ${d.ip} (${d.os})`);
-    }
-    const osCls = d.os.toLowerCase()==='windows'?'os-windows':
-                  d.os.toLowerCase()==='android'?'os-android':'os-linux';
-    return `<tr class="${cls}">
-      <td>${d.ip}</td>
-      <td>${d.mac}</td>
-      <td class="${osCls}">${d.os}</td>
-      <td>${d.status}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('device-list').innerHTML = tbody;
-
-  // Update history
-  lastDevices = [...devices, ...lastDevices.filter(d=>!devices.some(nd=>nd.mac===d.mac))];
-  localStorage.setItem('deviceHistory', JSON.stringify(lastDevices));
-  renderHistory();
-}
-
-// Render history panel
-function renderHistory(){
-  const ul = document.getElementById('history');
-  ul.innerHTML = lastDevices.map(d=>`<li>${d.ip} - ${d.mac} - ${d.os} - ${d.lastSeen}</li>`).join('');
 }
 
 // Alerts
@@ -124,13 +75,68 @@ function addAlert(msg){
   document.getElementById('alerts').innerHTML = alerts.map(a=>`<li>${a}</li>`).join('');
 }
 
-// Refresh handler
-function refresh(){
-  const devices = simulateScan();
-  renderDevices(devices);
+// Render history
+function renderHistory(){
+  const ul = document.getElementById('history');
+  ul.innerHTML = lastDevices.map(d=>`<li>${d.ip} - ${d.mac} - ${d.lastSeen} ${d.blocked?'[Blocked]':''}</li>`).join('');
 }
 
-// Initial load and auto-refresh
+// Render devices table
+function renderDevices(devices){
+  if(!devices.length){
+    document.getElementById('device-list').innerHTML = '<tr><td colspan="4">No devices</td></tr>';
+    return;
+  }
+
+  const tbody = devices.map(d=>{
+    let cls = '';
+    if(!lastDevices.find(ld=>ld.mac===d.mac)) {
+      cls += ' new-device';
+      addLog(`New device detected: ${d.ip} (${d.mac})`);
+      addAlert(`New device detected: ${d.ip}`);
+    }
+    if(blockedDevices.includes(d.mac)) cls += ' blocked-device';
+
+    return `<tr class="${cls}">
+      <td>${d.ip}</td>
+      <td>${d.mac}</td>
+      <td>${blockedDevices.includes(d.mac)?'Blocked':'Active'}</td>
+      <td>${blockedDevices.includes(d.mac)?'Blocked':`<button class="block-btn" data-mac="${d.mac}">Block</button>`}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('device-list').innerHTML = tbody;
+
+  // Attach block handlers
+  document.querySelectorAll('.block-btn').forEach(btn=>{
+    btn.onclick = (e)=>{
+      const mac = e.currentTarget.dataset.mac;
+      blockedDevices.push(mac);
+      localStorage.setItem('blockedDevices', JSON.stringify(blockedDevices));
+      addLog(`Blocked device: ${mac}`);
+      refresh();
+    }
+  });
+
+  lastDevices = [...devices, ...lastDevices.filter(d=>!devices.some(nd=>nd.mac===d.mac))];
+  localStorage.setItem('deviceHistory', JSON.stringify(lastDevices));
+  renderHistory();
+}
+
+// Fetch real devices
+async function fetchDevices(){
+  try {
+    const res = await fetch(DEVICE_API);
+    const data = await res.json();
+    const devices = data.map(d=>({...d, lastSeen: new Date().toISOString()}));
+    renderDevices(devices);
+  } catch(err){
+    addLog('Error fetching devices: ' + err.message);
+  }
+}
+
+// Refresh
+function refresh(){ fetchDevices(); }
+
 document.getElementById('refresh').onclick = refresh;
 setInterval(refresh, 15000);
 refresh();

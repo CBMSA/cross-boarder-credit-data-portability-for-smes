@@ -1,116 +1,94 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/*
-  SadiCoin (SADI)
-  - Combined redeemable (1 SADI = 1 ETH via deposit/redeem) and fixed-supply utility token
-  - Owner minting up to MAX_SUPPLY
-  - Swap helpers integrated for Uniswap-like routers (IUniswapV2Router02)
-  - Audit metadata storage
-*/
-
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 
 interface IUniswapV2Router02 {
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
         address[] calldata path,
         address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
+        uint256 deadline
+    ) external returns (uint256[] memory amounts);
 
-    function swapExactETHForTokens(
-        uint amountOutMin,
+    function swapExactETHForTokensSupportingFeeOnTransferTokens(
+        uint256 amountOutMin,
         address[] calldata path,
         address to,
-        uint deadline
-    ) external payable returns (uint[] memory amounts);
-
-    function swapExactTokensForETH(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
+        uint256 deadline
+    ) external payable returns (uint256[] memory amounts);
 
     function WETH() external pure returns (address);
 }
 
-contract SadiCoin is ERC20, Ownable, ReentrancyGuard, Pausable {
+contract SadiCoin is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public immutable MAX_SUPPLY;
+    // Constants
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10**18; // 1B SADI (18 decimals)
+    uint256 public constant TAX_RATE = 3; // 3% tax (integer)
+    uint256 public constant MIN_SWAP_DEADLINE = 20 minutes; // Default deadline buffer
+
+    // State
     bool public depositsEnabled = true;
     bool public redemptionsEnabled = true;
-
-    // Uniswap/Pancake style router address — settable by owner
-    IUniswapV2Router02 public dexRouter;
-
-    // Audit metadata: store an IPFS hash / URL / timestamp for external audits
-    string public auditReportURL;
-    string public auditReportHash; // optional IPFS hash
-    uint256 public auditTimestamp;
+    IUniswapV2Router02 public immutable uniswapRouter;
+    address public immutable WETH;
 
     // Events
     event Deposit(address indexed user, uint256 ethAmount, uint256 tokensMinted);
     event Redeem(address indexed user, uint256 tokenAmount, uint256 ethReturned);
-    event SupplyMinted(address indexed to, uint256 amount);
-    event RouterUpdated(address indexed newRouter);
-    event SwapExecuted(address indexed executor, address indexed fromToken, address indexed toToken, uint256 amountIn, uint256 amountOut);
-    event AuditReported(string url, string hash, uint256 timestamp);
+    event TaxPaid(address indexed from, address indexed to, uint256 taxAmount);
+    event SwapExecuted(
+        address indexed user,
+        address indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint256 deadline
+    );
+    event AdminAction(address indexed admin, string action, uint256 value);
+    event Withdrawn(address indexed to, uint256 amount);
+    event RescueERC20(address indexed token, uint256 amount, address indexed to);
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint256 maxSupplyUnits, // specify in token units (e.g., 1_000_000_000 * 10**18)
-        address initialRouter // optional router address (0 if none)
-    ) ERC20(name_, symbol_) Ownable(msg.sender) {
-        require(maxSupplyUnits > 0, "Max supply must be > 0");
-        MAX_SUPPLY = maxSupplyUnits;
+    constructor(address _router) ERC20("SadiCoin", "SADI") Ownable(msg.sender) {
+        require(_router != address(0), "Invalid router");
 
-        if (initialRouter != address(0)) {
-            dexRouter = IUniswapV2Router02(initialRouter);
-            emit RouterUpdated(initialRouter);
-        }
+        // Fix: Explicitly cast _router to IUniswapV2Router02
+        IUniswapV2Router02 router = IUniswapV2Router02(_router);
+        uniswapRouter = router;
+        WETH = router.WETH();
+
+        require(WETH != address(0), "Invalid WETH");
+        require(WETH.code.length > 0, "WETH not a contract");
+
+        _mint(msg.sender, MAX_SUPPLY);
+        emit AdminAction(msg.sender, "CONTRACT_DEPLOYED_AND_SUPPLY_MINTED", MAX_SUPPLY);
     }
 
-    // -------------------------
-    // Minting (owner)
-    // -------------------------
-    /// @notice Owner mints tokens up to MAX_SUPPLY
-    function ownerMint(address to, uint256 amount) external onlyOwner whenNotPaused {
-        require(to != address(0), "Invalid to");
-        require(amount > 0, "Amount zero");
-        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
-        _mint(to, amount);
-        emit SupplyMinted(to, amount);
-    }
-
-    // -------------------------
-    // Deposit / Redeem (1:1 with ETH)
-    // -------------------------
-    /// @notice Deposit ETH and receive SADI at 1:1 (1 wei ETH => 1 token unit). Obeys MAX_SUPPLY.
-    function deposit() external payable nonReentrant whenNotPaused {
+    // ========== Core Functions ==========
+    /// @notice Deposit ETH and mint SADI 1:1 (1 wei ETH = 1 wei SADI)
+    function deposit() external payable nonReentrant {
         require(depositsEnabled, "Deposits disabled");
         require(msg.value > 0, "Must send ETH");
-        require(totalSupply() + msg.value <= MAX_SUPPLY, "Deposit exceeds max supply");
+
         _mint(msg.sender, msg.value);
         emit Deposit(msg.sender, msg.value, msg.value);
     }
 
-    /// @notice Redeem tokens for ETH at 1:1
-    function redeem(uint256 amount) external nonReentrant whenNotPaused {
+    /// @notice Redeem SADI for ETH 1:1 (with slippage protection)
+    /// @param amount SADI amount to burn
+    /// @param minETH Minimum ETH expected (prevents front-running)
+    function redeem(uint256 amount, uint256 minETH) external nonReentrant {
         require(redemptionsEnabled, "Redemptions disabled");
         require(amount > 0, "Amount zero");
         require(balanceOf(msg.sender) >= amount, "Insufficient SADI");
         require(address(this).balance >= amount, "Insufficient ETH reserves");
+        require(amount >= minETH, "Slippage too high");
 
         _burn(msg.sender, amount);
         (bool success, ) = payable(msg.sender).call{value: amount}("");
@@ -119,149 +97,123 @@ contract SadiCoin is ERC20, Ownable, ReentrancyGuard, Pausable {
         emit Redeem(msg.sender, amount, amount);
     }
 
-    // Fallbacks to receive ETH (for router swaps or direct funding)
-    receive() external payable {}
-    fallback() external payable {}
-
-    // -------------------------
-    // Toggle controls
-    // -------------------------
-    function toggleDeposit(bool enabled) external onlyOwner {
-        depositsEnabled = enabled;
+    // ========== Tax Logic ==========
+    /// @dev Overrides ERC20._transfer to apply 3% tax (unless owner is involved)
+    function _transfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        if (from != owner() && to != owner()) {
+            uint256 taxAmount = (amount * TAX_RATE) / 100;
+            if (taxAmount > 0) {
+                super._transfer(from, owner(), taxAmount);
+                super._transfer(from, to, amount - taxAmount);
+                emit TaxPaid(from, owner(), taxAmount);
+                return;
+            }
+        }
+        super._transfer(from, to, amount);
     }
 
-    function toggleRedeem(bool enabled) external onlyOwner {
-        redemptionsEnabled = enabled;
-    }
-
-    // -------------------------
-    // DEX / Swap helpers
-    // -------------------------
-    /// @notice Set DEX router (owner)
-    function setRouter(address router) external onlyOwner {
-        require(router != address(0), "Invalid router");
-        dexRouter = IUniswapV2Router02(router);
-        emit RouterUpdated(router);
-    }
-
-    /// @notice Swap tokens that the contract already holds (contract must hold `amountIn` of fromToken).
-    /// Caller must be owner (or allowlist) — we restrict to owner to avoid misuse; change if desired.
-    function swapContractTokens(
-        address fromToken,
-        address[] calldata path,
+    // ========== Swap Helpers ==========
+    /// @notice Swap SADI for ETH via Uniswap V2 (user must approve contract first)
+    /// @param amountIn SADI amount to swap (before tax)
+    /// @param amountOutMin Minimum ETH expected (slippage protection)
+    /// @param deadline Transaction expiry (use block.timestamp + buffer)
+    function swapSADIForETH(
         uint256 amountIn,
         uint256 amountOutMin,
-        address to,
         uint256 deadline
-    ) external onlyOwner nonReentrant whenNotPaused returns (uint[] memory amounts) {
-        require(address(dexRouter) != address(0), "Router not set");
-        require(fromToken == path[0], "Path mismatch");
-        require(path[path.length - 1] != address(0), "Invalid path");
+    ) external nonReentrant {
+        require(block.timestamp <= deadline, "Expired");
         require(amountIn > 0, "Amount zero");
 
-        IERC20(fromToken).safeIncreaseAllowance(address(dexRouter), amountIn);
-        amounts = dexRouter.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
-        emit SwapExecuted(msg.sender, fromToken, path[path.length - 1], amountIn, amounts[amounts.length - 1]);
+        // Pull tokens from user (tax applied here)
+        uint256 before = balanceOf(address(this));
+        IERC20(address(this)).safeTransferFrom(msg.sender, address(this), amountIn);
+        uint256 received = balanceOf(address(this)) - before;
+        require(received > 0, "No tokens received after tax");
+
+        // Approve router and swap
+        IERC20(address(this)).safeIncreaseAllowance(address(uniswapRouter), received);
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = WETH;
+
+        uniswapRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            received,
+            amountOutMin,
+            path,
+            msg.sender,
+            deadline
+        );
+
+        emit SwapExecuted(msg.sender, WETH, amountIn, amountOutMin, deadline);
     }
 
-    /// @notice Swap tokens taken from the caller: transferFrom caller -> contract -> swap -> send to `to`.
-    /// Caller must approve this contract for `amountIn` of fromToken.
-    function swapFromUserTokens(
-        address fromToken,
-        address[] calldata path,
-        uint256 amountIn,
+    /// @notice Swap ETH for SADI via Uniswap V2
+    /// @param amountOutMin Minimum SADI expected (slippage protection)
+    /// @param deadline Transaction expiry
+    function swapETHForSADI(
         uint256 amountOutMin,
-        address to,
         uint256 deadline
-    ) external nonReentrant whenNotPaused returns (uint[] memory amounts) {
-        require(address(dexRouter) != address(0), "Router not set");
-        require(fromToken == path[0], "Path mismatch");
-        require(amountIn > 0, "Amount zero");
-        IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amountIn);
-
-        // Approve router
-        IERC20(fromToken).safeIncreaseAllowance(address(dexRouter), amountIn);
-        amounts = dexRouter.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
-        emit SwapExecuted(msg.sender, fromToken, path[path.length - 1], amountIn, amounts[amounts.length - 1]);
-    }
-
-    /// @notice Swap ETH (sent with call) to tokens via router, send tokens to `to`.
-    function swapETHForTokens(
-        address[] calldata path,
-        uint256 amountOutMin,
-        address to,
-        uint256 deadline
-    ) external payable nonReentrant whenNotPaused returns (uint[] memory amounts) {
-        require(address(dexRouter) != address(0), "Router not set");
-        require(path.length >= 2, "Path too short");
+    ) external payable nonReentrant {
+        require(block.timestamp <= deadline, "Expired");
         require(msg.value > 0, "Must send ETH");
 
-        amounts = dexRouter.swapExactETHForTokens{value: msg.value}(amountOutMin, path, to, deadline);
-        emit SwapExecuted(msg.sender, address(0), path[path.length - 1], msg.value, amounts[amounts.length - 1]);
+        address[] memory path = new address[](2);
+        path[0] = WETH;
+        path[1] = address(this);
+
+        uniswapRouter.swapExactETHForTokensSupportingFeeOnTransferTokens{
+            value: msg.value
+        }(
+            amountOutMin,
+            path,
+            msg.sender,
+            deadline
+        );
+
+        emit SwapExecuted(msg.sender, address(this), msg.value, amountOutMin, deadline);
     }
 
-    /// @notice Swap tokens (contract-held) for ETH and send to `to`.
-    function swapTokensForETH(
-        address fromToken,
-        address[] calldata path,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address to,
-        uint256 deadline
-    ) external onlyOwner nonReentrant whenNotPaused returns (uint[] memory amounts) {
-        require(address(dexRouter) != address(0), "Router not set");
-        require(path[path.length - 1] == dexRouter.WETH(), "Last path must be WETH");
-        IERC20(fromToken).safeIncreaseAllowance(address(dexRouter), amountIn);
-        amounts = dexRouter.swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline);
-        emit SwapExecuted(msg.sender, fromToken, address(0), amountIn, amounts[amounts.length - 1]);
+    // ========== Admin Functions ==========
+    /// @notice Toggle deposits on/off
+    function setDepositsEnabled(bool enabled) external onlyOwner {
+        depositsEnabled = enabled;
+        emit AdminAction(msg.sender, "SET_DEPOSITS_ENABLED", enabled ? 1 : 0);
     }
 
-    // -------------------------
-    // Rescue and Treasury functions
-    // -------------------------
-    /// @notice Owner withdraw ETH from contract
-    function withdrawETH(uint256 amount, address payable to) external onlyOwner nonReentrant {
-        require(to != address(0), "Invalid address");
+    /// @notice Toggle redemptions on/off
+    function setRedemptionsEnabled(bool enabled) external onlyOwner {
+        redemptionsEnabled = enabled;
+        emit AdminAction(msg.sender, "SET_REDEMPTIONS_ENABLED", enabled ? 1 : 0);
+    }
+
+    /// @notice Withdraw ETH from contract (owner only)
+    function withdrawETH(uint256 amount) external onlyOwner nonReentrant {
+        require(amount > 0, "Amount zero");
         require(address(this).balance >= amount, "Insufficient ETH");
-        (bool success, ) = to.call{value: amount}("");
-        require(success, "Withdraw failed");
+
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        require(success, "ETH transfer failed");
+
+        emit Withdrawn(owner(), amount);
     }
 
-    /// @notice Owner can rescue ERC20 tokens accidentally sent to contract (except SADI itself unless intended)
-    function rescueERC20(address token, uint256 amount, address to) external onlyOwner nonReentrant {
-        require(to != address(0), "Invalid address");
-        require(token != address(this), "Use burn/withdraw for SADI");
+    /// @notice Rescue accidentally sent ERC20 tokens (excluding SADI)
+    function rescueERC20(
+        address token,
+        uint256 amount,
+        address to
+    ) external onlyOwner nonReentrant {
+        require(token != address(this), "Cannot rescue SADI");
+        require(to != address(0), "Invalid recipient");
         IERC20(token).safeTransfer(to, amount);
+        emit RescueERC20(token, amount, to);
     }
 
-    // -------------------------
-    // Audit metadata
-    // -------------------------
-    /// @notice Owner registers audit metadata (URL, IPFS hash), plus timestamp
-    function reportAudit(string calldata url, string calldata ipfsHash) external onlyOwner {
-        auditReportURL = url;
-        auditReportHash = ipfsHash;
-        auditTimestamp = block.timestamp;
-        emit AuditReported(url, ipfsHash, block.timestamp);
-    }
-
-    // -------------------------
-    // Pausable overrides
-    // -------------------------
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    // -------------------------
-    // Views and helpers
-    // -------------------------
-    /// @notice Returns whether more tokens can be minted (cap remaining)
-    function capRemaining() external view returns (uint256) {
-        return MAX_SUPPLY - totalSupply();
-    }
+    // Allow contract to receive ETH
+    receive() external payable {}
 }
-

@@ -1,86 +1,288 @@
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/*
+  SadiCoin (SADI) - Polygon-ready
+  - Initial supply minted to deployer: 1,000,000 SADI (18 decimals)
+  - Deposit (MATIC) -> mint 1:1 (1 wei MATIC -> 1 token unit)
+  - Redeem -> burn tokens and send MATIC 1:1 (requires contract MATIC)
+  - 3% transfer tax (default) sent to owner (deployer)
+  - Swap helpers for UniswapV2-style routers (QuickSwap)
+  - Monthly mint (every 25 days) triggerable on-chain; mints configurable amount to owner
+  - Audit metadata and events
+*/
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
- * @title SadiCoin
- * @dev ERC20 token with a transfer tax sent to a treasury.
- * Features:
- * - Configurable tax (up to 10%) with proper rounding.
- * - Tax exemptions for owner/treasury.
- * - Secure and gas-optimized (uses super._transfer).
- */
-contract SadiCoin is ERC20, Ownable {
-    address public treasury;
-    uint256 public taxBasisPoints = 200;  // 2.00% (1% = 100 bps)
+interface IUniswapV2Router02 {
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
+
+    function swapExactETHForTokensSupportingFeeOnTransferTokens(
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external payable;
+
+    function WETH() external pure returns (address);
+}
+
+contract SadiCoin is ERC20, Ownable, ReentrancyGuard, Pausable {
+    using SafeERC20 for IERC20;
+
+    // ----- Token parameters -----
+    uint256 public constant INITIAL_SUPPLY = 1_000_000 * 10 ** 18; // 1,000,000 SADI
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10 ** 18; // optional hard cap (1B)
     uint256 public constant BPS_DIV = 10_000;
-    uint256 public constant MAX_TAX_BPS = 1000;  // 10% max tax
+    uint256 public taxBasisPoints = 300; // default 3.00%
+    uint256 public constant MAX_TAX_BPS = 1000; // 10%
 
-    // Events
-    event TaxUpdated(uint256 newBps);
-    event TreasuryUpdated(address newTreasury);
-    event TaxedTransfer(address indexed from, address indexed to, uint256 taxAmount, uint256 netAmount);
+    // ----- Deposit / Redeem control -----
+    bool public depositsEnabled = true;
+    bool public redemptionsEnabled = true;
 
-    constructor(address _treasury, uint256 initialSupply)
-        ERC20("SadiCoin", "SADI")
-    {
-        require(_treasury != address(0), "SadiCoin: Treasury cannot be zero");
-        treasury = _treasury;
-        _mint(msg.sender, initialSupply);
+    // ----- Swap router -----
+    IUniswapV2Router02 public dexRouter;
+    address public WETH; // router.WETH()
+
+    // ----- Monthly mint (regeneration) -----
+    uint256 public monthlyMintAmount; // amount in token units (18 decimals)
+    uint256 public lastMonthlyMint;   // timestamp of last mint
+    uint256 public constant MONTH_PERIOD = 25 days; // 25-day period
+
+    // ----- Audit metadata -----
+    string public auditReportURL;
+    string public auditReportHash;
+    uint256 public auditTimestamp;
+
+    // ----- Events -----
+    event Deposit(address indexed user, uint256 maticAmount, uint256 tokensMinted);
+    event Redeem(address indexed user, uint256 tokenAmount, uint256 maticReturned);
+    event TaxPaid(address indexed from, address indexed to, uint256 taxAmount);
+    event SwapExecuted(address indexed user, address tokenOut, uint256 amountIn, uint256 amountOutMin);
+    event MonthlyMint(address indexed to, uint256 amount, uint256 timestamp);
+    event AuditReported(string url, string hash, uint256 timestamp);
+    event RouterUpdated(address indexed router, address indexed weth);
+
+    constructor(address _router, uint256 _monthlyMintAmount) ERC20("SadiCoin", "SADI") {
+        // set router if provided
+        if (_router != address(0)) {
+            dexRouter = IUniswapV2Router02(_router);
+            WETH = dexRouter.WETH();
+            emit RouterUpdated(_router, WETH);
+        }
+
+        // initial mint to deployer (owner)
+        _mint(msg.sender, INITIAL_SUPPLY);
+
+        // initialize monthly mint amount and timestamp (owner can adjust later)
+        monthlyMintAmount = _monthlyMintAmount;
+        lastMonthlyMint = block.timestamp;
+
+        emit AuditReported("DEPLOY", "", block.timestamp);
     }
 
-    // --- Owner Functions ---
-    function setTaxBps(uint256 _bps) external onlyOwner {
-        require(_bps <= MAX_TAX_BPS, "SadiCoin: Tax exceeds maximum");
-        taxBasisPoints = _bps;
-        emit TaxUpdated(_bps);
+    // -------------------------
+    // Deposit (MATIC -> SADI) — 1:1
+    // -------------------------
+    function deposit() external payable nonReentrant whenNotPaused {
+        require(depositsEnabled, "Deposits disabled");
+        require(msg.value > 0, "Must send MATIC");
+        // respect MAX_SUPPLY if you want a hard cap
+        require(totalSupply() + msg.value <= MAX_SUPPLY, "Exceeds max supply");
+
+        _mint(msg.sender, msg.value);
+        emit Deposit(msg.sender, msg.value, msg.value);
     }
 
-    function setTreasury(address _treasury) external onlyOwner {
-        require(_treasury != address(0), "SadiCoin: Treasury cannot be zero");
-        treasury = _treasury;
-        emit TreasuryUpdated(_treasury);
+    // -------------------------
+    // Redeem (SADI -> MATIC) — 1:1
+    // -------------------------
+    function redeem(uint256 amount) external nonReentrant whenNotPaused {
+        require(redemptionsEnabled, "Redemptions disabled");
+        require(amount > 0, "Amount zero");
+        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+        require(address(this).balance >= amount, "Contract MATIC insufficient");
+
+        _burn(msg.sender, amount);
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        require(ok, "MATIC send failed");
+
+        emit Redeem(msg.sender, amount, amount);
     }
 
-    function mint(address to, uint256 amount) external onlyOwner {
-        _mint(to, amount);
-    }
+    // -------------------------
+    // ERC20 transfer override with tax to owner (deployer)
+    // -------------------------
+    function _transfer(address sender, address recipient, uint256 amount) internal virtual override {
+        require(sender != address(0) && recipient != address(0), "Zero address");
+        require(amount > 0, "Zero amount");
 
-    function burn(address from, uint256 amount) external onlyOwner {
-        _burn(from, amount);
-    }
-
-    // --- Core Transfer Logic (Fixed) ---
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) internal virtual override {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
-
-        // Skip tax for owner/treasury or when tax is disabled
-        if (taxBasisPoints == 0 || sender == owner() || recipient == owner() || sender == treasury || recipient == treasury) {
+        // Exemptions: owner and contract itself
+        if (taxBasisPoints == 0 || sender == owner() || recipient == owner() || sender == address(this) || recipient == address(this)) {
             super._transfer(sender, recipient, amount);
             return;
         }
 
-        // Calculate tax with rounding (to nearest integer)
+        // compute tax with rounding
         uint256 tax = ((amount * taxBasisPoints) + (BPS_DIV / 2)) / BPS_DIV;
-        uint256 net = amount - tax;
-
-        require(tax <= amount, "SadiCoin: Tax exceeds transfer amount");
-
-        // Transfer tax to treasury (if tax > 0)
         if (tax > 0) {
-            super._transfer(sender, treasury, tax);
+            uint256 net = amount - tax;
+            super._transfer(sender, owner(), tax);      // tax to owner (deployer)
+            super._transfer(sender, recipient, net);    // rest to recipient
+            emit TaxPaid(sender, owner(), tax);
+        } else {
+            super._transfer(sender, recipient, amount);
         }
-        // Transfer net amount to recipient
-        super._transfer(sender, recipient, net);
+    }
 
-        // Emit custom event for tracking
-        emit TaxedTransfer(sender, recipient, tax, net);
+    // -------------------------
+    // Swap helpers (SADI <-> MATIC)
+    // -------------------------
+    // Note: router must support fee-on-transfer supporting functions.
+    function swapSADIForMATIC(uint256 amountIn, uint256 amountOutMin) external nonReentrant whenNotPaused {
+        require(address(dexRouter) != address(0), "Router not set");
+        require(amountIn > 0, "amountIn=0");
+
+        // record contract balance before
+        uint256 before = balanceOf(address(this));
+        // pull tokens from user (user must approve)
+        IERC20(address(this)).safeTransferFrom(msg.sender, address(this), amountIn);
+        uint256 received = balanceOf(address(this)) - before;
+        require(received > 0, "No tokens received (after tax)");
+
+        // approve router
+        IERC20(address(this)).safeIncreaseAllowance(address(dexRouter), received);
+
+        address;
+        path[0] = address(this);
+        path[1] = WETH;
+
+        // swap tokens -> MATIC (ETH) to msg.sender
+        dexRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            received,
+            amountOutMin,
+            path,
+            msg.sender,
+            block.timestamp
+        );
+
+        emit SwapExecuted(msg.sender, WETH, received, amountOutMin);
+    }
+
+    function swapMATICForSADI(uint256 amountOutMin) external payable nonReentrant whenNotPaused {
+        require(address(dexRouter) != address(0), "Router not set");
+        require(msg.value > 0, "Send MATIC");
+
+        address;
+        path[0] = WETH;
+        path[1] = address(this);
+
+        dexRouter.swapExactETHForTokensSupportingFeeOnTransferTokens{ value: msg.value }(
+            amountOutMin,
+            path,
+            msg.sender,
+            block.timestamp
+        );
+
+        emit SwapExecuted(msg.sender, address(this), msg.value, amountOutMin);
+    }
+
+    // -------------------------
+    // Monthly mint (regeneration) — triggerable on-chain
+    // -------------------------
+    /// @notice Trigger monthly mint to owner. Can be called by anyone only after 25 days since last mint.
+    function triggerMonthlyMint() external nonReentrant whenNotPaused {
+        require(monthlyMintAmount > 0, "Monthly mint amount not set");
+        require(block.timestamp >= lastMonthlyMint + MONTH_PERIOD, "Too early: must wait 25 days");
+        require(totalSupply() + monthlyMintAmount <= MAX_SUPPLY, "Exceeds max supply");
+
+        lastMonthlyMint = block.timestamp;
+        _mint(owner(), monthlyMintAmount);
+
+        emit MonthlyMint(owner(), monthlyMintAmount, block.timestamp);
+    }
+
+    // -------------------------
+    // Admin / Owner functions
+    // -------------------------
+    function setTaxBps(uint256 _bps) external onlyOwner {
+        require(_bps <= MAX_TAX_BPS, "Tax exceeds max");
+        taxBasisPoints = _bps;
+    }
+
+    function setRouter(address _router) external onlyOwner {
+        require(_router != address(0), "Router zero");
+        dexRouter = IUniswapV2Router02(_router);
+        WETH = dexRouter.WETH();
+        emit RouterUpdated(_router, WETH);
+    }
+
+    function setMonthlyMintAmount(uint256 amount) external onlyOwner {
+        monthlyMintAmount = amount;
+    }
+
+    function setDepositsEnabled(bool enabled) external onlyOwner {
+        depositsEnabled = enabled;
+    }
+
+    function setRedemptionsEnabled(bool enabled) external onlyOwner {
+        redemptionsEnabled = enabled;
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /// @notice Owner can withdraw contract MATIC (treasury management)
+    function withdrawMATIC(uint256 amount, address payable to) external onlyOwner nonReentrant {
+        require(to != address(0), "Invalid to");
+        require(address(this).balance >= amount, "Insufficient MATIC");
+        (bool ok, ) = to.call{ value: amount }("");
+        require(ok, "Send failed");
+    }
+
+    /// @notice Rescue ERC20 tokens accidentally sent to contract (not SADI)
+    function rescueERC20(address token, uint256 amount, address to) external onlyOwner nonReentrant {
+        require(to != address(0), "Invalid to");
+        require(token != address(this), "Cannot rescue SADI");
+        IERC20(token).safeTransfer(to, amount);
+    }
+
+    // -------------------------
+    // Audit metadata
+    // -------------------------
+    function reportAudit(string calldata url, string calldata ipfsHash) external onlyOwner {
+        auditReportURL = url;
+        auditReportHash = ipfsHash;
+        auditTimestamp = block.timestamp;
+        emit AuditReported(url, ipfsHash, block.timestamp);
+    }
+
+    // -------------------------
+    // Fallback to accept MATIC
+    // -------------------------
+    receive() external payable {
+        // accept MATIC sent directly to contract
     }
 }
+
+
+
+

@@ -1,1082 +1,432 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Sadicoin Wallet (Prototype with FX + Transactions + MoonPay API)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <title>SadiPay — Frontend (FSP) — SadiCoin</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Lightweight Charts -->
+  <script src="https://unpkg.com/lightweight-charts@4.0.0/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- ethers -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f6f9fc; margin: 0; padding: 20px; }
-    h1 { color: #2a4d8f; }
-    .box { background: #fff; padding: 20px; margin: 15px auto; max-width: 720px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-    input, button, select { width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; }
-    button { background: #2a4d8f; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #1c3360; }
-    pre { background: #eef6ff; padding: 10px; border-radius: 6px; font-size: 13px; white-space: pre-wrap; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-    th { background: #f0f4f9; }
-    .row { display:flex; gap:10px; }
-    .col { flex:1; }
-    .small { font-size:12px; color:#666; margin-top:6px; }
-    .admin-section { background: #fff8e1; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    body { background:#f6f8fb; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    .card { border-radius:12px; box-shadow:0 6px 20px rgba(12,20,40,0.06); }
+    .logo { height:40px; }
+    .stat { font-weight:600; font-size:1rem; }
+    #chart { height:360px; }
+    .muted { color:#6b7280; }
+    .admin-only { display:none; }
   </style>
 </head>
 <body>
-  <h1>💳 Sadicoin Wallet Prototype</h1>
-
-  <!-- MetaMask / Wallet Connect -->
-  <div class="box">
-    <h3>Connect Wallet</h3>
-    <div class="row">
-      <div class="col">
-        <button id="btn_connect" onclick="connectWallet()">Connect MetaMask</button>
+  <div class="container py-4">
+    <header class="d-flex align-items-center justify-content-between mb-3">
+      <div class="d-flex align-items-center gap-3">
+        <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png" class="logo" alt="logo">
+        <div>
+          <h4 class="mb-0">SadiPay — SadiCoin Financial Services Platform</h4>
+          <small class="muted">Frontend prototype — on-ramp, off-ramp, swap & market</small>
+        </div>
       </div>
-      <div class="col">
-        <button onclick="disconnectLocal()">Logout (local)</button>
+
+      <div class="d-flex gap-2 align-items-center">
+        <button id="btnAddToken" class="btn btn-outline-secondary btn-sm">+ Add SDC</button>
+        <button id="btnAddLP" class="btn btn-outline-secondary btn-sm">+ Watch LP</button>
+        <button id="connectBtn" class="btn btn-primary btn-sm">Connect Wallet</button>
+      </div>
+    </header>
+
+    <div class="row g-3">
+      <!-- left column -->
+      <div class="col-lg-4">
+        <div class="card p-3 mb-3">
+          <h6>Wallet</h6>
+          <div class="small muted mb-2">Connect your wallet to access SadiPay functions</div>
+          <div class="mb-2 d-flex justify-content-between"><div class="muted">Address</div><div id="walletAddr">Not connected</div></div>
+          <div class="mb-2 d-flex justify-content-between"><div class="muted">SDC Balance</div><div id="sdcBal">—</div></div>
+          <div class="mb-2 d-flex justify-content-between"><div class="muted">POL Balance</div><div id="polBal">—</div></div>
+
+          <div class="d-grid gap-2 mt-2">
+            <button id="refreshBalances" class="btn btn-outline-primary btn-sm">Refresh Balances</button>
+            <button id="openQuickSwap" class="btn btn-success btn-sm">Open QuickSwap (Swap)</button>
+            <button id="addLiquidityBtn" class="btn btn-outline-dark btn-sm">Add Liquidity (QuickSwap)</button>
+          </div>
+        </div>
+
+        <div class="card p-3 mb-3">
+          <h6>On-Ramp (Buy SDC with Fiat)</h6>
+          <div class="muted small mb-2">Buy via Mastercard sandbox (hosted checkout)</div>
+          <div class="d-grid gap-2">
+            <button id="buyMastercard" class="btn btn-primary btn-sm">Buy via Mastercard (Sandbox)</button>
+          </div>
+          <div class="small muted mt-2">This will request a hosted-checkout URL from your server and open it. Do not store API keys in frontend.</div>
+        </div>
+
+        <div class="card p-3 mb-3">
+          <h6>Off-Ramp (Sell SDC → Fiat)</h6>
+          <form id="offRampForm">
+            <div class="mb-2">
+              <label class="form-label small">Amount (SDC)</label>
+              <input id="offAmount" class="form-control form-control-sm" placeholder="e.g. 100000" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label small">Bank / Pay-out details</label>
+              <input id="offBank" class="form-control form-control-sm" placeholder="Account / IBAN / Mobile money" />
+            </div>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-warning btn-sm">Request Payout</button>
+            </div>
+            <div id="offResult" class="mt-2 small"></div>
+            <div class="muted small mt-2">Off-ramp will call your server to execute the burn + bank payout (server required).</div>
+          </form>
+        </div>
+      </div>
+
+      <!-- right column -->
+      <div class="col-lg-8">
+        <div class="card p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6 class="mb-0">Market — SDC / POL (Live)</h6>
+              <small class="muted">Source: Dexscreener (QuickSwap pair)</small>
+            </div>
+            <div class="text-end">
+              <div class="muted">Pair:</div>
+              <div id="pairAddr" class="fw-semibold small">0xB298...461c1</div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6 d-flex justify-content-between"><div class="muted">Price (USD)</div><div id="priceUsd" class="stat">—</div></div>
+            <div class="col-6 d-flex justify-content-between"><div class="muted">Price (POL)</div><div id="priceNative" class="stat">—</div></div>
+            <div class="col-6 d-flex justify-content-between"><div class="muted">24h Change</div><div id="priceChange" class="stat">—</div></div>
+            <div class="col-6 d-flex justify-content-between"><div class="muted">Liquidity (USD)</div><div id="liquidity" class="stat">—</div></div>
+            <div class="col-12"><small id="lastUpdated" class="muted">Updated: —</small></div>
+          </div>
+
+          <div id="chart"></div>
+
+          <div class="mt-3 d-flex gap-2">
+            <button id="openDex" class="btn btn-outline-info btn-sm">Open on Dexscreener</button>
+            <button id="btnAddPool" class="btn btn-outline-secondary btn-sm">Show Pool on PolygonScan</button>
+            <div class="ms-auto"><small class="muted">Chart updates every 8s</small></div>
+          </div>
+        </div>
+
+        <div class="card p-3 mb-3">
+          <h6>Swap / Quick Actions</h6>
+          <div class="muted small mb-2">QuickSwap links and prefill</div>
+          <div class="d-flex gap-2">
+            <button id="swapSdcToPol" class="btn btn-primary btn-sm">Swap SDC → POL</button>
+            <button id="swapPolToSdc" class="btn btn-outline-primary btn-sm">Swap POL → SDC</button>
+            <button id="openSwapIframe" class="btn btn-outline-dark btn-sm">Open Swap Widget</button>
+          </div>
+          <div id="swapWidget" class="mt-3" style="display:none;">
+            <iframe id="swapFrame" src="" style="width:100%;height:520px;border:0;border-radius:10px;"></iframe>
+          </div>
+        </div>
+
+        <div class="card p-3 mb-3">
+          <h6>KYC / Compliance</h6>
+          <p class="muted small">Use a KYC provider (SumSub, ShuftiPro, Onfido). In production: open KYC widget and store verified KYC hash on-chain via ComplianceRegistry contract.</p>
+          <div class="d-flex gap-2">
+            <button id="openKyc" class="btn btn-outline-primary btn-sm">Start KYC (SumSub)</button>
+            <button id="verifyServer" class="btn btn-outline-secondary btn-sm">Verify KYC (Server)</button>
+            <button id="viewCompliance" class="btn btn-outline-dark btn-sm">View Compliance Status</button>
+          </div>
+          <div id="kycResult" class="mt-2 small"></div>
+        </div>
+
+        <!-- Admin area (make visible to admins by toggling admin flag) -->
+        <div id="adminPanel" class="card p-3 mb-3 admin-only">
+          <h6>Admin Panel</h6>
+          <div class="d-flex gap-2 mb-2">
+            <button id="toggleDeposits" class="btn btn-sm btn-outline-danger">Toggle Deposits</button>
+            <button id="toggleRedeem" class="btn btn-sm btn-outline-danger">Toggle Redeems</button>
+            <button id="viewAudit" class="btn btn-sm btn-outline-secondary">View Audit Logs</button>
+          </div>
+          <div id="auditLog" class="mt-2 small"></div>
+        </div>
+
       </div>
     </div>
-    <div class="small">Connected account: <span id="connected_addr">none</span></div>
-    <div class="small">Network: <span id="network_name">—</span></div>
+
+    <footer class="text-center muted small mt-4 mb-4">© 2025 SadiCoin — SadiPay FSP (Prototype)</footer>
   </div>
 
-  <!-- Register -->
-  <div class="box">
-    <h3>Register</h3>
-    <input id="r_name" placeholder="Name">
-    <input id="r_email" placeholder="Email">
-    <input id="r_phone" placeholder="Phone">
-    <input id="r_pass" placeholder="Password" type="password">
-    <button onclick="register()">Register (Get USD 200)</button>
-  </div>
+<script>
+/* -----------------------
+  FRONTEND FSP DApp (SadiPay)
+  - Mastercard integration uses secure server endpoints:
+      POST /api/mastercard/checkout   -> returns { checkoutUrl }
+      POST /api/mastercard/offramp    -> returns { id, status }
+  - DO NOT store production keys in this client.
+  -------------------------*/
 
-  <!-- Login -->
-  <div class="box">
-    <h3>Login</h3>
-    <input id="l_email" placeholder="Email">
-    <input id="l_pass" placeholder="Password" type="password">
-    <button onclick="login()">Login</button>
-  </div>
+/* ========== CONFIG ========== */
+/* Dexscreener pair (QuickSwap LP) */
+const LP_PAIR = '0xB298Eff7ddC6385cdb5494a7315FD11a5fE461c1';
+const DEXS_API = `https://api.dexscreener.com/latest/dex/pairs/polygon/${LP_PAIR}`;
+const DEXS_URL = `https://dexscreener.com/polygon/${LP_PAIR}`;
+const POLYSCAN_PAIR = `https://polygonscan.com/address/${LP_PAIR}`;
 
-  <!-- Wallet -->
-  <div class="box">
-    <h3>Wallet</h3>
-    <label>Show balance in:</label>
-    <select id="fx_currency" onchange="refreshWallet()"></select>
-    <pre id="wallet_info">Not logged in</pre>
-    <button onclick="refreshWallet()">Refresh</button>
-    <div class="small">ETH Balance: <span id="eth_balance">—</span> | SADI Balance: <span id="sadi_balance">—</span></div>
-  </div>
+/* Contract / token addresses */
+const SDC_ADDRESS = '0x3e6db8977261b30ea3cc0408867912e8b6cedc96';
+const POL_NATIVE = '0x0000000000000000000000000000000000001010';
 
-  <!-- Send -->
-  <div class="box">
-    <h3>Send SADI</h3>
-    <input id="to_addr" placeholder="Recipient address (0x...)">
-    <input id="to_amt" placeholder="Amount (SADI)" type="number" step="any">
-    <button onclick="sendToken()">Send SADI</button>
-    <pre id="send_res"></pre>
-  </div>
+const API_OFFRAMP = '/api/mastercard/offramp';     // server endpoint for off-ramp (POST)
+const API_CHECKOUT = '/api/mastercard/checkout';   // server endpoint to request Mastercard hosted checkout (POST)
+const API_VERIFY_KYC = '/api/verifyKyc';
 
-  <!-- Admin Section (only visible to contract owner) -->
-  <div class="box admin-section" id="admin_section" style="display: none;">
-    <h3>🔐 Admin Functions</h3>
-    <div>
-      <input id="mint_address" placeholder="Recipient address (0x...)">
-      <input id="mint_amount" placeholder="Amount (SADI)" type="number" step="any">
-      <button onclick="adminMint()">Mint SADI</button>
-      <pre id="mint_res"></pre>
-    </div>
-    <div style="margin-top: 10px;">
-      <input id="burn_amount" placeholder="Amount (SADI)" type="number" step="any">
-      <button onclick="userBurn()">Burn SADI</button>
-      <pre id="burn_res"></pre>
-    </div>
-  </div>
+const ERC20_MIN = [
+  "function decimals() view returns (uint8)",
+  "function balanceOf(address) view returns (uint256)",
+  "function symbol() view returns (string)"
+];
 
-  <!-- Transactions -->
-  <div class="box">
-    <h3>Transaction History (local)</h3>
-    <table id="tx_table">
-      <thead><tr><th>ID</th><th>To</th><th>Amount</th><th>Date</th><th>PDF</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+/* ========== STATE ========== */
+let provider = null;
+let signer = null;
+let account = null;
+let chart = null, series = null;
+let chartData = [];
 
-  <!-- MoonPay Swap -->
-  <div class="box">
-    <h3>MoonPay</h3>
-    <div class="row">
-      <div class="col"><button onclick="openMoonPayBuy()">Buy (On-ramp) via MoonPay</button></div>
-      <div class="col"><button onclick="openMoonPaySell()">Sell (Off-ramp) — backend required</button></div>
-    </div>
-    <div class="small">Note: For secure off-ramp you should implement backend-assisted MoonPay flow.</div>
-  </div>
+/* ========== UI refs ========== */
+const connectBtn = document.getElementById('connectBtn');
+const walletAddr = document.getElementById('walletAddr');
+const sdcBalEl = document.getElementById('sdcBal');
+const polBalEl = document.getElementById('polBal');
+const priceUsdEl = document.getElementById('priceUsd');
+const priceNativeEl = document.getElementById('priceNative');
+const priceChangeEl = document.getElementById('priceChange');
+const liquidityEl = document.getElementById('liquidity');
+const lastUpdated = document.getElementById('lastUpdated');
+const openDex = document.getElementById('openDex');
+const btnAddToken = document.getElementById('btnAddToken');
+const btnAddLP = document.getElementById('btnAddLP');
+const swapWidget = document.getElementById('swapWidget');
+const swapFrame = document.getElementById('swapFrame');
+const openQuickSwap = document.getElementById('openQuickSwap');
 
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js" integrity="" crossorigin="anonymous"></script>
+/* ========== Helpers ========== */
+function formatUsd(n) {
+  if (n === null || n === undefined) return '—';
+  if (n < 0.0001) return Number(n).toExponential(3);
+  return '$' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+function shortNum(n) {
+  if (n === null || n === undefined) return '—';
+  if (n > 1e9) return (n/1e9).toFixed(2)+'B';
+  if (n > 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n > 1e3) return (n/1e3).toFixed(2)+'K';
+  return Number(n).toFixed(2);
+}
 
-  <script>
-    // --------------- CONFIG (replace placeholders) ----------------
-    const CONTRACT_ADDRESS = "0xREPLACE_WITH_DEPLOYED_CONTRACT_ADDRESS"; // <-- set after deploy
-    const MOONPAY_PUBLIC_KEY = "pk_live_0UYBzlsyM4A3Adj47IQrOkRx6dCWB4k"; // replace with your public key
-    const TOKEN_DECIMALS = 18; // SADI decimals
+/* ========== Dexscreener Polling & Chart ========== */
+async function fetchDex() {
+  try {
+    const r = await fetch(DEXS_API);
+    if (!r.ok) throw new Error('Dexscreener error ' + r.status);
+    const j = await r.json();
+    const pair = j.pair || j;
+    const priceUsd = pair.priceUsd ? Number(pair.priceUsd) : null;
+    const priceNative = pair.priceNative ? Number(pair.priceNative) : null;
+    const liquidity = pair.liquidity ? (pair.liquidity.usd || null) : null;
+    const volume = pair.volume ? Number(pair.volume) : null;
+    const change = pair.priceChange || null;
 
-    // Full Sadicoin ABI
-    const SADICOIN_ABI = [
-      {
-        "inputs": [],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-      },
-      {
-        "inputs": [],
-        "name": "ECDSAInvalidSignature",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "length",
-            "type": "uint256"
-          }
-        ],
-        "name": "ECDSAInvalidSignatureLength",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "bytes32",
-            "name": "s",
-            "type": "bytes32"
-          }
-        ],
-        "name": "ECDSAInvalidSignatureS",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "spender",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "allowance",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "needed",
-            "type": "uint256"
-          }
-        ],
-        "name": "ERC20InsufficientAllowance",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "balance",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "needed",
-            "type": "uint256"
-          }
-        ],
-        "name": "ERC20InsufficientBalance",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "approver",
-            "type": "address"
-          }
-        ],
-        "name": "ERC20InvalidApprover",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "receiver",
-            "type": "address"
-          }
-        ],
-        "name": "ERC20InvalidReceiver",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          }
-        ],
-        "name": "ERC20InvalidSender",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "spender",
-            "type": "address"
-          }
-        ],
-        "name": "ERC20InvalidSpender",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "deadline",
-            "type": "uint256"
-          }
-        ],
-        "name": "ERC2612ExpiredSignature",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "signer",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          }
-        ],
-        "name": "ERC2612InvalidSigner",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "account",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "currentNonce",
-            "type": "uint256"
-          }
-        ],
-        "name": "InvalidAccountNonce",
-        "type": "error"
-      },
-      {
-        "inputs": [],
-        "name": "InvalidShortString",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          }
-        ],
-        "name": "OwnableInvalidOwner",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "account",
-            "type": "address"
-          }
-        ],
-        "name": "OwnableUnauthorizedAccount",
-        "type": "error"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "str",
-            "type": "string"
-          }
-        ],
-        "name": "StringTooLong",
-        "type": "error"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "spender",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          }
-        ],
-        "name": "Approval",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [],
-        "name": "EIP712DomainChanged",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "previousOwner",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "newOwner",
-            "type": "address"
-          }
-        ],
-        "name": "OwnershipTransferred",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          }
-        ],
-        "name": "Transfer",
-        "type": "event"
-      },
-      {
-        "inputs": [],
-        "name": "DOMAIN_SEPARATOR",
-        "outputs": [
-          {
-            "internalType": "bytes32",
-            "name": "",
-            "type": "bytes32"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "spender",
-            "type": "address"
-          }
-        ],
-        "name": "allowance",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "spender",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          }
-        ],
-        "name": "approve",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "account",
-            "type": "address"
-          }
-        ],
-        "name": "balanceOf",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          }
-        ],
-        "name": "burn",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "decimals",
-        "outputs": [
-          {
-            "internalType": "uint8",
-            "name": "",
-            "type": "uint8"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "eip712Domain",
-        "outputs": [
-          {
-            "internalType": "bytes1",
-            "name": "fields",
-            "type": "bytes1"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "version",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "chainId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "verifyingContract",
-            "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "salt",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256[]",
-            "name": "extensions",
-            "type": "uint256[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          }
-        ],
-        "name": "mint",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "moonPayWallet",
-        "outputs": [
-          {
-            "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "name",
-        "outputs": [
-          {
-            "internalType": "string",
-            "name": "",
-            "type": "string"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          }
-        ],
-        "name": "nonces",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "owner",
-        "outputs": [
-          {
-            "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "spender",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "deadline",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "v",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "r",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "s",
-            "type": "bytes32"
-          }
-        ],
-        "name": "permit",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "renounceOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "symbol",
-        "outputs": [
-          {
-            "internalType": "string",
-            "name": "",
-            "type": "string"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "totalSupply",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          }
-        ],
-        "name": "transfer",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          }
-        ],
-        "name": "transferFrom",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "newOwner",
-            "type": "address"
-          }
-        ],
-        "name": "transferOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
-    ];
+    priceUsdEl.innerText = priceUsd ? Number(priceUsd).toFixed(8) : '—';
+    priceNativeEl.innerText = priceNative ? Number(priceNative).toFixed(8) : '—';
+    priceChangeEl.innerText = change !== null ? Number(change).toFixed(2)+'%' : '—';
+    priceChangeEl.className = (change >= 0) ? 'stat text-success' : 'stat text-danger';
+    liquidityEl.innerText = liquidity ? shortNum(liquidity) : '—';
+    lastUpdated.innerText = 'Updated: ' + new Date().toLocaleString();
 
-    // --------------- Local storage keys & state ----------------
-    const USERS_KEY = "sadi_users";
-    const TXS_KEY = "sadi_txs";
-    let currentUser = null;
-    let isOwner = false;
-
-    let provider = null;
-    let signer = null;
-    let tokenContract = null;
-    let connectedAddress = null;
-
-    const currencySymbols = ["USD","ZAR","BWP","MZN","XDR","XAU"];
-    const eodhdToken = "67b2d451e5b8a8.90504186";
-    let fxRates = {};
-
-    // ----------------- Helpers -----------------
-    function getUsers(){ return JSON.parse(localStorage.getItem(USERS_KEY)||"{}"); }
-    function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
-    function getTxs(){ return JSON.parse(localStorage.getItem(TXS_KEY)||"[]"); }
-    function saveTxs(t){ localStorage.setItem(TXS_KEY, JSON.stringify(t)); }
-
-    // ----------------- Register/Login -----------------
-    function register(){
-      const name=r_name.value,email=r_email.value,phone=r_phone.value,password=r_pass.value;
-      if(!name||!email||!phone||!password) return alert("Fill all fields");
-      let u=getUsers();
-      if(u[email]) return alert("User exists!");
-      const wallet={ address:"0x"+Math.random().toString(16).substr(2,40), balance:200 }; // USD 200 local
-      u[email]={name,email,phone,password,wallet};
-      saveUsers(u);
-      alert("Registered! You got USD 200.");
+    if (priceUsd) {
+      chartData.push({ time: Math.floor(Date.now()/1000), value: Number(priceUsd) });
+      if (chartData.length > 800) chartData.shift();
+      series && series.setData(chartData);
     }
+  } catch (e) {
+    console.error('fetchDex', e);
+  }
+}
 
-    function login(){
-      const email=l_email.value,password=l_pass.value;
-      let u=getUsers();
-      if(!u[email]||u[email].password!==password) return alert("Invalid credentials");
-      currentUser=email;
-      refreshWallet();
-      refreshTxTable();
-      alert("Logged in as "+u[email].name);
-    }
+/* init chart */
+function initChart() {
+  const container = document.getElementById('chart');
+  container.innerHTML = '';
+  chart = LightweightCharts.createChart(container, { width: container.clientWidth, height: 360, layout: { textColor:'#111', background:{color:'#fff'} } });
+  series = chart.addLineSeries({ color:'#0b5fff', lineWidth:2 });
+  window.addEventListener('resize', () => chart.applyOptions({ width: container.clientWidth }));
+}
 
-    function disconnectLocal(){
-      currentUser=null;
-      wallet_info.innerText="Not logged in";
-      connected_addr.innerText = "none";
-    }
+/* ========== Wallet & Balances ========== */
+async function connectWallet() {
+  try {
+    if (!window.ethereum) return alert('Install MetaMask');
+    provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+    await provider.send('eth_requestAccounts', []);
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+    walletAddr.innerText = account;
+    connectBtn.innerText = account.slice(0,6) + '...' + account.slice(-4);
+    await refreshBalances();
+  } catch (e) {
+    console.error(e); alert('Wallet connect failed: ' + (e.message||e));
+  }
+}
+connectBtn.addEventListener('click', connectWallet);
 
-    // ---------------- FX Rates ----------------
-    async function loadRates(){
-      try{
-        const resp=await fetch(
-          `https://eodhd.com/api/real-time/USDZAR.FOREX,USDBWP.FOREX,USDMZN.FOREX,USDXDR.FOREX,USDXAU.FOREX?api_token=${eodhdToken}&fmt=json`
-        );
-        const data=await resp.json();
-        fxRates={USD:1};
-        data.forEach(it=>{
-          if(it.code && it.code.startsWith("USD")){
-            const cur=it.code.replace("USD","").replace(".FOREX","");
-            fxRates[cur]=it.close;
-          }
-        });
-      }catch(e){
-        console.warn("FX API failed",e);
-        fxRates={USD:1,ZAR:19,BWP:13,MZN:63,XDR:0.72,XAU:0.00057};
-      }
-      const sel=document.getElementById("fx_currency");
-      sel.innerHTML=currencySymbols.map(c=>
-        `<option value="${c}">${c} (${fxRates[c]||'n/a'})</option>`
-      ).join("");
-      refreshWallet();
-    }
+async function refreshBalances() {
+  try {
+    if (!provider || !account) return;
+    const sdc = new ethers.Contract(SDC_ADDRESS, ERC20_MIN, provider);
+    const decimals = await sdc.decimals();
+    const raw = await sdc.balanceOf(account);
+    const bal = Number(ethers.utils.formatUnits(raw, decimals));
+    sdcBalEl.innerText = bal.toLocaleString();
+    // POL native
+    const polRaw = await provider.getBalance(account);
+    polBalEl.innerText = Number(ethers.utils.formatEther(polRaw)).toLocaleString();
+  } catch (e) { console.error('refreshBalances', e); }
+}
+document.getElementById('refreshBalances').addEventListener('click', refreshBalances);
 
-    // ---------------- MetaMask / Ethers ----------------
-    async function connectWallet(){
-      if (!window.ethereum) return alert("MetaMask not detected. Install MetaMask and try again.");
-      try {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        provider = new ethers.BrowserProvider(window.ethereum);
-        signer = await provider.getSigner();
-        connectedAddress = await signer.getAddress();
-        connected_addr.innerText = connectedAddress;
-
-        const network = await provider.getNetwork();
-        network_name.innerText = network.name + " (" + network.chainId + ")";
-
-        // Instantiate token contract with full ABI
-        tokenContract = new ethers.Contract(CONTRACT_ADDRESS, SADICOIN_ABI, signer);
-
-        // Check if connected address is owner
-        const contractOwner = await tokenContract.owner();
-        isOwner = (connectedAddress.toLowerCase() === contractOwner.toLowerCase());
-        if (isOwner) {
-          document.getElementById('admin_section').style.display = 'block';
-        }
-
-        // Start watchers
-        watchTokenTransfers();
-        await updateBalances();
-      } catch (err) {
-        console.error(err);
-        alert("Connection failed: " + err.message);
-      }
-    }
-
-    // Update ETH and SADI balances
-    async function updateBalances(){
-      if(!connectedAddress) return;
-      try {
-        const ethBalance = await provider.getBalance(connectedAddress);
-        const ethStr = ethers.formatEther(ethBalance) + " ETH";
-        eth_balance.innerText = ethStr;
-      } catch(e) {
-        eth_balance.innerText = "n/a";
-      }
-
-      try {
-        if(tokenContract){
-          const raw = await tokenContract.balanceOf(connectedAddress);
-          const formatted = ethers.formatUnits(raw, TOKEN_DECIMALS);
-          sadi_balance.innerText = formatted + " SADI";
-        } else {
-          sadi_balance.innerText = "contract not set";
-        }
-      } catch(e){
-        sadi_balance.innerText = "n/a";
-      }
-    }
-
-    // Send SADI tokens
-    async function sendToken(){
-      if(!connectedAddress) return alert("Connect MetaMask first");
-      const to = to_addr.value;
-      const amt = to_amt.value;
-      if(!to || !amt) return alert("Fill fields");
-      try {
-        const amtWei = ethers.parseUnits(amt.toString(), TOKEN_DECIMALS);
-        const tx = await tokenContract.transfer(to, amtWei);
-        send_res.innerText = "Pending tx: " + tx.hash;
-        await tx.wait();
-        send_res.innerText = "Sent! Tx: " + tx.hash;
-        // Add to local txs (prototype)
-        const txId = "ONCHAIN-" + Math.floor(Date.now()/1000);
-        const txRec = { id: txId, from: connectedAddress, to, amount: parseFloat(amt), date: new Date().toLocaleString() };
-        const txs = getTxs(); txs.push(txRec); saveTxs(txs);
-        refreshTxTable();
-        updateBalances();
-        generatePDF(txRec);
-      } catch (err) {
-        console.error(err);
-        alert("Send failed: " + (err && err.message ? err.message : err));
-      }
-    }
-
-    // Admin: Mint SADI tokens
-    async function adminMint() {
-      if (!isOwner) return alert("Only contract owner can mint");
-      const to = mint_address.value;
-      const amt = mint_amount.value;
-      if (!to || !amt) return alert("Fill all fields");
-
-      try {
-        const amtWei = ethers.parseUnits(amt.toString(), TOKEN_DECIMALS);
-        const tx = await tokenContract.mint(to, amtWei);
-        mint_res.innerText = "Minting... Tx: " + tx.hash;
-        await tx.wait();
-        mint_res.innerText = "Success! Minted " + amt + " SADI to " + to;
-        updateBalances();
-      } catch (err) {
-        console.error(err);
-        mint_res.innerText = "Error: " + (err.message || err);
-      }
-    }
-
-    // User: Burn SADI tokens
-    async function userBurn() {
-      if (!connectedAddress) return alert("Connect wallet first");
-      const amt = burn_amount.value;
-      if (!amt) return alert("Enter amount to burn");
-
-      try {
-        const amtWei = ethers.parseUnits(amt.toString(), TOKEN_DECIMALS);
-        const tx = await tokenContract.burn(amtWei);
-        burn_res.innerText = "Burning... Tx: " + tx.hash;
-        await tx.wait();
-        burn_res.innerText = "Success! Burned " + amt + " SADI";
-        updateBalances();
-      } catch (err) {
-        console.error(err);
-        burn_res.innerText = "Error: " + (err.message || err);
-      }
-    }
-
-    // Watch token Transfer events to refresh balance automatically
-    function watchTokenTransfers(){
-      if(!tokenContract) return;
-      tokenContract.on("Transfer", (from, to, value, event) => {
-        if (from.toLowerCase() === connectedAddress.toLowerCase() ||
-            to.toLowerCase() === connectedAddress.toLowerCase()) {
-          setTimeout(updateBalances, 1500);
-        }
-      });
-    }
-
-    // ---------------- Transactions Table + PDF ----------------
-    function refreshTxTable(){
-      let txs=getTxs();
-      let body=document.querySelector("#tx_table tbody");
-      body.innerHTML=txs.map(t=>
-        `<tr><td>${t.id}</td><td>${t.to}</td><td>${t.amount}</td><td>${t.date}</td><td><button onclick='(${generatePDF.toString()})(${JSON.stringify(t)})'>PDF</button></td></tr>`
-      ).join("");
-    }
-
-    function generatePDF(tx){
-      const {jsPDF}=window.jspdf;
-      const doc=new jsPDF();
-      doc.text("Sadicoin Transaction Receipt",20,20);
-      doc.text(`TxID: ${tx.id}`,20,40);
-      if(tx.from) doc.text(`From: ${tx.from}`,20,50);
-      doc.text(`To: ${tx.to}`,20,60);
-      doc.text(`Amount: ${tx.amount}`,20,70);
-      doc.text(`Date: ${tx.date}`,20,80);
-      doc.save(`${tx.id}.pdf`);
-    }
-
-    // ---------------- MoonPay Integration ----------------
-    function openMoonPayBuy(){
-      if(!connectedAddress) return alert("Connect MetaMask first");
-      const usdAmount = prompt("Enter USD amount to buy (frontend fallback):", "50");
-      if(!usdAmount) return;
-      const url = `https://buy.moonpay.com?apiKey=${encodeURIComponent(MOONPAY_PUBLIC_KEY)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(connectedAddress)}&baseCurrencyAmount=${encodeURIComponent(usdAmount)}`;
-      window.open(url, "_blank");
-    }
-
-    function openMoonPaySell(){
-      alert("Off-ramp requires backend integration. Contact support.");
-    }
-
-    // ---------------- Init & periodic updates ----------------
-    async function refreshWallet(){
-      if(!currentUser) return wallet_info.innerText="Not logged in";
-      let u=getUsers()[currentUser];
-      let balanceUSD=u.wallet.balance.toFixed(2);
-      let cur=document.getElementById("fx_currency").value||"ZAR";
-      let rate=fxRates[cur]||0;
-      let balanceLocal = rate ? (u.wallet.balance*rate).toFixed(2) : "n/a";
-      wallet_info.innerText=`Address: ${u.wallet.address}\nBalance: USD ${balanceUSD}\n${cur} ≈ ${balanceLocal}`;
-    }
-
-    // Auto-refresh balances when connected
-    setInterval(() => {
-      if (connectedAddress) updateBalances();
-    }, 15_000);
-
-    // Initialize
-    loadRates();
-    setInterval(loadRates, 1000*60*5);
-    refreshTxTable();
-
-    // Auto-connect if MetaMask is available
-    (async function tryAutoConnect() {
-      if(window.ethereum && window.ethereum.selectedAddress) {
-        try {
-          provider = new ethers.BrowserProvider(window.ethereum);
-          signer = await provider.getSigner();
-          connectedAddress = await signer.getAddress();
-          connected_addr.innerText = connectedAddress;
-          tokenContract = new ethers.Contract(CONTRACT_ADDRESS, SADICOIN_ABI, signer);
-
-          // Check owner status
-          const contractOwner = await tokenContract.owner();
-          isOwner = (connectedAddress.toLowerCase() === contractOwner.toLowerCase());
-          if (isOwner) {
-            document.getElementById('admin_section').style.display = 'block';
-          }
-
-          updateBalances();
-          watchTokenTransfers();
-        } catch(e) {
-          console.error("Auto-connect failed:", e);
+/* ========== Add token / LP to MetaMask ========== */
+btnAddToken.addEventListener('click', async () => {
+  if (!window.ethereum) return alert('MetaMask required');
+  try {
+    await window.ethereum.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'ERC20',
+        options: {
+          address: SDC_ADDRESS,
+          symbol: 'SDC',
+          decimals: 18,
+          image: 'https://raw.githubusercontent.com/your-org/your-repo/main/sadicoin.png'
         }
       }
-    })();
-
-    // Handle MetaMask account/network changes
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          connected_addr.innerText = "none";
-          connectedAddress = null;
-          document.getElementById('admin_section').style.display = 'none';
-        } else {
-          connected_addr.innerText = accounts[0];
-          connectedAddress = accounts[0];
-          // Reinitialize contract with new account
-          connectWallet();
+    });
+    alert('SDC add requested in MetaMask (confirm in wallet).');
+  } catch (e) { console.error(e); alert('Add token failed'); }
+});
+btnAddLP.addEventListener('click', async () => {
+  if (!window.ethereum) return alert('MetaMask required');
+  try {
+    await window.ethereum.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'ERC20',
+        options: {
+          address: LP_PAIR,
+          symbol: 'SDC-POL-LP',
+          decimals: 18,
+          image: 'https://raw.githubusercontent.com/your-org/your-repo/main/lp.png'
         }
-      });
+      }
+    });
+    alert('LP add requested in MetaMask.');
+  } catch (e) { console.error(e); alert('Add LP failed'); }
+});
 
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload(); // Simple way to handle network changes
-      });
+/* ========== Swap & widget actions ========== */
+document.getElementById('swapSdcToPol').addEventListener('click', () => {
+  const url = `https://quickswap.exchange/#/swap?inputCurrency=${SDC_ADDRESS}&outputCurrency=${POL_NATIVE}`;
+  window.open(url, '_blank');
+});
+document.getElementById('swapPolToSdc').addEventListener('click', () => {
+  const url = `https://quickswap.exchange/#/swap?inputCurrency=${POL_NATIVE}&outputCurrency=${SDC_ADDRESS}`;
+  window.open(url, '_blank');
+});
+openQuickSwap.addEventListener('click', () => {
+  const url = `https://quickswap.exchange/#/swap`;
+  window.open(url, '_blank');
+});
+document.getElementById('openSwapIframe').addEventListener('click', () => {
+  const src = `https://quickswap.exchange/#/swap?outputCurrency=${SDC_ADDRESS}`;
+  swapFrame.src = src; swapWidget.style.display = swapWidget.style.display === 'none' ? 'block' : 'none';
+});
+
+/* ========== Mastercard On-ramp (hosted checkout flow) ========== */
+document.getElementById('buyMastercard').addEventListener('click', async () => {
+  if (!account) return alert('Connect wallet first');
+  try {
+    // Request a hosted-checkout URL from your backend
+    const res = await fetch(API_CHECKOUT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: account, currency: 'ZAR', asset: 'SDC' })
+    });
+    if (!res.ok) throw new Error('Checkout request failed: ' + res.status);
+    const j = await res.json();
+    if (j.checkoutUrl) {
+      // open hosted checkout
+      window.open(j.checkoutUrl, '_blank');
+    } else {
+      alert('No checkout URL returned: ' + JSON.stringify(j));
     }
-  </script>
+  } catch (e) {
+    console.error('buyMastercard', e);
+    alert('On-ramp request failed: ' + (e.message || e));
+  }
+});
+
+/* ========== Off-ramp (server) ========== */
+document.getElementById('offRampForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const amount = document.getElementById('offAmount').value;
+  const bank = document.getElementById('offBank').value;
+  if (!account) return alert('Connect wallet first');
+  if (!amount || !bank) return alert('Provide amount and bank details');
+  try {
+    const res = await fetch(API_OFFRAMP, {
+      method: 'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ wallet: account, amount, bank })
+    });
+    const j = await res.json();
+    document.getElementById('offResult').innerText = 'Off-ramp requested: ' + (j.id || JSON.stringify(j));
+  } catch (e) {
+    console.error(e); alert('Off-ramp request failed');
+  }
+});
+
+/* ========== KYC flows (stubs) ========== */
+document.getElementById('openKyc').addEventListener('click', () => {
+  alert('Open hosted KYC widget (server-side integration required).');
+});
+document.getElementById('verifyServer').addEventListener('click', async () => {
+  if(!account) return alert('Connect wallet first');
+  try {
+    const res = await fetch(API_VERIFY_KYC, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ wallet: account }) });
+    const j = await res.json();
+    document.getElementById('kycResult').innerText = 'KYC verification request result: ' + (j.status || JSON.stringify(j));
+  } catch (e) { console.error(e); alert('KYC verify call failed'); }
+});
+
+/* ========== Admin toggles (stub) ========== */
+document.getElementById('toggleDeposits').addEventListener('click', () => {
+  alert('Toggle deposits (server/admin action)');
+});
+document.getElementById('toggleRedeem').addEventListener('click', () => {
+  alert('Toggle redeems (server/admin action)');
+});
+
+/* ========== Links ========== */
+openDex.addEventListener('click', () => window.open(DEXS_URL, '_blank'));
+document.getElementById('btnAddPool').addEventListener('click', () => window.open(POLYSCAN_PAIR, '_blank'));
+
+/* ========== Init ========== */
+function init() {
+  initChart();
+  fetchDex(); // initial
+  setInterval(fetchDex, 8000);
+}
+init();
+</script>
 </body>
 </html>
+

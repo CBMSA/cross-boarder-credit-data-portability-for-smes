@@ -1,0 +1,311 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SACReserve — SadiCoin (SDC) Tokenomics</title>
+
+  <!-- Chart.js for the allocation pie chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --accent:#0b66b2;
+      --muted:#6b7280;
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --glass: rgba(255,255,255,0.6);
+      font-family: Inter, Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial;
+    }
+    body { background:var(--bg); margin:0; padding:24px; color:#0f172a; }
+    .container { max-width:1100px; margin:0 auto; }
+    header { display:flex; gap:20px; align-items:center; margin-bottom:18px; }
+    h1 { margin:0; font-size:22px; }
+    .subtitle { color:var(--muted); margin-top:4px; font-size:14px; }
+    .grid { display:grid; grid-template-columns: 1fr 360px; gap:20px; align-items:start; }
+    .card { background:var(--card); border-radius:12px; padding:18px; box-shadow:0 6px 18px rgba(12,18,31,0.06); }
+    .small { font-size:13px; color:var(--muted); }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    td, th { padding:8px 6px; vertical-align:top; }
+    th { text-align:left; color:var(--muted); font-weight:600; font-size:13px; }
+    .controls { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    button { background:var(--accent); color:white; border:0; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button.ghost { background:transparent; color:var(--accent); border:1px solid rgba(11,102,178,0.12); }
+    .stat { font-size:18px; font-weight:700; color:#0f172a; }
+    .muted { color:var(--muted); font-size:13px; }
+    .note { margin-top:10px; color:var(--muted); font-size:13px; }
+    .jsonbox { background:#0b1320; color:#dbeafe; padding:12px; border-radius:8px; font-family:monospace; font-size:13px; max-height:320px; overflow:auto; }
+    .label { font-size:12px; color:var(--muted); margin-bottom:4px; display:block; }
+    @media (max-width:900px){ .grid{ grid-template-columns:1fr; } .card { padding:14px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>SACReserve — SadiCoin (SDC) Tokenomics</h1>
+        <div class="subtitle">Official tokenomics, supply API, and distribution — verified on Polygon</div>
+      </div>
+      <div style="margin-left:auto; text-align:right;">
+        <div class="small">Official tokenomics page</div>
+        <a href="https://sacreserve.com/tokenomics" target="_blank" rel="noopener" style="color:var(--accent); font-weight:700;">sacreserve.com/tokenomics</a>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: tokenomics + distribution + APIs -->
+      <div>
+        <div class="card">
+          <h2 style="margin:0 0 6px 0;">Overview</h2>
+          <div class="small">SadiCoin (SDC) — Polygon (ERC-20)</div>
+
+          <table aria-label="Token summary" style="margin-top:12px;">
+            <tr>
+              <th>Total Supply</th>
+              <td class="stat" id="totalSupply">—</td>
+            </tr>
+            <tr>
+              <th>Circulating Supply</th>
+              <td class="stat" id="circulatingSupply">—</td>
+            </tr>
+            <tr>
+              <th>Burned Supply</th>
+              <td id="burnedSupply" class="muted">—</td>
+            </tr>
+            <tr>
+              <th>Locked / Vested</th>
+              <td id="lockedSupply" class="muted">—</td>
+            </tr>
+            <tr>
+              <th>Contract Address</th>
+              <td class="small"><a href="https://polygonscan.com/token/0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96" target="_blank">0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96</a></td>
+            </tr>
+          </table>
+
+          <div class="controls">
+            <button id="refreshBtn">Refresh Supply</button>
+            <button id="viewJson" class="ghost">View Raw JSON</button>
+            <button id="downloadPdf" class="ghost">Download PDF</button>
+          </div>
+
+          <p class="note">
+            APIs used (public):
+            <br>
+            <a id="apiTotal" href="https://www.sacreserve.africa/SadiCoinapi/total_supply" target="_blank">/SadiCoinapi/total_supply</a> |
+            <a id="apiCirc" href="https://www.sacreserve.africa/SadiCoinapi/circulating_supply" target="_blank">/SadiCoinapi/circulating_supply</a>
+          </p>
+
+          <hr style="margin:12px 0; border:none; border-top:1px solid #eef2f6;" />
+
+          <h3 style="margin:0 0 8px 0;">Distribution</h3>
+          <div class="small">Total supply: <strong>1,000,000,000 SDC</strong></div>
+
+          <table style="margin-top:10px;">
+            <thead>
+              <tr><th>Allocation</th><th>Percentage</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Community & Ecosystem</td><td>40%</td><td class="muted">Incentives, rewards, developer grants</td></tr>
+              <tr><td>Liquidity Pools</td><td>20%</td><td class="muted">DEX liquidity for trading — Quickswap</td></tr>
+              <tr><td>Team (Vested)</td><td>15%</td><td class="muted">Locked with gradual vesting</td></tr>
+              <tr><td>Strategic Partnerships</td><td>10%</td><td class="muted">Partnership & integrations fund</td></tr>
+              <tr><td>Treasury Reserve</td><td>10%</td><td class="muted">Platform reserve</td></tr>
+              <tr><td>Airdrops & Promotions</td><td>5%</td><td class="muted">Marketing & community growth</td></tr>
+            </tbody>
+          </table>
+
+          <div class="note" style="margin-top:12px;">
+            Full tokenomics (allocations, vesting schedules and wallet addresses) are published at: <a href="https://sacreserve.com/tokenomics" target="_blank">https://sacreserve.com/tokenomics</a>.
+            CoinGecko circulating supply is computed using the public supply API and verified against these published allocations.
+          </div>
+        </div>
+
+        <div style="height:18px"></div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">Technical & Utility</h3>
+          <p class="small">
+            SadiCoin (SDC) is an ERC-20 token on Polygon intended for payments, merchant settlement, rewards and in-platform utility within the SACReserve ecosystem.
+            The token uses low gas Polygon transactions for real-world usability and integrates with the SACReserve custodial wallet and merchant APIs.
+          </p>
+
+          <h4 style="margin-top:12px;">Verification & Transparency</h4>
+          <ul class="small" style="margin:8px 0 0 18px;">
+            <li>All contract & supply data is publicly verifiable on PolygonScan.</li>
+            <li>Public supply API endpoints are available and used by CoinGecko for automated polling.</li>
+            <li>Burns, locked wallets and vesting schedules are documented on the tokenomics page.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Right: chart + raw JSON -->
+      <aside>
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">Allocation Chart</h3>
+          <canvas id="allocChart" width="320" height="240"></canvas>
+        </div>
+
+        <div style="height:18px"></div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">Live JSON</h3>
+          <div id="jsonArea" class="jsonbox">Click <strong>Refresh Supply</strong> to load live API JSON.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+  // Configuration - change if your endpoints differ
+  const CONFIG = {
+    totalApi: "https://www.sacreserve.africa/SadiCoinapi/total_supply",    // replace if needed
+    circulatingApi: "https://www.sacreserve.africa/SadiCoinapi/circulating_supply", // replace if needed
+    tokenAddress: "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96",
+    decimals: 18
+  };
+
+  // Helper: format big integer string with commas (does not convert decimals)
+  function formatIntegerString(nStr) {
+    try {
+      const s = String(nStr);
+      // Insert commas for readability for big integers
+      return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    } catch (e) { return nStr; }
+  }
+
+  // Fetch total supply (raw integer string)
+  async function fetchTotalSupply() {
+    const r = await fetch(CONFIG.totalApi, {cache: "no-store"});
+    if (!r.ok) throw new Error("Failed to fetch total supply");
+    const j = await r.json();
+    // Expect j.total_supply as string integer
+    return j;
+  }
+
+  // Fetch circulating supply (may include other fields)
+  async function fetchCirculatingSupply() {
+    const r = await fetch(CONFIG.circulatingApi, {cache: "no-store"});
+    if (!r.ok) throw new Error("Failed to fetch circulating supply");
+    const j = await r.json();
+    return j;
+  }
+
+  // Main refresh function
+  async function refreshAll() {
+    const jsonArea = document.getElementById("jsonArea");
+    const totalEl = document.getElementById("totalSupply");
+    const circEl = document.getElementById("circulatingSupply");
+    const burnedEl = document.getElementById("burnedSupply");
+    const lockedEl = document.getElementById("lockedSupply");
+
+    jsonArea.textContent = "Loading…";
+    try {
+      const [t, c] = await Promise.all([fetchTotalSupply(), fetchCirculatingSupply()]);
+
+      // Use available keys - tolerant to both single-endpoint and two-endpoint setups
+      const totalRaw = (t && (t.total_supply ?? t.total) ) ?? null;
+      const circRaw = (c && (c.circulating_supply ?? c.circulating) ) ?? null;
+      const burnedRaw = c && (c.burned_supply ?? c.burned) ?? "0";
+      const lockedRaw = c && (c.locked_supply ?? c.locked) ?? "0";
+
+      totalEl.textContent = totalRaw ? formatIntegerString(totalRaw) : "N/A";
+      circEl.textContent = circRaw ? formatIntegerString(circRaw) : "N/A";
+      burnedEl.textContent = formatIntegerString(burnedRaw);
+      lockedEl.textContent = formatIntegerString(lockedRaw);
+
+      // Show combined JSON so reviewers can see both responses
+      jsonArea.textContent = JSON.stringify({ total: t, circulating: c }, null, 2);
+
+    } catch (err) {
+      jsonArea.textContent = `Error: ${err.message}`;
+      totalEl.textContent = "—";
+      circEl.textContent = "—";
+      burnedEl.textContent = "—";
+      lockedEl.textContent = "—";
+      console.error(err);
+    }
+  }
+
+  // Wire UI actions
+  document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+  document.getElementById("viewJson").addEventListener("click", () => {
+    const a = document.getElementById("jsonArea");
+    a.style.display = "block";
+    a.scrollIntoView({behavior:"smooth"});
+  });
+
+  // Download page as a simple PDF (captures the important data text-only)
+  document.getElementById("downloadPdf").addEventListener("click", async () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+
+    const title = "SACReserve — SadiCoin (SDC) Tokenomics";
+    doc.setFontSize(14);
+    doc.text(title, 40, 40);
+
+    // small table text
+    const total = document.getElementById("totalSupply").textContent || "—";
+    const circ = document.getElementById("circulatingSupply").textContent || "—";
+    const burned = document.getElementById("burnedSupply").textContent || "—";
+    const locked = document.getElementById("lockedSupply").textContent || "—";
+
+    doc.setFontSize(11);
+    doc.text(`Contract: ${CONFIG.tokenAddress}`, 40, 70);
+    doc.text(`Total Supply: ${total}`, 40, 92);
+    doc.text(`Circulating Supply: ${circ}`, 40, 112);
+    doc.text(`Burned Supply: ${burned}`, 40, 132);
+    doc.text(`Locked Supply: ${locked}`, 40, 152);
+
+    doc.text("Distribution:", 40, 190);
+    const lines = [
+      "Community & Ecosystem — 40%",
+      "Liquidity Pools — 20%",
+      "Team (Vested) — 15%",
+      "Strategic Partnerships — 10%",
+      "Treasury Reserve — 10%",
+      "Airdrops & Promotions — 5%"
+    ];
+    doc.setFontSize(10);
+    lines.forEach((l, i) => doc.text(l, 60, 210 + i*16));
+
+    doc.text("Official tokenomics:", 40, 340);
+    doc.setTextColor(0,0,200);
+    doc.text("https://sacreserve.com/tokenomics", 40, 360);
+
+    doc.save("SadiCoin_tokenomics.pdf");
+  });
+
+  // Chart: distribution pie
+  const ctx = document.getElementById('allocChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['Community & Ecosystem','Liquidity Pools','Team (Vested)','Partnerships','Reserve','Airdrops'],
+      datasets: [{
+        data: [40, 20, 15, 10, 10, 5],
+        backgroundColor: ['#0b66b2','#0b9bd8','#7dd3fc','#60a5fa','#93c5fd','#c7ddf9'],
+        borderWidth:0
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } },
+    }
+  });
+
+  // Auto-refresh on load
+  window.addEventListener("load", () => {
+    // attempt refresh but do not block page load on errors
+    refreshAll().catch(e => console.log("Initial refresh failed:", e));
+  });
+
+  // Helpful: set API link HREFs in case they change
+  document.getElementById("apiTotal").href = CONFIG.totalApi;
+  document.getElementById("apiCirc").href = CONFIG.circulatingApi;
+  </script>
+</body>
+</html>
+
+

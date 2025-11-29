@@ -101,6 +101,56 @@
 </table>
 
 </div><script>
+
+  async function fetchRates() {
+    const forexDiv = document.getElementById("rates");
+    const cryptoDiv = document.getElementById("cryptoRates");
+    forexDiv.innerHTML = "";
+    cryptoDiv.innerHTML = "";
+
+    // ✅ Forex Rates
+    const forexPairs = [
+      { pair: "USDZAR", base: "USD", target: "ZAR" },
+      { pair: "BWPZAR", base: "BWP", target: "ZAR" },
+      { pair: "MZNZAR", base: "MZN", target: "ZAR" },
+      { pair: "XAUUSD", base: "XAU", target: "USD" }
+    ];
+
+    for (const f of forexPairs) {
+      try {
+        const res = await fetch(`https://open.er-api.com/v6/latest/${f.base}`);
+        const data = await res.json();
+        const rate = data?.rates?.[f.target];
+        forexDiv.innerHTML += `<div class="rate-card"><span>${f.pair}</span>${rate ? rate.toFixed(2) : "Error"}</div>`;
+      } catch {
+        forexDiv.innerHTML += `<div class="rate-card"><span>${f.pair}</span>Error</div>`;
+      }
+    }
+
+    // ✅ Crypto (CoinGecko)
+    try {
+      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,matic-network,tether&vs_currencies=usd");
+      const data = await res.json();
+      const cryptos = [
+        { name: "BTC-USD", id: "bitcoin" },
+        { name: "ETH-USD", id: "ethereum" },
+        { name: "MATIC-USD", id: "matic-network" },
+        { name: "USDT-USD", id: "tether" }
+      ];
+      cryptos.forEach(c => {
+        const rate = data[c.id]?.usd;
+        cryptoDiv.innerHTML += `<div class="rate-card"><span>${c.name}</span>$${rate ? rate.toLocaleString() : "Error"}</div>`;
+      });
+    } catch {
+      cryptoDiv.innerHTML = `<div class="rate-card">Error loading crypto data</div>`;
+    }
+  }
+
+  window.onload = () => {
+    fetchRates();
+    setInterval(fetchRates, 60000); // auto-refresh every 60s
+  };
+
 let walletAddress = null;
 
 // Create Wallet

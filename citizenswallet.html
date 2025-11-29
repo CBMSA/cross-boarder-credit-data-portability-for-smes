@@ -1,471 +1,175 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>SadiPay — Frontend (FSP) — SadiCoin</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Lightweight Charts -->
-  <script src="https://unpkg.com/lightweight-charts@4.0.0/dist/lightweight-charts.standalone.production.js"></script>
-  <!-- ethers -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body { background:#f6f8fb; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; }
-    .card { border-radius:12px; box-shadow:0 6px 20px rgba(12,20,40,0.06); }
-    .logo { height:40px; }
-    .stat { font-weight:600; font-size:1rem; }
-    #chart { height:360px; }
-    .muted { color:#6b7280; }
-    .admin-only { display:none; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sadicoin Wallet Platform</title>
+<style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 50px auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0px 0px 15px rgba(0,0,0,0.1);}
+    h1 { text-align: center; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 5px; border: none; background: #4CAF50; color: #fff; font-size: 16px; }
+    input { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+    .info { margin-top: 15px; padding: 10px; background: #eee; border-radius: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 8px; border: 1px solid #ccc; text-align: center; }
+</style>
 </head>
 <body>
-  <div class="container py-4">
-    <header class="d-flex align-items-center justify-content-between mb-3">
-      <div class="d-flex align-items-center gap-3">
-        <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png" class="logo" alt="logo">
-        <div>
-          <h4 class="mb-0">SadiPay — SadiCoin Financial Services Platform</h4>
-          <small class="muted">Frontend prototype — on-ramp, off-ramp, swap & market</small>
-        </div>
-      </div>
+<div class="container">
+    <h1>Sadicoin Wallet Platform</h1><!-- Wallet Section -->
+<button id="createWalletBtn">Create Wallet</button>
+<div class="info" id="walletAddress">Wallet: Not created</div>
+<div class="info" id="walletBalance">Balance: 0 SDC</div>
 
-      <div class="d-flex gap-2 align-items-center">
-        <button id="btnAddToken" class="btn btn-outline-secondary btn-sm">+ Add SDC</button>
-        <button id="btnAddLP" class="btn btn-outline-secondary btn-sm">+ Watch LP</button>
-        <button id="connectBtn" class="btn btn-primary btn-sm">Connect Wallet</button>
-      </div>
-    </header>
+<!-- Send Sadicoin -->
+<h3>Send Sadicoin</h3>
+<input type="text" id="sendAddress" placeholder="Recipient Address">
+<input type="number" id="sendAmount" placeholder="Amount to Send">
+<button id="sendBtn">Send</button>
+<div class="info" id="transactionStatus"></div>
 
-    <div class="row g-3">
-      <!-- left column -->
-      <div class="col-lg-4">
-        <div class="card p-3 mb-3">
-          <h6>Wallet</h6>
-          <div class="small muted mb-2">Connect your wallet to access SadiPay functions</div>
-          <div class="mb-2 d-flex justify-content-between"><div class="muted">Address</div><div id="walletAddr">Not connected</div></div>
-          <div class="mb-2 d-flex justify-content-between"><div class="muted">SDC Balance</div><div id="sdcBal">—</div></div>
-          <div class="mb-2 d-flex justify-content-between"><div class="muted">POL Balance</div><div id="polBal">—</div></div>
+<!-- Deposit / Withdraw -->
+<h3>Deposit / Withdraw</h3>
+<input type="number" id="depositAmount" placeholder="Amount to Deposit">
+<button id="depositBtn">Deposit</button>
+<input type="number" id="withdrawAmount" placeholder="Amount to Withdraw">
+<button id="withdrawBtn">Withdraw</button>
+<div class="info" id="depositWithdrawStatus"></div>
 
-          <div class="d-grid gap-2 mt-2">
-            <button id="refreshBalances" class="btn btn-outline-primary btn-sm">Refresh Balances</button>
-            <button id="openQuickSwap" class="btn btn-success btn-sm">Open QuickSwap (Swap)</button>
-            <button id="addLiquidityBtn" class="btn btn-outline-dark btn-sm">Add Liquidity (QuickSwap)</button>
-          </div>
-        </div>
+<!-- Swap Section -->
+<h3>Swap Sadicoin</h3>
+<input type="number" id="swapAmount" placeholder="Amount to Swap">
+<input type="text" id="swapToToken" placeholder="Swap to Token Address">
+<button id="swapBtn">Swap</button>
+<div class="info" id="swapStatus"></div>
 
-        <div class="card p-3 mb-3">
-          <h6>On-Ramp (Buy SDC with Fiat)</h6>
-          <div class="muted small mb-2">Buy via Mastercard sandbox (hosted checkout)</div>
-          <div class="d-grid gap-2">
-            <button id="buyMastercard" class="btn btn-primary btn-sm">Buy via Mastercard (Sandbox)</button>
-          </div>
-          <div class="small muted mt-2">This will request a hosted-checkout URL from your server and open it. Do not store API keys in frontend.</div>
-        </div>
+<!-- Trading Section -->
+<h3>Trading</h3>
+<input type="number" id="buyAmount" placeholder="Buy Amount">
+<input type="number" id="sellAmount" placeholder="Sell Amount">
+<button id="buyBtn">Buy SDC</button>
+<button id="sellBtn">Sell SDC</button>
+<div class="info" id="tradeStatus"></div>
 
-        <div class="card p-3 mb-3">
-          <h6>Off-Ramp (Sell SDC → Fiat)</h6>
-          <form id="offRampForm">
-            <div class="mb-2">
-              <label class="form-label small">Amount (SDC)</label>
-              <input id="offAmount" class="form-control form-control-sm" placeholder="e.g. 100000" />
-            </div>
-            <div class="mb-2">
-              <label class="form-label small">Bank / Pay-out details</label>
-              <input id="offBank" class="form-control form-control-sm" placeholder="Account / IBAN / Mobile money" />
-            </div>
-            <div class="d-grid gap-2">
-              <button type="submit" class="btn btn-warning btn-sm">Request Payout</button>
-            </div>
-            <div id="offResult" class="mt-2 small"></div>
-            <div class="muted small mt-2">Off-ramp will call your server to execute the burn + bank payout (server required).</div>
-          </form>
-        </div>
-      </div>
+<!-- Transaction History -->
+<h3>Transaction History</h3>
+<table id="txTable">
+    <thead>
+        <tr><th>TxHash</th><th>Type</th><th>Amount</th><th>Status</th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
 
-      <!-- right column -->
-      <div class="col-lg-8">
-        <div class="card p-3 mb-3">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div>
-              <h6 class="mb-0">Market — SDC / POL (Live)</h6>
-              <small class="muted">Source: Dexscreener (QuickSwap pair)</small>
-            </div>
-            <div class="text-end">
-              <div class="muted">Pair:</div>
-              <div id="pairAddr" class="fw-semibold small">0xB298...461c1</div>
-            </div>
-          </div>
+</div><script>
+let walletAddress = null;
 
-          <div class="row g-2 mb-3">
-            <div class="col-6 d-flex justify-content-between"><div class="muted">Price (USD)</div><div id="priceUsd" class="stat">—</div></div>
-            <div class="col-6 d-flex justify-content-between"><div class="muted">Price (POL)</div><div id="priceNative" class="stat">—</div></div>
-            <div class="col-6 d-flex justify-content-between"><div class="muted">24h Change</div><div id="priceChange" class="stat">—</div></div>
-            <div class="col-6 d-flex justify-content-between"><div class="muted">Liquidity (USD)</div><div id="liquidity" class="stat">—</div></div>
-            <div class="col-12"><small id="lastUpdated" class="muted">Updated: —</small></div>
-          </div>
-
-          <div id="chart"></div>
-
-          <div class="mt-3 d-flex gap-2">
-            <button id="openDex" class="btn btn-outline-info btn-sm">Open on Dexscreener</button>
-            <button id="btnAddPool" class="btn btn-outline-secondary btn-sm">Show Pool on PolygonScan</button>
-            <div class="ms-auto"><small class="muted">Chart updates every 8s</small></div>
-          </div>
-        </div>
-
-        <div class="card p-3 mb-3">
-          <h6>Swap / Quick Actions</h6>
-          <div class="muted small mb-2">QuickSwap links and prefill</div>
-          <div class="d-flex gap-2">
-            <button id="swapSdcToPol" class="btn btn-primary btn-sm">Swap SDC → POL</button>
-            <button id="swapPolToSdc" class="btn btn-outline-primary btn-sm">Swap POL → SDC</button>
-            <button id="openSwapIframe" class="btn btn-outline-dark btn-sm">Open Swap Widget</button>
-          </div>
-          <div id="swapWidget" class="mt-3" style="display:none;">
-            <iframe id="swapFrame" src="" style="width:100%;height:520px;border:0;border-radius:10px;"></iframe>
-          </div>
-        </div>
-
-        <div class="card p-3 mb-3">
-          <h6>KYC / Compliance</h6>
-          <p class="muted small">Use a KYC provider (SumSub, ShuftiPro, Onfido). In production: open KYC widget and store verified KYC hash on-chain via ComplianceRegistry contract.</p>
-          <div class="d-flex gap-2">
-            <button id="openKyc" class="btn btn-outline-primary btn-sm">Start KYC (SumSub)</button>
-            <button id="verifyServer" class="btn btn-outline-secondary btn-sm">Verify KYC (Server)</button>
-            <button id="viewCompliance" class="btn btn-outline-dark btn-sm">View Compliance Status</button>
-          </div>
-          <div id="kycResult" class="mt-2 small"></div>
-        </div>
-
-        <!-- Admin area (make visible to admins by toggling admin flag) -->
-        <div id="adminPanel" class="card p-3 mb-3 admin-only">
-          <h6>Admin Panel</h6>
-          <div class="d-flex gap-2 mb-2">
-            <button id="toggleDeposits" class="btn btn-sm btn-outline-danger">Toggle Deposits</button>
-            <button id="toggleRedeem" class="btn btn-sm btn-outline-danger">Toggle Redeems</button>
-            <button id="viewAudit" class="btn btn-sm btn-outline-secondary">View Audit Logs</button>
-          </div>
-          <div id="auditLog" class="mt-2 small"></div>
-        </div>
-
-      </div>
-    </div>
-
-<!-- SadiCoin Official Info Section -->
-<section id="sadicoin-official" style="background:#0b0f19; color:#fff; padding:40px 20px; text-align:center; border-top:2px solid #2dd4bf;">
-  <h2 style="font-size:28px; margin-bottom:10px;">🪙 SadiCoin (SDC) Official Channels</h2>
-  <p style="font-size:16px; color:#ccc; margin-bottom:30px;">
-    Verified project information and official contact links
-  </p>
-
-  <!-- Social Media Links -->
-  <div style="margin-bottom:25px;">
-    <a href="https://x.com/FaraiMuneri?s=09" target="_blank" style="margin:0 10px; color:#2dd4bf; text-decoration:none;">🐦 X (Twitter)</a>
-    <a href="https://t.me/SadiCoinCommunity" target="_blank" style="margin:0 10px; color:#2dd4bf; text-decoration:none;">💬 Telegram</a>
-    <a href="https://instagram.com/sadicoin" target="_blank" style="margin:0 10px; color:#2dd4bf; text-decoration:none;">📸 Instagram</a>
-  </div>
-
-  <!-- Website -->
-  <div style="margin-bottom:20px;">
-    🌐 <a href="https://www.sacreserve.africa" target="_blank" style="color:#fff; text-decoration:underline;">www.sacreserve.africa</a>
-  </div>
-
-  <!-- Smart Contract -->
-  <div style="margin-bottom:20px;">
-    🔗 Contract Address: 
-    <a href="https://polygonscan.com/token/0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96" target="_blank" style="color:#2dd4bf; text-decoration:none;">
-      0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96
-    </a>
-  </div>
-
-  <!-- Contact Email -->
-  <div style="margin-bottom:20px;">
-    📧 Contact Email: 
-    <a href="mailto:muchbepvtltd@gmail.com" style="color:#fff; text-decoration:underline;">muchbepvtltd@gmail.com</a>
-  </div>
-
-  <!-- Location -->
-  <div style="color:#ccc;">
-    📍 Based in Polokwane, Limpopo, South Africa  
-  </div>
-
-  <hr style="margin:30px auto; width:60%; border-color:#2dd4bf;">
-
-  <p style="font-size:14px; color:#777;">Verification Ticket: <strong>#1292620</strong> | CoinMarketCap Listing Request</p>
-</section>
-
-
-
-    <footer class="text-center muted small mt-4 mb-4">© 2025 SadiCoin — SadiPay FSP (Prototype)</footer>
-  </div>
-
-<script>
-
-
-/* ========== CONFIG ========== */
-/* Dexscreener pair (QuickSwap LP) */
-const LP_PAIR = '0xB298Eff7ddC6385cdb5494a7315FD11a5fE461c1';
-const DEXS_API = `https://api.dexscreener.com/latest/dex/pairs/polygon/${LP_PAIR}`;
-const DEXS_URL = `https://dexscreener.com/polygon/${LP_PAIR}`;
-const POLYSCAN_PAIR = `https://polygonscan.com/address/${LP_PAIR}`;
-
-/* Contract / token addresses */
-const SDC_ADDRESS = '0x3e6db8977261b30ea3cc0408867912e8b6cedc96';
-const POL_NATIVE = '0x0000000000000000000000000000000000001010';
-
-const API_OFFRAMP = '/api/mastercard/offramp';     // server endpoint for off-ramp (POST)
-const API_CHECKOUT = '/api/mastercard/checkout';   // server endpoint to request Mastercard hosted checkout (POST)
-const API_VERIFY_KYC = '/api/verifyKyc';
-
-const ERC20_MIN = [
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address) view returns (uint256)",
-  "function symbol() view returns (string)"
-];
-
-/* ========== STATE ========== */
-let provider = null;
-let signer = null;
-let account = null;
-let chart = null, series = null;
-let chartData = [];
-
-/* ========== UI refs ========== */
-const connectBtn = document.getElementById('connectBtn');
-const walletAddr = document.getElementById('walletAddr');
-const sdcBalEl = document.getElementById('sdcBal');
-const polBalEl = document.getElementById('polBal');
-const priceUsdEl = document.getElementById('priceUsd');
-const priceNativeEl = document.getElementById('priceNative');
-const priceChangeEl = document.getElementById('priceChange');
-const liquidityEl = document.getElementById('liquidity');
-const lastUpdated = document.getElementById('lastUpdated');
-const openDex = document.getElementById('openDex');
-const btnAddToken = document.getElementById('btnAddToken');
-const btnAddLP = document.getElementById('btnAddLP');
-const swapWidget = document.getElementById('swapWidget');
-const swapFrame = document.getElementById('swapFrame');
-const openQuickSwap = document.getElementById('openQuickSwap');
-
-/* ========== Helpers ========== */
-function formatUsd(n) {
-  if (n === null || n === undefined) return '—';
-  if (n < 0.0001) return Number(n).toExponential(3);
-  return '$' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 6 });
-}
-function shortNum(n) {
-  if (n === null || n === undefined) return '—';
-  if (n > 1e9) return (n/1e9).toFixed(2)+'B';
-  if (n > 1e6) return (n/1e6).toFixed(2)+'M';
-  if (n > 1e3) return (n/1e3).toFixed(2)+'K';
-  return Number(n).toFixed(2);
+// Create Wallet
+async function createWallet() {
+    const response = await fetch('https://your-backend.com/api/create-wallet', { method: 'POST' });
+    const data = await response.json();
+    walletAddress = data.address;
+    document.getElementById('walletAddress').innerText = `Wallet: ${walletAddress}`;
+    document.getElementById('walletBalance').innerText = `Balance: ${data.balance} SDC`;
 }
 
-/* ========== Dexscreener Polling & Chart ========== */
-async function fetchDex() {
-  try {
-    const r = await fetch(DEXS_API);
-    if (!r.ok) throw new Error('Dexscreener error ' + r.status);
-    const j = await r.json();
-    const pair = j.pair || j;
-    const priceUsd = pair.priceUsd ? Number(pair.priceUsd) : null;
-    const priceNative = pair.priceNative ? Number(pair.priceNative) : null;
-    const liquidity = pair.liquidity ? (pair.liquidity.usd || null) : null;
-    const volume = pair.volume ? Number(pair.volume) : null;
-    const change = pair.priceChange || null;
-
-    priceUsdEl.innerText = priceUsd ? Number(priceUsd).toFixed(8) : '—';
-    priceNativeEl.innerText = priceNative ? Number(priceNative).toFixed(8) : '—';
-    priceChangeEl.innerText = change !== null ? Number(change).toFixed(2)+'%' : '—';
-    priceChangeEl.className = (change >= 0) ? 'stat text-success' : 'stat text-danger';
-    liquidityEl.innerText = liquidity ? shortNum(liquidity) : '—';
-    lastUpdated.innerText = 'Updated: ' + new Date().toLocaleString();
-
-    if (priceUsd) {
-      chartData.push({ time: Math.floor(Date.now()/1000), value: Number(priceUsd) });
-      if (chartData.length > 800) chartData.shift();
-      series && series.setData(chartData);
-    }
-  } catch (e) {
-    console.error('fetchDex', e);
-  }
-}
-
-/* init chart */
-function initChart() {
-  const container = document.getElementById('chart');
-  container.innerHTML = '';
-  chart = LightweightCharts.createChart(container, { width: container.clientWidth, height: 360, layout: { textColor:'#111', background:{color:'#fff'} } });
-  series = chart.addLineSeries({ color:'#0b5fff', lineWidth:2 });
-  window.addEventListener('resize', () => chart.applyOptions({ width: container.clientWidth }));
-}
-
-/* ========== Wallet & Balances ========== */
-async function connectWallet() {
-  try {
-    if (!window.ethereum) return alert('Install MetaMask');
-    provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-    await provider.send('eth_requestAccounts', []);
-    signer = provider.getSigner();
-    account = await signer.getAddress();
-    walletAddr.innerText = account;
-    connectBtn.innerText = account.slice(0,6) + '...' + account.slice(-4);
-    await refreshBalances();
-  } catch (e) {
-    console.error(e); alert('Wallet connect failed: ' + (e.message||e));
-  }
-}
-connectBtn.addEventListener('click', connectWallet);
-
-async function refreshBalances() {
-  try {
-    if (!provider || !account) return;
-    const sdc = new ethers.Contract(SDC_ADDRESS, ERC20_MIN, provider);
-    const decimals = await sdc.decimals();
-    const raw = await sdc.balanceOf(account);
-    const bal = Number(ethers.utils.formatUnits(raw, decimals));
-    sdcBalEl.innerText = bal.toLocaleString();
-    // POL native
-    const polRaw = await provider.getBalance(account);
-    polBalEl.innerText = Number(ethers.utils.formatEther(polRaw)).toLocaleString();
-  } catch (e) { console.error('refreshBalances', e); }
-}
-document.getElementById('refreshBalances').addEventListener('click', refreshBalances);
-
-/* ========== Add token / LP to MetaMask ========== */
-btnAddToken.addEventListener('click', async () => {
-  if (!window.ethereum) return alert('MetaMask required');
-  try {
-    await window.ethereum.request({
-      method: 'wallet_watchAsset',
-      params: {
-        type: 'ERC20',
-        options: {
-          address: SDC_ADDRESS,
-          symbol: 'SDC',
-          decimals: 18,
-          image: 'https://raw.githubusercontent.com/your-org/your-repo/main/sadicoin.png'
-        }
-      }
+// Send Sadicoin
+async function sendSadicoin() {
+    const recipient = document.getElementById('sendAddress').value;
+    const amount = document.getElementById('sendAmount').value;
+    const response = await fetch('https://your-backend.com/api/send-sdc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: walletAddress, to: recipient, amount })
     });
-    alert('SDC add requested in MetaMask (confirm in wallet).');
-  } catch (e) { console.error(e); alert('Add token failed'); }
-});
-btnAddLP.addEventListener('click', async () => {
-  if (!window.ethereum) return alert('MetaMask required');
-  try {
-    await window.ethereum.request({
-      method: 'wallet_watchAsset',
-      params: {
-        type: 'ERC20',
-        options: {
-          address: LP_PAIR,
-          symbol: 'SDC-POL-LP',
-          decimals: 18,
-          image: 'https://raw.githubusercontent.com/your-org/your-repo/main/lp.png'
-        }
-      }
-    });
-    alert('LP add requested in MetaMask.');
-  } catch (e) { console.error(e); alert('Add LP failed'); }
-});
-
-/* ========== Swap & widget actions ========== */
-document.getElementById('swapSdcToPol').addEventListener('click', () => {
-  const url = `https://quickswap.exchange/#/swap?inputCurrency=${SDC_ADDRESS}&outputCurrency=${POL_NATIVE}`;
-  window.open(url, '_blank');
-});
-document.getElementById('swapPolToSdc').addEventListener('click', () => {
-  const url = `https://quickswap.exchange/#/swap?inputCurrency=${POL_NATIVE}&outputCurrency=${SDC_ADDRESS}`;
-  window.open(url, '_blank');
-});
-openQuickSwap.addEventListener('click', () => {
-  const url = `https://quickswap.exchange/#/swap`;
-  window.open(url, '_blank');
-});
-document.getElementById('openSwapIframe').addEventListener('click', () => {
-  const src = `https://quickswap.exchange/#/swap?outputCurrency=${SDC_ADDRESS}`;
-  swapFrame.src = src; swapWidget.style.display = swapWidget.style.display === 'none' ? 'block' : 'none';
-});
-
-/* ========== Mastercard On-ramp (hosted checkout flow) ========== */
-document.getElementById('buyMastercard').addEventListener('click', async () => {
-  if (!account) return alert('Connect wallet first');
-  try {
-    // Request a hosted-checkout URL from your backend
-    const res = await fetch(API_CHECKOUT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: account, currency: 'ZAR', asset: 'SDC' })
-    });
-    if (!res.ok) throw new Error('Checkout request failed: ' + res.status);
-    const j = await res.json();
-    if (j.checkoutUrl) {
-      // open hosted checkout
-      window.open(j.checkoutUrl, '_blank');
-    } else {
-      alert('No checkout URL returned: ' + JSON.stringify(j));
-    }
-  } catch (e) {
-    console.error('buyMastercard', e);
-    alert('On-ramp request failed: ' + (e.message || e));
-  }
-});
-
-/* ========== Off-ramp (server) ========== */
-document.getElementById('offRampForm').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const amount = document.getElementById('offAmount').value;
-  const bank = document.getElementById('offBank').value;
-  if (!account) return alert('Connect wallet first');
-  if (!amount || !bank) return alert('Provide amount and bank details');
-  try {
-    const res = await fetch(API_OFFRAMP, {
-      method: 'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ wallet: account, amount, bank })
-    });
-    const j = await res.json();
-    document.getElementById('offResult').innerText = 'Off-ramp requested: ' + (j.id || JSON.stringify(j));
-  } catch (e) {
-    console.error(e); alert('Off-ramp request failed');
-  }
-});
-
-/* ========== KYC flows (stubs) ========== */
-document.getElementById('openKyc').addEventListener('click', () => {
-  alert('Open hosted KYC widget (server-side integration required).');
-});
-document.getElementById('verifyServer').addEventListener('click', async () => {
-  if(!account) return alert('Connect wallet first');
-  try {
-    const res = await fetch(API_VERIFY_KYC, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ wallet: account }) });
-    const j = await res.json();
-    document.getElementById('kycResult').innerText = 'KYC verification request result: ' + (j.status || JSON.stringify(j));
-  } catch (e) { console.error(e); alert('KYC verify call failed'); }
-});
-
-/* ========== Admin toggles (stub) ========== */
-document.getElementById('toggleDeposits').addEventListener('click', () => {
-  alert('Toggle deposits (server/admin action)');
-});
-document.getElementById('toggleRedeem').addEventListener('click', () => {
-  alert('Toggle redeems (server/admin action)');
-});
-
-/* ========== Links ========== */
-openDex.addEventListener('click', () => window.open(DEXS_URL, '_blank'));
-document.getElementById('btnAddPool').addEventListener('click', () => window.open(POLYSCAN_PAIR, '_blank'));
-
-/* ========== Init ========== */
-function init() {
-  initChart();
-  fetchDex(); // initial
-  setInterval(fetchDex, 8000);
+    const result = await response.json();
+    document.getElementById('transactionStatus').innerText = result.success ? `Tx successful: ${result.txHash}` : `Failed: ${result.error}`;
+    updateBalance();
+    updateTxHistory();
 }
-init();
-</script>
-</body>
+
+// Deposit
+async function depositSadicoin() {
+    const amount = document.getElementById('depositAmount').value;
+    const response = await fetch('https://your-backend.com/api/deposit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress, amount })
+    });
+    const result = await response.json();
+    document.getElementById('depositWithdrawStatus').innerText = result.success ? 'Deposit successful' : 'Deposit failed';
+    updateBalance();
+}
+
+// Withdraw
+async function withdrawSadicoin() {
+    const amount = document.getElementById('withdrawAmount').value;
+    const response = await fetch('https://your-backend.com/api/withdraw', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress, amount })
+    });
+    const result = await response.json();
+    document.getElementById('depositWithdrawStatus').innerText = result.success ? 'Withdrawal successful' : 'Withdrawal failed';
+    updateBalance();
+}
+
+// Swap
+async function swapSadicoin() {
+    const amount = document.getElementById('swapAmount').value;
+    const toToken = document.getElementById('swapToToken').value;
+    const response = await fetch('https://your-backend.com/api/swap', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress, amount, toToken })
+    });
+    const result = await response.json();
+    document.getElementById('swapStatus').innerText = result.success ? 'Swap successful' : `Swap failed: ${result.error}`;
+    updateBalance();
+}
+
+// Buy/Sell
+async function buySadicoin() {
+    const amount = document.getElementById('buyAmount').value;
+    const response = await fetch('https://your-backend.com/api/buy', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress, amount })
+    });
+    const result = await response.json();
+    document.getElementById('tradeStatus').innerText = result.success ? 'Buy successful' : `Buy failed: ${result.error}`;
+    updateBalance();
+}
+
+async function sellSadicoin() {
+    const amount = document.getElementById('sellAmount').value;
+    const response = await fetch('https://your-backend.com/api/sell', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress, amount })
+    });
+    const result = await response.json();
+    document.getElementById('tradeStatus').innerText = result.success ? 'Sell successful' : `Sell failed: ${result.error}`;
+    updateBalance();
+}
+
+// Update balance
+async function updateBalance() {
+    const response = await fetch(`https://your-backend.com/api/get-balance?address=${walletAddress}`);
+    const data = await response.json();
+    document.getElementById('walletBalance').innerText = `Balance: ${data.balance} SDC`;
+}
+
+// Update transaction history
+async function updateTxHistory() {
+    const response = await fetch(`https://your-backend.com/api/tx-history?address=${walletAddress}`);
+    const data = await response.json();
+    const tbody = document.querySelector('#txTable tbody');
+    tbody.innerHTML = '';
+    data.transactions.forEach(tx => {
+        tbody.innerHTML += `<tr><td>${tx.txHash}</td><td>${tx.type}</td><td>${tx.amount}</td><td>${tx.status}</td></tr>`;
+    });
+}
+
+document.getElementById('createWalletBtn').addEventListener('click', createWallet);
+document.getElementById('sendBtn').addEventListener('click', sendSadicoin);
+document.getElementById('depositBtn').addEventListener('click', depositSadicoin);
+document.getElementById('withdrawBtn').addEventListener('click', withdrawSadicoin);
+document.getElementById('swapBtn').addEventListener('click', swapSadicoin);
+document.getElementById('buyBtn').addEventListener('click', buySadicoin);
+document.getElementById('sellBtn').addEventListener('click', sellSadicoin);
+</script></body>
 </html>
-

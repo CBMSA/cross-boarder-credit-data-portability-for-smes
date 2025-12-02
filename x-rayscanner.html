@@ -181,3 +181,212 @@ startCamera();
 </body>
 </html>
 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>See-Through Portable Appraisal Scanner</title>
+<style>
+  body { margin:0; background:#111; color:#0ff; font-family:Arial,sans-serif; display:flex; flex-direction:column; align-items:center; padding:10px;}
+  h1 { text-shadow:0 0 10px #0ff; }
+  canvas { width:90%; max-width:500px; border:2px solid #0ff; border-radius:10px; margin-top:15px; }
+  .controls { margin-top:15px; display:flex; flex-direction:column; align-items:center; }
+  input, button, select { margin:5px; padding:8px; font-size:16px; border-radius:5px; border:none; }
+  button { background:#0ff; color:#111; cursor:pointer; }
+  button:hover { background:#0aa; }
+  .info { margin-top:10px; text-align:center; }
+  .history { margin-top:15px; max-height:150px; overflow:auto; width:90%; border:1px solid #0ff; padding:5px; border-radius:5px; }
+  .history div { margin-bottom:5px; }
+</style>
+</head>
+<body>
+
+<h1>See-Through Appraisal Scanner</h1>
+<video id="camera" autoplay playsinline style="display:none;"></video>
+<canvas id="canvas"></canvas>
+
+<div class="controls">
+  <label>Object Name:</label>
+  <input type="text" id="objectName" placeholder="Enter object name">
+  <label>Reference Object Size (cm):</label>
+  <input type="number" id="refSize" placeholder="e.g., coin=2.3cm" step="0.1">
+  <label>Simulated Interior:</label>
+  <select id="interior">
+    <option value="">None</option>
+    <option value="skeleton">Skeleton</option>
+    <option value="crossSection">Mineral Cross-section</option>
+  </select>
+  <button id="snapshotBtn">Take Snapshot & Save</button>
+</div>
+
+<div class="info" id="info">Loading...</div>
+<div class="history" id="history"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+<script>
+// DOM Elements
+const video = document.getElementById('camera');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const info = document.getElementById('info');
+const objectNameInput = document.getElementById('objectName');
+const refSizeInput = document.getElementById('refSize');
+const snapshotBtn = document.getElementById('snapshotBtn');
+const historyDiv = document.getElementById('history');
+const interiorSelect = document.getElementById('interior');
+
+let model, history = JSON.parse(localStorage.getItem('appraisalHistory')) || [];
+
+// Load history
+function renderHistory(){
+  historyDiv.innerHTML='';
+  history.forEach((item,i)=>{
+    const div=document.createElement('div');
+    div.innerHTML=`${i+1}. ${item.name} - Color: rgb(${item.color.r},${item.color.g},${item.color.b}) - Size: ${item.size || 'N/A'}cm - Interior: ${item.interior || 'None'}`;
+    historyDiv.appendChild(div);
+  });
+}
+
+// Start camera
+async function startCamera(){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    video.srcObject = stream;
+    video.addEventListener('loadedmetadata',()=>{
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      loadModel();
+      requestAnimationFrame(processFrame);
+    });
+  }catch(err){
+    alert('Camera access denied or not supported.');
+    console.error(err);
+  }
+}
+
+// Load TensorFlow object detection model
+async function loadModel(){
+  model = await cocoSsd.load();
+  console.log("Object detection model loaded");
+}
+
+// Average color helper
+function averageColor(frame){
+  let r=0,g=0,b=0,count=0;
+  for(let i=0;i<frame.data.length;i+=4){
+    r+=frame.data[i]; g+=frame.data[i+1]; b+=frame.data[i+2]; count++;
+  }
+  return {r:Math.floor(r/count), g:Math.floor(g/count), b:Math.floor(b/count)};
+}
+
+// Draw bounding boxes
+function drawBoundingBoxes(predictions){
+  predictions.forEach(pred=>{
+    ctx.strokeStyle='#0ff'; ctx.lineWidth=3;
+    ctx.strokeRect(pred.bbox[0], pred.bbox[1], pred.bbox[2], pred.bbox[3]);
+    ctx.fillStyle='#0ff';
+    ctx.font='16px Arial';
+    ctx.fillText(pred.class, pred.bbox[0], pred.bbox[1]>20 ? pred.bbox[1]-5:10);
+  });
+}
+
+// Defect detection (scratches/cracks)
+function detectDefects(frame){
+  const width = canvas.width, height = canvas.height;
+  for(let y=1;y<height-1;y++){
+    for(let x=1;x<width-1;x++){
+      const i = (y*width+x)*4;
+      const lumCenter=(frame.data[i]+frame.data[i+1]+frame.data[i+2])/3;
+      const lumLeft=(frame.data[i-4]+frame.data[i-3]+frame.data[i-2])/3;
+      const lumUp=(frame.data[i-4*width]+frame.data[i-4*width+1]+frame.data[i-4*width+2])/3;
+      const edge = Math.abs(lumCenter-lumLeft)+Math.abs(lumCenter-lumUp);
+      if(edge>30){ frame.data[i]=255; frame.data[i+1]=0; frame.data[i+2]=0; } // red defect
+    }
+  }
+}
+
+// Overlay simulated interiors
+function overlayInterior(type){
+  if(type === "skeleton"){
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.fillRect(canvas.width*0.2, canvas.height*0.2, canvas.width*0.6, canvas.height*0.6);
+    ctx.fillStyle='#0ff';
+    ctx.font='20px Arial';
+    ctx.fillText("Skeleton Overlay", canvas.width*0.25, canvas.height*0.5);
+  } else if(type==="crossSection"){
+    ctx.fillStyle='rgba(255,255,0,0.2)';
+    ctx.fillRect(canvas.width*0.2, canvas.height*0.2, canvas.width*0.6, canvas.height*0.6);
+    ctx.fillStyle='#0ff';
+    ctx.font='20px Arial';
+    ctx.fillText("Mineral Cross-section", canvas.width*0.25, canvas.height*0.5);
+  }
+}
+
+// Process each frame
+async function processFrame(){
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  let frame = ctx.getImageData(0,0,canvas.width,canvas.height);
+
+  // X-ray style
+  for(let i=0;i<frame.data.length;i+=4){
+    const brightness = (frame.data[i]+frame.data[i+1]+frame.data[i+2])/3;
+    frame.data[i]=255-brightness; frame.data[i+1]=255-brightness; frame.data[i+2]=255-brightness;
+  }
+
+  detectDefects(frame);
+  ctx.putImageData(frame,0,0);
+
+  // Overlay interior simulation
+  overlayInterior(interiorSelect.value);
+
+  // Dominant color
+  const avg = averageColor(frame);
+
+  // Object detection
+  let detectedObjects=[];
+  if(model){
+    detectedObjects = await model.detect(canvas);
+    drawBoundingBoxes(detectedObjects);
+  }
+
+  // Approximate size
+  let approxSize = null;
+  const refSize=parseFloat(refSizeInput.value);
+  if(refSize && detectedObjects.length>0){
+    approxSize = (detectedObjects[0].bbox[2]/canvas.width)*refSize*10;
+  }
+
+  info.textContent=`Dominant Color: rgb(${avg.r},${avg.g},${avg.b}) | Objects: ${detectedObjects.map(p=>p.class).join(', ')||'None'} | Approx. Size: ${approxSize ? approxSize.toFixed(1)+'cm':''}`;
+
+  requestAnimationFrame(processFrame);
+}
+
+// Snapshot & save
+snapshotBtn.addEventListener('click',()=>{
+  const name = objectNameInput.value || 'object';
+  const interior = interiorSelect.value || 'None';
+  const data = {name:name,color:averageColor(ctx.getImageData(0,0,canvas.width,canvas.height)),size:refSizeInput.value || null, interior:interior};
+  history.push(data);
+  localStorage.setItem('appraisalHistory',JSON.stringify(history));
+  renderHistory();
+
+  const link = document.createElement('a');
+  link.download = `appraised_${name}.png`;
+  link.href = canvas.toDataURL();
+  link.click();
+});
+
+renderHistory();
+startCamera();
+</script>
+
+</body>
+</html>
+
+
+
+

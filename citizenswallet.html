@@ -1,4 +1,518 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SadiCoin Tech — Wallet Platform</title>
+
+<!-- Ethers.js -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<!-- QRCode.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+  :root{
+    --accent:#2dd4bf;
+    --bg:#0f1724;
+    --card:#0b1220;
+    --muted:#94a3b8;
+    --accent-dark:#059669;
+  }
+  body{margin:0; font-family:Inter,system-ui,Arial; background:linear-gradient(180deg,#071026 0%,#0b1220 100%); color:#e6eef6}
+  header{padding:20px 24px; display:flex; align-items:center; gap:12px}
+  .logo{
+    width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#00509e);
+    box-shadow:0 6px 18px rgba(0,0,0,0.6);font-weight:700;color:#042a2b
+  }
+  .brand{font-weight:700; font-size:18px}
+  main{max-width:1100px;margin:18px auto;padding:20px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.6);}
+  .muted{color:var(--muted);font-size:13px}
+  button{background:var(--accent); color:#042a2b; border:0; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600}
+  input,select{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit;width:100%}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+  .small{font-size:13px;color:var(--muted)}
+  .right{display:flex;flex-direction:column;gap:10px}
+  footer{color:var(--muted);text-align:center;padding:18px 0}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:13px}
+  .qr-wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .qr { width:150px; height:150px; background:#fff; padding:8px; border-radius:8px; }
+  .hidden{display:none}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+  .small-rate{font-size:12px;color:var(--muted)}
+  .min-exchange{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+  /* responsive */
+  @media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
+  /* login modal */
+  #authModal{position:fixed;inset:0;background:linear-gradient(0deg,rgba(2,6,23,0.85),rgba(2,6,23,0.85));display:flex;align-items:center;justify-content:center;z-index:9999}
+  .auth-card{width:100%;max-width:420px;background:#041021;padding:20px;border-radius:12px;box-shadow:0 18px 60px rgba(2,6,23,0.7)}
+  .link-btn{background:transparent;color:var(--accent);border:1px dashed rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" aria-hidden>
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="11" fill="#ffffff"/>
+      <text x="12" y="16" text-anchor="middle" font-family="Arial" font-weight="700" font-size="10" fill="#00509e">SDC</text>
+    </svg>
+  </div>
+  <div>
+    <div class="brand">SadiCoin Tech</div>
+    <div class="muted">Wallet Platform — live (test first)</div>
+  </div>
+  <div style="margin-left:auto" id="topRightActions"></div>
+</header>
+
+<main>
+  <!-- AUTH modal -->
+  <div id="authModal">
+    <div class="auth-card">
+      <h2 style="margin:0 0 8px 0">Welcome to SadiCoin</h2>
+      <p class="muted" style="margin:0 0 16px 0">Please register or login to continue. Accounts are stored in your browser for demo. For production, replace with server-side auth + KYC.</p>
+
+      <div id="authForms">
+        <div id="registerForm">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" type="email" placeholder="you@example.com" />
+          <label for="regPassword" style="margin-top:8px">Password</label>
+          <input id="regPassword" type="password" placeholder="Create a password" />
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="btnRegister">Register</button>
+            <button class="link-btn" id="showLogin">Have an account? Login</button>
+          </div>
+        </div>
+
+        <div id="loginForm" class="hidden">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" placeholder="you@example.com" />
+          <label for="loginPassword" style="margin-top:8px">Password</label>
+          <input id="loginPassword" type="password" placeholder="Password" />
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="btnLogin">Login</button>
+            <button class="link-btn" id="showRegister">Back to register</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="small" style="margin-top:12px">Note: for production use, replace this with server authentication, password hashing and email verification.</p>
+    </div>
+  </div>
+
+  <!-- App Body -->
+  <div id="app" class="hidden">
+    <div class="topbar">
+      <div class="min-exchange">
+        <span class="small-rate">FX USD/ZAR:</span>
+        <strong id="fxRate" style="color:var(--accent);margin-left:6px">--</strong>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="small-rate" id="userEmail" style="margin-right:12px"></div>
+        <button id="logoutBtn" class="link-btn" style="background:#061623;border:0;color:var(--accent)">Logout</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- left: wallet & actions -->
+      <div class="card">
+        <h3>Wallet</h3>
+        <div class="muted">Create a real on-chain wallet (stored encrypted in browser; optional upload to backend)</div>
+        <div style="margin-top:12px">
+          <label>Wallet address</label>
+          <div id="walletAddress" class="small" style="word-break:break-all">Not created</div>
+
+          <label style="margin-top:8px">SadiCoin Balance</label>
+          <div id="walletBalance" class="small">0 SDC</div>
+
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="createWalletBtn">Create Wallet</button>
+            <button id="exportKeystoreBtn" class="link-btn">Export Keystore</button>
+            <button id="uploadKeystoreBtn" class="link-btn">Register (backend)</button>
+          </div>
+        </div>
+
+        <hr style="margin:14px 0;border-color:rgba(255,255,255,0.02)">
+
+        <h4>Send SadiCoin</h4>
+        <label>Recipient address</label>
+        <input id="sendAddress" placeholder="0x..." />
+        <label style="margin-top:8px">Amount</label>
+        <input id="sendAmount" type="number" placeholder="0.0" />
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="sendBtn">Send</button>
+          <button id="genSendQR" class="link-btn">Generate Payment QR</button>
+        </div>
+        <div id="sendStatus" class="small" style="margin-top:8px;color:#c8f3e9"></div>
+
+        <hr style="margin:14px 0;border-color:rgba(255,255,255,0.02)">
+
+        <h4>Receive</h4>
+        <div class="qr-wrap" style="margin-top:8px">
+          <div id="receiveQr" class="qr"></div>
+          <div style="flex:1">
+            <div class="small">Show this QR to others or copy your address</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="copyAddrBtn" class="link-btn">Copy Address</button>
+              <button id="showAddrBtn" class="link-btn">Show Full</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- right: exchange, swap, history -->
+      <div class="card right">
+        <div>
+          <h3>Exchange & Markets</h3>
+          <div class="small" id="marketsSmall">Live crypto & forex below</div>
+          <div style="margin-top:12px">
+            <div id="ratesMin" class="small-rate"></div>
+          </div>
+        </div>
+
+        <hr style="margin:14px 0;border-color:rgba(255,255,255,0.02)">
+
+        <h4>Swap (SDC ↔ Token)</h4>
+        <label>Amount (SDC)</label>
+        <input id="swapAmount" placeholder="0.0" />
+        <label style="margin-top:8px">To token address</label>
+        <input id="swapToToken" placeholder="0x..." />
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="swapBtn">Swap (via backend)</button>
+          <button id="viewPoolBtn" class="link-btn">View Pool</button>
+        </div>
+        <div id="swapStatus" class="small" style="margin-top:8px"></div>
+
+        <hr style="margin:14px 0;border-color:rgba(255,255,255,0.02)">
+
+        <h4>Deposit / Withdraw (On/Off Ramp)</h4>
+        <div style="display:flex;gap:8px">
+          <button id="onRampBtn">On-Ramp (Buy)</button>
+          <button id="offRampBtn">Off-Ramp (Sell)</button>
+        </div>
+        <div id="rampStatus" class="small" style="margin-top:8px"></div>
+
+        <hr style="margin:14px 0;border-color:rgba(255,255,255,0.02)">
+
+        <h4>Transaction History</h4>
+        <table>
+          <thead><tr><th>When</th><th>Type</th><th>Amount</th><th>TxHash</th></tr></thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- chart embed small -->
+    <div style="margin-top:20px" class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4 style="margin:0">SDC / POL Chart</h4>
+        <div class="small">Live</div>
+      </div>
+      <div style="margin-top:12px">
+        <iframe src="https://dexscreener.com/polygon/0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96"
+          style="width:100%;height:420px;border:0;border-radius:8px"></iframe>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    © Copyrights SadiCoin Tech 2025
+  </footer>
+</main>
+
+<script>
+/* ========== CONFIG - Replace these values ========== */
+const POLYGON_RPC = "https://polygon-rpc.com/";
+const SDC_CONTRACT = "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96";
+const SDC_DECIMALS = 18;
+const BACKEND = {
+  registerWallet: "https://your-backend.com/api/register-wallet",
+  saveTx: "https://your-backend.com/api/save-tx",
+  createTx: "https://your-backend.com/api/send-sdc",
+  swap: "https://your-backend.com/api/swap",
+  onRamp: "https://your-backend.com/api/onramp",
+  offRamp: "https://your-backend.com/api/offramp"
+};
+/* ========== END CONFIG ========== */
+
+const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
+const sdcAbi = [
+  "function balanceOf(address) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function transfer(address to, uint amount) returns (bool)"
+];
+const sdcContract = new ethers.Contract(SDC_CONTRACT, sdcAbi, provider);
+
+/* ===== Authentication (demo) ===== */
+function saveUser(email, password) {
+  const users = JSON.parse(localStorage.getItem("sadicoin_users") || "{}");
+  if (users[email]) return {ok:false, error:"User exists"};
+  users[email] = { password };
+  localStorage.setItem("sadicoin_users", JSON.stringify(users));
+  localStorage.setItem("sadicoin_loggedin", email);
+  return {ok:true};
+}
+function loginUser(email,password) {
+  const users = JSON.parse(localStorage.getItem("sadicoin_users") || "{}");
+  if (!users[email]) return {ok:false, error:"No user"};
+  if (users[email].password !== password) return {ok:false, error:"Invalid password"};
+  localStorage.setItem("sadicoin_loggedin", email);
+  return {ok:true};
+}
+function logout() {
+  localStorage.removeItem("sadicoin_loggedin");
+  location.reload();
+}
+
+/* ===== UI Elements ===== */
+const authModal = document.getElementById("authModal");
+const appDiv = document.getElementById("app");
+const userEmailDiv = document.getElementById("userEmail");
+const walletAddressDiv = document.getElementById("walletAddress");
+const walletBalanceDiv = document.getElementById("walletBalance");
+const txBody = document.getElementById("txBody");
+const receiveQrWrap = document.getElementById("receiveQr");
+
+/* ===== Auth Form Handlers ===== */
+document.getElementById("btnRegister").onclick = () => {
+  const email = document.getElementById("regEmail").value.trim();
+  const pw = document.getElementById("regPassword").value;
+  if (!email || !pw) return alert("Enter email and password");
+  const res = saveUser(email,pw);
+  if (!res.ok) return alert(res.error);
+  startApp();
+};
+document.getElementById("showLogin").onclick = () => {
+  document.getElementById("registerForm").classList.add("hidden");
+  document.getElementById("loginForm").classList.remove("hidden");
+};
+document.getElementById("showRegister").onclick = () => {
+  document.getElementById("loginForm").classList.add("hidden");
+  document.getElementById("registerForm").classList.remove("hidden");
+};
+document.getElementById("btnLogin").onclick = () => {
+  const email = document.getElementById("loginEmail").value.trim();
+  const pw = document.getElementById("loginPassword").value;
+  const res = loginUser(email,pw);
+  if (!res.ok) return alert(res.error);
+  startApp();
+};
+document.getElementById("logoutBtn").onclick = logout;
+
+/* ===== Wallet Helpers ===== */
+function getLoggedInUser() {
+  return localStorage.getItem("sadicoin_loggedin");
+}
+function storeKeystore(email, keystoreJson) {
+  const key = `sadicoin_keystore_${email}`;
+  localStorage.setItem(key, JSON.stringify(keystoreJson));
+}
+function loadKeystore(email) {
+  const key = `sadicoin_keystore_${email}`;
+  return JSON.parse(localStorage.getItem(key) || "null");
+}
+function setCurrentWallet(address) {
+  walletAddressDiv.innerText = address;
+  localStorage.setItem("sadicoin_current_address", address);
+}
+function pushTx(tx) {
+  const key = `sadicoin_tx_${getLoggedInUser()}`;
+  const arr = JSON.parse(localStorage.getItem(key) || "[]");
+  arr.unshift(tx);
+  localStorage.setItem(key, JSON.stringify(arr));
+  renderTxs();Absolutely! Here's the rest of the JavaScript completed and the HTML finalized. This continues right after your pushTx function:
+
+function renderTxs(){
+  const key = `sadicoin_tx_${getLoggedInUser()}`;
+  const arr = JSON.parse(localStorage.getItem(key) || "[]");
+  txBody.innerHTML = arr.map(t => `<tr>
+    <td>${new Date(t.when).toLocaleString()}</td>
+    <td>${t.type}</td>
+    <td>${t.amount}</td>
+    <td style="word-break:break-all">${t.txHash||''}</td>
+  </tr>`).join("");
+}
+
+/* ===== create wallet (browser) ===== */
+async function createWalletFlow() {
+  const user = getLoggedInUser();
+  if (!user) return alert("Not logged in");
+  const pw = prompt("Enter password to encrypt your keystore:");
+  if (!pw) return alert("Password required");
+  const wallet = ethers.Wallet.createRandom();
+  const json = await wallet.encrypt(pw, { scrypt: { N: 1<<14 } });
+  const keystore = JSON.parse(json);
+  storeKeystore(user, keystore);
+  setCurrentWallet(wallet.address);
+  generateReceiveQr(wallet.address);
+  updateBalance();
+  if (BACKEND.registerWallet && BACKEND.registerWallet.includes("http")) {
+    fetch(BACKEND.registerWallet, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ email:user, keystore })
+    }).then(r=>r.json()).then(d=>console.log("backend register response:",d)).catch(e=>console.warn("backend register failed",e));
+  }
+  pushTx({when:Date.now(),type:"WALLET_CREATE",amount:"0",txHash:"",note:`Created wallet ${wallet.address}`});
+}
+
+/* ===== generate receive QR ===== */
+function generateReceiveQr(address) {
+  receiveQrWrap.innerHTML = "";
+  const qrEl = document.createElement("div");
+  qrEl.id = "qrgen";
+  receiveQrWrap.appendChild(qrEl);
+  new QRCode(qrEl, { text: `ethereum:${address}`, width: 150, height: 150 });
+}
+
+/* ===== copy & show address ===== */
+document.getElementById("copyAddrBtn").onclick = async () => {
+  const addr = walletAddressDiv.innerText.trim();
+  if (!addr || addr==="Not created") return alert("No wallet");
+  await navigator.clipboard.writeText(addr);
+  alert("Address copied");
+};
+document.getElementById("showAddrBtn").onclick = () => {
+  alert(walletAddressDiv.innerText);
+};
+
+/* ===== export keystore (download) ===== */
+document.getElementById("exportKeystoreBtn").onclick = () => {
+  const user = getLoggedInUser();
+  if (!user) return alert("Login first");
+  const keystore = loadKeystore(user);
+  if (!keystore) return alert("No keystore found.");
+  const blob = new Blob([JSON.stringify(keystore)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "sadicoin_keystore.json"; document.body.appendChild(a); a.click(); a.remove();
+};
+
+/* ===== send transaction ===== */
+async function sendSadicoin() {
+  const user = getLoggedInUser();
+  if (!user) return alert("Login required");
+  const to = document.getElementById("sendAddress").value.trim();
+  const amount = document.getElementById("sendAmount").value;
+  if (!to || !amount) return alert("Enter recipient and amount");
+  const keystore = loadKeystore(user);
+  if (!keystore) return alert("No keystore. Create wallet first.");
+  const pw = prompt("Enter your keystore password:");
+  if (!pw) return alert("Password required");
+  document.getElementById("sendStatus").innerText = "Signing & sending...";
+  try {
+    const wallet = await ethers.Wallet.fromEncryptedJson(JSON.stringify(keystore), pw);
+    const connected = wallet.connect(provider);
+    const amountWei = ethers.utils.parseUnits(amount, SDC_DECIMALS);
+    const contractWithSigner = sdcContract.connect(connected);
+    const gasPrice = await provider.getGasPrice();
+    const tx = await contractWithSigner.transfer(to, amountWei, { gasPrice });
+    await tx.wait(1);
+    document.getElementById("sendStatus").innerText = `Sent TX ${tx.hash}`;
+    pushTx({when:Date.now(), type:"SEND", amount, txHash:tx.hash});
+    updateBalance();
+  } catch (err) {
+    console.error(err);
+    document.getElementById("sendStatus").innerText = `Error: ${err.message||err}`;
+  }
+}
+document.getElementById("sendBtn").onclick = sendSadicoin;
+
+/* ===== generate send QR ===== */
+document.getElementById("genSendQR").onclick = () => {
+  const to = document.getElementById("sendAddress").value.trim();
+  const amount = document.getElementById("sendAmount").value || "";
+  if (!to) return alert("Enter recipient address");
+  const uri = `ethereum:${to}?amount=${amount}`;
+  const tmp = document.createElement("div");
+  tmp.style.width="150px"; tmp.style.height="150px"; tmp.style.marginTop="10px";
+  receiveQrWrap.appendChild(tmp);
+  new QRCode(tmp, { text: uri, width:150, height:150 });
+};
+
+/* ===== Swap placeholder ===== */
+document.getElementById("swapBtn").onclick = async () => {
+  const amt = document.getElementById("swapAmount").value;
+  const toToken = document.getElementById("swapToToken").value.trim();
+  if (!amt || !toToken) return alert("Enter amount and token address");
+  if (!BACKEND.swap) return alert("Swap backend not configured");
+  document.getElementById("swapStatus").innerText = "Swapping...";
+  try {
+    const res = await fetch(BACKEND.swap, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({amount:amt, toToken})});
+    const data = await res.json();
+    document.getElementById("swapStatus").innerText = JSON.stringify(data);
+  } catch(err) {
+    document.getElementById("swapStatus").innerText = "Error: "+err;
+  }
+};
+
+/* ===== On/Off ramp placeholder ===== */
+document.getElementById("onRampBtn").onclick = async () => {
+  document.getElementById("rampStatus").innerText = "Buying via on-ramp...";
+  try {
+    const res = await fetch(BACKEND.onRamp, {method:"POST"});
+    const data = await res.json();
+    document.getElementById("rampStatus").innerText = JSON.stringify(data);
+  } catch(err) {
+    document.getElementById("rampStatus").innerText = "Error: "+err;
+  }
+};
+document.getElementById("offRampBtn").onclick = async () => {
+  document.getElementById("rampStatus").innerText = "Selling via off-ramp...";
+  try {
+    const res = await fetch(BACKEND.offRamp, {method:"POST"});
+    const data = await res.json();
+    document.getElementById("rampStatus").innerText = JSON.stringify(data);
+  } catch(err) {
+    document.getElementById("rampStatus").innerText = "Error: "+err;
+  }
+};
+
+/* ===== balance update ===== */
+async function updateBalance() {
+  const addr = walletAddressDiv.innerText.trim();
+  if (!addr || addr==="Not created") return;
+  try {
+    const bal = await sdcContract.balanceOf(addr);
+    walletBalanceDiv.innerText = `${ethers.utils.formatUnits(bal, SDC_DECIMALS)} SDC`;
+  } catch(err) {
+    console.warn(err);
+    walletBalanceDiv.innerText = "Error fetching balance";
+  }
+}
+
+/* ===== start app ===== */
+function startApp() {
+  const user = getLoggedInUser();
+  if (!user) return;
+  authModal.classList.add("hidden");
+  appDiv.classList.remove("hidden");
+  userEmailDiv.innerText = user;
+  const keystore = loadKeystore(user);
+  if (keystore && keystore.address) setCurrentWallet(keystore.address);
+  else if (localStorage.getItem("sadicoin_current_address"))
+    setCurrentWallet(localStorage.getItem("sadicoin_current_address"));
+  updateBalance();
+  renderTxs();
+}
+
+/* ===== init ===== */
+window.onload = () => {
+  if (getLoggedInUser()) startApp();
+};
+document.getElementById("createWalletBtn").onclick = createWalletFlow;
+</script>
+
+</body>
+</html>
+
+
+
+
+
 
 <!DOCTYPE html>
 <html lang="en">

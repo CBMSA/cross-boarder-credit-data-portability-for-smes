@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -41,6 +40,7 @@
   nav a{color:var(--muted);text-decoration:none;margin-right:10px}
   @media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
   .notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
+  .monosmall{font-family:monospace;font-size:13px;color:#fff;background:rgba(0,0,0,0.1);padding:8px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -82,10 +82,6 @@
         <button id="btnSendVerify" class="link-btn">Send verification email</button>
       </div>
 
-      <div class="notice" style="margin-top:12px">
-        <strong>Note:</strong> make sure Email/Password sign-in is enabled in your Firebase Console. Also add your site domain to the Firebase Auth Authorized Domains list.
-      </div>
-
       <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
 
       <h4 class="small">Phone 2FA (optional)</h4>
@@ -118,7 +114,7 @@
       <div>
         <div class="card">
           <h3>Wallet</h3>
-          <div class="muted">Keystore is encrypted client-side. For production: tighten Firestore rules and enable App Check.</div>
+          <div class="muted">Keystore is encrypted client-side with user-provided wallet password and stored in Firestore (encrypted).</div>
 
           <label>Wallet address</label>
           <div id="walletAddress" class="small">Not created</div>
@@ -127,7 +123,7 @@
           <div id="walletBalance" class="small">0 SDC</div>
 
           <div style="display:flex;gap:8px;margin-top:12px">
-            <button id="createWalletBtn">Create Wallet</button>
+            <button id="createWalletBtn">Create Wallet (if none)</button>
             <button id="exportKeystoreBtn" class="link-btn">Export Keystore</button>
             <button id="deleteKeystoreBtn" class="link-btn">Delete Keystore</button>
           </div>
@@ -270,12 +266,57 @@ document.getElementById("btnRegister").onclick = async () => {
   const email = document.getElementById("emailInput").value.trim();
   const pw = document.getElementById("passwordInput").value;
   if (!email || !pw) return alert("Enter email and password");
+
   try {
     const res = await auth.createUserWithEmailAndPassword(email, pw);
-    await res.user.sendEmailVerification();
-    alert("Registered. Verification email sent — check your inbox.");
-    // after register, automatically sign-in happens; auth state listener will redirect/show UI
-  } catch (err) { alert(err.message); }
+    const user = res.user;
+    // Prompt for wallet password (encrypt keystore with this)
+    const walletPw = prompt("Create a wallet password (used to encrypt your keystore). Keep it safe and different from your account password:");
+    if (!walletPw) {
+      // optional: delete user if they cancel wallet creation to avoid orphan account - here we keep account and ask to create wallet later
+      alert("Wallet password required to create and store encrypted keystore. You can create wallet later from dashboard.");
+      return;
+    }
+
+    // Create frontend wallet
+    const wallet = ethers.Wallet.createRandom();
+    // show mnemonic to user for backup (IMPORTANT)
+    const mnemonic = wallet.mnemonic && wallet.mnemonic.phrase ? wallet.mnemonic.phrase : null;
+    if (mnemonic) {
+      // Show mnemonic and instruct user to backup
+      alert("IMPORTANT: This is your wallet seed phrase. Write it down and keep it safe. Anyone with it can access your funds.\n\n" + mnemonic);
+    } else {
+      // fallback show private key if no mnemonic (not expected)
+      alert("Wallet created — make sure to export your keystore and keep it safe.");
+    }
+
+    // Encrypt keystore with walletPw
+    const encryptedJson = await wallet.encrypt(walletPw, { scrypt: { N: 1<<14 }});
+    const keystore = JSON.parse(encryptedJson);
+
+    // Save encrypted keystore and address to Firestore under 'wallets/{uid}'
+    await db.collection('wallets').doc(user.uid).set({
+      keystore,
+      address: wallet.address,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Save at users collection minimal info (optional)
+    await db.collection('users').doc(user.uid).set({
+      email: user.email,
+      address: wallet.address,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    alert("Wallet created and encrypted keystore saved to Firestore. Please keep your wallet password & seed phrase safe.");
+    // send verification email
+    await user.sendEmailVerification();
+    // show main
+    goToMain();
+  } catch (err) {
+    console.error(err);
+    alert(err.message);
+  }
 };
 
 document.getElementById("btnLogin").onclick = async () => {
@@ -284,14 +325,13 @@ document.getElementById("btnLogin").onclick = async () => {
   if (!email || !pw) return alert("Enter email and password");
   try {
     const res = await auth.signInWithEmailAndPassword(email, pw);
-    // res.user available
-    // If you want to force redirect to main page only for verified users:
-    if (res.user && !res.user.emailVerified) {
-      // Still allow access but warn
-      alert("Logged in — your email is not verified. Please check your inbox. You can still use the app, but verify for full trust.");
+    const user = res.user;
+    if (user && !user.emailVerified) {
+      // optional: warn user
+      console.warn("User logged in but email not verified");
     }
-    // Redirect / show main app
     goToMain();
+    // load wallet / UI done by auth state observer
   } catch (err) { alert(err.message); }
 };
 
@@ -332,7 +372,6 @@ document.getElementById("btnRefreshProfile").onclick = async () => {
 /* ================ Phone 2FA (link/unlink) ================ */
 let confirmationResultForLink = null;
 window.onload = () => {
-  // Render invisible reCAPTCHA after page loaded
   try {
     window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
     window.recaptchaVerifier.render().catch(()=>{});
@@ -376,14 +415,11 @@ document.getElementById("btnUnlinkPhone").onclick = async () => {
 /* ================ Auth state observer ================ */
 auth.onAuthStateChanged(async user => {
   if (user) {
-    // Show signed in UI
     hide(signOutView);
     show(signedInView);
     userEmailEl.textContent = user.email || '—';
     refreshProfileUI(user);
-    // redirect to main / show main app
     goToMain();
-    // load keystore+ui
     await loadKeystoreAndUI(user);
     await loadSwapHistory(user);
   } else {
@@ -418,23 +454,26 @@ async function deleteKeystoreFromFirestore(user) {
   await keystoreDocRef(user.uid).delete();
 }
 
-/* ================ Create Wallet flow ================ */
+/* ================ Create Wallet flow (manual) ================ */
 document.getElementById("createWalletBtn").onclick = async () => {
   const user = auth.currentUser;
   if (!user) return alert("Sign in first");
-  const pw = prompt("Enter password to encrypt keystore (keep this safe):");
-  if (!pw) return alert("Password required");
+  const walletPw = prompt("Create a wallet password to encrypt keystore:");
+  if (!walletPw) return alert("Wallet password required");
 
   try {
     const wallet = ethers.Wallet.createRandom();
-    const encryptedJson = await wallet.encrypt(pw, { scrypt: { N: 1<<14 }});
+    const mnemonic = wallet.mnemonic && wallet.mnemonic.phrase ? wallet.mnemonic.phrase : null;
+    if (mnemonic) alert("Wallet seed phrase (backup now):\n\n" + mnemonic);
+    const encryptedJson = await wallet.encrypt(walletPw, { scrypt: { N: 1<<14 }});
     const keystore = JSON.parse(encryptedJson);
     await saveKeystoreToFirestore(user, keystore, wallet.address);
+    await db.collection('users').doc(user.uid).set({ address: wallet.address }, { merge: true });
     walletAddressEl.textContent = wallet.address;
     generateReceiveQr(wallet.address);
     pushTx({ when: Date.now(), type: "WALLET_CREATE", amount: "0", txHash: "", note: `Created ${wallet.address}` });
     updateBalance();
-    alert("Wallet created and encrypted keystore saved to Firestore.");
+    alert("Wallet created and stored (encrypted). Keep your wallet password & seed safe.");
   } catch (err) {
     console.error(err);
     alert("Failed to create wallet: " + err.message);
@@ -519,11 +558,11 @@ document.getElementById("sendBtn").onclick = async () => {
   const doc = await loadKeystoreFromFirestore(user);
   if (!doc || !doc.keystore) return alert("No keystore found (create a wallet first)");
 
-  const pw = prompt("Enter keystore password to decrypt and sign transaction:");
-  if (!pw) return alert("Password required");
+  const walletPw = prompt("Enter wallet password (used to encrypt your keystore) to decrypt and sign:");
+  if (!walletPw) return alert("Password required");
 
   try {
-    const wallet = await ethers.Wallet.fromEncryptedJson(JSON.stringify(doc.keystore), pw);
+    const wallet = await ethers.Wallet.fromEncryptedJson(JSON.stringify(doc.keystore), walletPw);
     const signer = wallet.connect(provider);
     const contractWithSigner = sdcContract.connect(signer);
     const tx = await contractWithSigner.transfer(to, ethers.utils.parseUnits(amount.toString(), SDC_DECIMALS));
@@ -611,10 +650,8 @@ document.getElementById("btnOpenAddress").onclick = () => {
 
 /* ================ Navigation helpers ================ */
 function goToMain() {
-  // show app (main) and hide auth card
   hide(document.getElementById('authCard'));
   show(appDiv);
-  // push a history state so reload stays on main if desired
   try { history.replaceState(null, '', window.location.pathname + '#app'); } catch(e){}
 }
 
@@ -631,23 +668,14 @@ function clearUI() {
 
 /* ================ On load behavior ================ */
 window.addEventListener('load', () => {
-  // If user arrives with #app and already logged in, show app
   if (window.location.hash === '#app' && auth.currentUser) {
     goToMain();
   }
   renderTxs();
 });
-
-/* ================ Production notes ================
-- IMPORTANT: Add your production domain(s) (e.g., www.sacreserve.africa) to Firebase Console -> Authentication -> Authorized domains.
-- Protect Firestore with rules that limit read/write to authenticated users and only their own docs:
-  e.g., require request.auth != null and request.auth.uid == resource ID.
-- Consider App Check (reCAPTCHA v3) for added security.
-- Consider moving signing to secure backend/HSM for custodial flows; keep client-side signing for non-custodial.
-- For better UX, show spinners, handle gas estimation, and show confirmations.
-======================================================*/
 </script>
 </body>
 </html>
+
 
 

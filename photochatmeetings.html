@@ -1,461 +1,586 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PhotoChat Meeting Platform</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PhotoChat — Social + Payments + Crypto Trading</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <!-- Ethers.js for wallet connect -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
+  <!-- Socket.IO client (for chat realtime) -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
   <style>
-    body {
-      padding: 2rem;
-      background-color: #f4f4f4;
-    }
-    .logo {
-      max-height: 80px;
-      margin-bottom: 1rem;
-    }
-    .video-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    video {
-      width: 300px;
-      height: 200px;
-      border: 2px solid #333;
-    }
-    .controls, .presentation, .voice-message, .chat-box {
-      margin-top: 20px;
-    }
-    #meetingLink {
-      margin-top: 10px;
-      font-weight: bold;
-      word-break: break-word;
-    }
-    .chat-box {
-      border: 1px solid #ccc;
-      padding: 10px;
-      background-color: white;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    .chat-input {
-      display: flex;
-      margin-top: 10px;
-    }
-    .chat-input input {
-      flex: 1;
-      margin-right: 10px;
-    }
-    footer {
-      margin-top: 40px;
-      text-align: center;
-      font-size: 0.9rem;
-      color: #666;
-    }
-    #chatbot-response {
-      font-style: italic;
-      color: #007BFF;
-    }
+    body { background:#f7f8fb; padding:1.5rem; }
+    .logo { max-height:64px; }
+    .left-col { max-width:360px; }
+    .chat-window { height:520px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+    .message { margin-bottom:10px; }
+    .message.me { text-align:right; }
+    .message .bubble { display:inline-block; padding:8px 12px; border-radius:12px; max-width:78%; }
+    .message.me .bubble { background:#0d6efd; color:#fff; }
+    .message.them .bubble { background:#e9ecef; color:#000; }
+    .contacts { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:8px; max-height:520px; overflow:auto; }
+    .panel { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+    .small-muted { font-size:0.85rem; color:#6c757d; }
+    .video-preview { width:100%; max-height:210px; border-radius:8px; background:#000; }
+    .ad-card { border:1px dashed #ced4da; border-radius:8px; padding:12px; background:#fff; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="Photo Chat Logo" class="logo">
-    <h2>📷 PhotoChat Video Conference</h2>
-    <a href="index.html" class="btn">Home</a> |
-    <a href="photo-chatbusiness.html" class="btn">Chat Business</a> |
-    <a href="sadccbdc.html" class="btn">Treasures Portal</a> |
-    <a href="tradecbdc.html" class="btn">Tokenized Trading</a> |
-    <a href="transactions.html" class="btn">SADC Gov SMEs Grants</a> |
-    <a href="citizenswallet.html" class="btn">Citizens Wallet</a> |
-    <a href="trade.html" class="btn">SADI Trading</a>
-
-   <p> FOR DIGITAL CURRENCY AND TOKENIZED TRADING FOLLOW THE LINKS PROVIDED 👆</p>
-
-    <!-- Meeting Join/Create -->
-    <div class="controls">
-      <input type="text" id="meetingId" class="form-control" placeholder="Enter or create Meeting ID">
-      <button onclick="startMeeting()" class="btn btn-primary mt-2">Start/Join Meeting</button>
-      <div id="meetingLink"></div>
+  <div class="container-fluid">
+    <div class="d-flex align-items-center mb-3">
+      <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="PhotoChat Logo" class="logo me-3">
+      <h3 class="mb-0">PhotoChat — Social • Payments • Crypto</h3>
+      <div class="ms-auto small-muted">Signed in as <strong id="userEmail">guest</strong></div>
     </div>
 
-    <!-- Video Conference -->
-    <div class="video-container mt-4" id="videoContainer">
-      <video id="localVideo" autoplay muted></video>
-      <video id="remoteVideo" autoplay></video>
+    <div class="row g-3">
+      <!-- LEFT: contacts & wallet -->
+      <div class="col-md-3 left-col">
+        <div class="panel mb-3">
+          <h6>Wallet</h6>
+          <div id="walletArea" class="mb-2">
+            <div><strong id="walletAddress">Not connected</strong></div>
+            <div class="small-muted" id="walletBalance">—</div>
+            <button id="connectWalletBtn" class="btn btn-outline-primary btn-sm mt-2 w-100"><i class="bi bi-wallet2"></i> Connect Wallet</button>
+          </div>
+          <hr />
+          <h6>Quick Actions</h6>
+          <button class="btn btn-sm btn-primary w-100 mb-2" id="openPaymentsBtn"><i class="bi bi-credit-card"></i> Payments</button>
+          <button class="btn btn-sm btn-outline-secondary w-100 mb-2" id="openSwapBtn"><i class="bi bi-arrow-left-right"></i> Crypto Swap</button>
+          <button class="btn btn-sm btn-outline-success w-100" id="createAdBtn"><i class="bi bi-megaphone"></i> Create Ad / Promo</button>
+        </div>
+
+        <div class="panel mb-3">
+          <h6>Business Pages</h6>
+          <div id="businessList" class="small-muted">
+            <!-- populated by JS -->
+          </div>
+          <hr />
+          <button class="btn btn-sm btn-outline-dark w-100" id="createBusinessBtn">+ Create Business Page</button>
+        </div>
+
+        <div class="panel">
+          <h6>Contacts</h6>
+          <div class="contacts" id="contactsList">
+            <!-- contacts rendered here -->
+            <div class="text-center small-muted py-4">No contacts yet — start a chat or import</div>
+          </div>
+          <div class="mt-2 d-flex">
+            <input id="addContactInput" class="form-control form-control-sm me-2" placeholder="Search / add contact (email)">
+            <button id="addContactBtn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: Chat & media -->
+      <div class="col-md-6">
+        <div class="panel">
+          <div class="d-flex align-items-center mb-2">
+            <h6 class="mb-0" id="chatTitle">Welcome</h6>
+            <div class="ms-auto small-muted" id="chatMeta">Offline</div>
+          </div>
+
+          <!-- video preview & meeting -->
+          <div class="mb-3">
+            <video id="localVideo" class="video-preview mb-2" autoplay muted playsinline></video>
+            <div class="d-flex gap-2">
+              <input id="meetingIdInput" class="form-control form-control-sm" placeholder="Meeting ID (or create)">
+              <button id="startMeetingBtn" class="btn btn-sm btn-outline-primary">Start / Join</button>
+              <button id="recordBtn" class="btn btn-sm btn-outline-danger">Record</button>
+            </div>
+            <div id="meetingLink" class="small-muted mt-2"></div>
+          </div>
+
+          <!-- chat window -->
+          <div class="chat-window" id="chatWindow">
+            <div class="text-center small-muted py-4">Choose a contact to start chat</div>
+          </div>
+
+          <!-- input -->
+          <div class="mt-2 d-flex gap-2">
+            <input id="messageInput" class="form-control" placeholder="Write a message... (Enter to send)">
+            <input type="file" id="fileInput" class="form-control form-control-sm" style="max-width:120px;">
+            <button id="sendBtn" class="btn btn-primary">Send</button>
+          </div>
+        </div>
+
+        <!-- presentation uploader -->
+        <div class="panel mt-3">
+          <h6>Upload Presentation / Document</h6>
+          <input type="file" id="presentationInput" accept=".pdf,.ppt,.pptx" class="form-control mb-2">
+          <iframe id="presentationViewer" style="width:100%; height:300px; border:1px solid #e9ecef; display:none;"></iframe>
+        </div>
+      </div>
+
+      <!-- RIGHT: trading, ads, admin -->
+      <div class="col-md-3">
+        <div class="panel mb-3">
+          <h6>Crypto Trading (Demo)</h6>
+          <div id="swapPanel">
+            <div class="mb-2">
+              <label class="form-label small-muted">From</label>
+              <select id="fromToken" class="form-select form-select-sm">
+                <option value="ETH">ETH</option>
+                <option value="USDC">USDC</option>
+                <option value="SDC">SDC</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small-muted">To</label>
+              <select id="toToken" class="form-select form-select-sm">
+                <option value="USDC">USDC</option>
+                <option value="ETH">ETH</option>
+                <option value="SDC">SDC</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <input id="swapAmount" class="form-control form-control-sm" placeholder="Amount">
+            </div>
+            <button id="quoteBtn" class="btn btn-sm btn-outline-secondary w-100">Get Quote</button>
+            <button id="swapBtn" class="btn btn-sm btn-success w-100 mt-2">Execute Swap</button>
+            <div id="swapResult" class="small-muted mt-2"></div>
+            <div class="small-muted mt-2">Note: This requires backend/wallet approval and access to a DEX aggregator API. See the TODOs below.</div>
+          </div>
+        </div>
+
+        <div class="panel mb-3">
+          <h6>Ads / Promotions</h6>
+          <div id="adsArea">
+            <div class="ad-card mb-2">
+              <strong>Promoted: Local Sports Shop</strong>
+              <div class="small-muted">Reach: 1.2k • Ends: 2026-01-31</div>
+              <div class="mt-2"><button class="btn btn-sm btn-primary w-100 viewAdBtn">View</button></div>
+            </div>
+            <!-- new ads populated here -->
+          </div>
+          <div class="mt-2">
+            <button id="buyAdBtn" class="btn btn-sm btn-outline-primary w-100">Buy Ad Space</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h6>Platform Tools</h6>
+          <div class="small-muted">Exchange rates & market tickers</div>
+          <div id="rates" class="mt-2 small-muted">Loading rates...</div>
+          <hr />
+          <div class="small-muted">System</div>
+          <div id="systemInfo" class="small-muted mt-2">v1.0 front-end</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Presentation Upload -->
-    <div class="presentation">
-      <h4>Upload Presentation</h4>
-      <input type="file" accept="application/pdf,.ppt,.pptx" onchange="uploadPresentation(event)">
-      <iframe id="presentationViewer" style="width: 100%; height: 400px; border: 1px solid gray;"></iframe>
-    </div>
+    <footer class="mt-4 text-center small-muted">
+      © PhotoChat — build responsibly. Backend required for payments, swaps and secure storage.
+    </footer>
+  </div>
 
-    <!-- Voice Message -->
-    <div class="voice-message">
-      <h4>Send Voice Message (Internet-Free Mode)</h4>
-      <button onclick="startRecording()" class="btn btn-secondary">Start</button>
-      <button onclick="stopRecording()" class="btn btn-danger">Stop</button>
-      <audio id="audioPlayback" controls></audio>
+  <!-- Modal placeholders for Payments / Ad creation / Business -->
+  <div class="modal" tabindex="-1" id="paymentsModal">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Payments</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <label class="form-label">Recipient (email or wallet)</label>
+          <input id="payRecipient" class="form-control mb-2" placeholder="user@example.com or 0x...">
+          <label class="form-label">Amount</label>
+          <input id="payAmount" class="form-control mb-2" placeholder="0.00">
+          <select id="payCurrency" class="form-select mb-2">
+            <option value="card">Card (fiat)</option>
+            <option value="crypto">Crypto (wallet)</option>
+          </select>
+          <div id="cardNote" class="small-muted">Card payments: client will call backend to create a checkout session (Stripe recommended).</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button id="startPaymentBtn" class="btn btn-primary">Pay</button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Ad creation modal -->
+  <div class="modal" tabindex="-1" id="adModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Create Ad</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <input id="adTitle" class="form-control mb-2" placeholder="Ad Title">
+          <textarea id="adText" class="form-control mb-2" placeholder="Ad text / call to action"></textarea>
+          <input type="file" id="adImage" class="form-control mb-2">
+          <label class="small-muted">Budget (USD)</label>
+          <input id="adBudget" class="form-control mb-2" placeholder="100">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button id="submitAdBtn" class="btn btn-success">Submit Ad</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Business page modal -->
+  <div class="modal" tabindex="-1" id="businessModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Create Business Page</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <input id="bizName" class="form-control mb-2" placeholder="Business Name">
+          <input id="bizContact" class="form-control mb-2" placeholder="Contact (email/phone)">
+          <textarea id="bizDesc" class="form-control mb-2" placeholder="Description"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button id="createBizBtn" class="btn btn-primary">Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS (for modals) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    let localStream;
-    let mediaRecorder;
-    let audioChunks = [];
-    let recordingChunks = [];
-    let fullRecorder;
+  /************************************************************************
+   * PhotoChat — front-end logic
+   * Notes:
+   *  - This file provides UI and client-side wiring.
+   *  - **You MUST implement secure backend endpoints** for:
+   *      /api/auth (login/session), /ws (socket.io server),
+   *      /create-checkout-session (Stripe), /swap/quote, /swap/execute,
+   *      /presentations/upload, /ads (create/list), /business (create/list)
+   *  - Wallet actions that transfer tokens must be signed by the user's wallet.
+   ************************************************************************/
 
-    async function startMeeting() {
-      const meetingId = document.getElementById('meetingId').value || generateMeetingId();
-      document.getElementById('meetingId').value = meetingId;
+  // ====== Config placeholders ======
+  const SERVER_BASE = ""; // e.g. https://api.yoursite.com
+  const SOCKET_IO_URL = SERVER_BASE; // must point to your socket.io server
+  // ================================
 
-      const link = `${window.location.origin}/meet/${meetingId}`;
-      document.getElementById('meetingLink').innerHTML = `Meeting Link: <a href="${link}" target="_blank">${link}</a>`;
+  // UI elements
+  const contactsList = document.getElementById('contactsList');
+  const chatWindow = document.getElementById('chatWindow');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const addContactBtn = document.getElementById('addContactBtn');
+  const addContactInput = document.getElementById('addContactInput');
+  const walletAddressEl = document.getElementById('walletAddress');
+  const walletBalanceEl = document.getElementById('walletBalance');
+  const connectWalletBtn = document.getElementById('connectWalletBtn');
+  const openPaymentsBtn = document.getElementById('openPaymentsBtn');
+  const openSwapBtn = document.getElementById('openSwapBtn');
+  const createAdBtn = document.getElementById('createAdBtn');
+  const createBusinessBtn = document.getElementById('createBusinessBtn');
+  const presentationInput = document.getElementById('presentationInput');
+  const presentationViewer = document.getElementById('presentationViewer');
+  const startMeetingBtn = document.getElementById('startMeetingBtn');
+  const localVideo = document.getElementById('localVideo');
+  const meetingIdInput = document.getElementById('meetingIdInput');
+  const meetingLink = document.getElementById('meetingLink');
+  const recordBtn = document.getElementById('recordBtn');
+  const connectModalPayments = new bootstrap.Modal(document.getElementById('paymentsModal'));
+  const adModal = new bootstrap.Modal(document.getElementById('adModal'));
+  const businessModal = new bootstrap.Modal(document.getElementById('businessModal'));
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      document.getElementById('localVideo').srcObject = stream;
-      localStream = stream;
+  // Basic app state
+  let socket = null;
+  let activeContact = null;
+  let myUser = { id: null, email: 'guest' };
+  let mediaStream = null;
+  let recorder = null;
+  let recordedBlobs = [];
 
-      fullRecorder = new MediaRecorder(stream);
-      fullRecorder.ondataavailable = e => recordingChunks.push(e.data);
-      fullRecorder.onstop = () => {
-        const blob = new Blob(recordingChunks, { type: 'video/webm' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'meeting-recording.webm';
-        a.click();
-      };
-      fullRecorder.start();
-
-      // WebRTC signaling would go here
-    }
-
-    function generateMeetingId() {
-      return 'meet-' + Math.random().toString(36).substring(2, 10);
-    }
-
-    function uploadPresentation(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          document.getElementById('presentationViewer').src = e.target.result;
-        }
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function startRecording() {
-      if (!localStream) return alert('Start the meeting first.');
-      mediaRecorder = new MediaRecorder(localStream);
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: 'audio/mp3' });
-        const url = URL.createObjectURL(blob);
-        document.getElementById('audioPlayback').src = url;
-      };
-      audioChunks = [];
-      mediaRecorder.start();
-    }
-
-    function stopRecording() {
-      if (mediaRecorder) mediaRecorder.stop();
-      if (fullRecorder) fullRecorder.stop();
-    }
-
-        // 🔁 Live Exchange Rates from EODHD
-    const eodhdToken = "67b2d451e5b8a8.90504186";  // <- Replace this with your real API key
-    const currencySymbols = ["ZAR", "USD", "BWP", "MZN", "XDR", "XAU"];
-
-    async function fetchExchangeRates() {
-      const ratesDiv = document.getElementById("rates");
-      let output = "<ul class='list-group'>";
-      for (let symbol of currencySymbols) {
-        try {
-          const res = await fetch(`https://eodhd.com/api/live/${symbol}.FOREX?api_token=${eodhdToken}&fmt=json`);
-          const data = await res.json();
-          const rate = data.close || data.price;
-          output += `<li class="list-group-item"><strong>${symbol}</strong>: ${rate}</li>`;
-        } catch (error) {
-          output += `<li class="list-group-item text-danger">${symbol}: Error</li>`;
-        }
-      }
-      output += "</ul>";
-      ratesDiv.innerHTML = output;
-    }
-
-    window.onload = fetchExchangeRates;
-
-<!-- SadiCoin Official Info Section -->
-<section id="sadicoin-official" style="background:#0b0f19; color:#fff; padding:40px 20px; text-align:center; border-top:2px solid #2dd4bf;">
-  <h2 style="font-size:28px; margin-bottom:10px;">🪙 SadiCoin (SDC) Official Channels</h2>
-  <p style="font-size:16px; color:#ccc; margin-bottom:30px;">
-    Verified project information and official contact links
-  </p>
-
-  <!-- Social Media Links -->
-  <div style="margin-bottom:25px;">
-    <a href="https://x.com/FaraiMuneri?s=09" target="_blank" style="margin:0 10px; color:#2dd4bf; text-decoration:none;">🐦 X (Twitter)</a>
-    <a href="https://t.me/SadiCoinCommunity" target="_blank" style="margin:0 10px; color:#2dd4bf; text-decoration:none;">💬 Telegram</a>
-    <a href="https://instagram.com/sadicoin" target="_blank" style="margin:0 10px; color:#2dd4bf; text-decoration:none;">📸 Instagram</a>
-  </div>
-
-  <!-- Website -->
-  <div style="margin-bottom:20px;">
-    🌐 <a href="https://www.sacreserve.africa" target="_blank" style="color:#fff; text-decoration:underline;">www.sacreserve.africa</a>
-  </div>
-
-  <!-- Smart Contract -->
-  <div style="margin-bottom:20px;">
-    🔗 Contract Address: 
-    <a href="https://polygonscan.com/token/0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96" target="_blank" style="color:#2dd4bf; text-decoration:none;">
-      0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96
-    </a>
-  </div>
-
-  <!-- Contact Email -->
-  <div style="margin-bottom:20px;">
-    📧 Contact Email: 
-    <a href="mailto:muchbepvtltd@gmail.com" style="color:#fff; text-decoration:underline;">muchbepvtltd@gmail.com</a>
-  </div>
-
-  <!-- Location -->
-  <div style="color:#ccc;">
-    📍 Based in Polokwane, Limpopo, South Africa  
-  </div>
-
-  <hr style="margin:30px auto; width:60%; border-color:#2dd4bf;">
-
-  <p style="font-size:14px; color:#777;">Verification Ticket: <strong>#1292620</strong> | CoinMarketCap Listing Request</p>
-</section>
-
-
-
-  </script>
-</body>
-</html>
-
-
-
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="description" content="Sadicoin Vault – Browser wallet for SUSD tokens">
-  <meta name="theme-color" content="#2a4d8f">
-  <title>Sadicoin Vault (Browser Wallet + SUSD)</title>
-
-  <style>
-    body { font-family: Inter, Arial, sans-serif; background:#f6f9fc; padding:20px; }
-    .card{ background:#fff; padding:18px; border-radius:10px; max-width:900px; margin:12px auto; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
-    input, button, select { padding:10px; width:100%; margin:6px 0; border-radius:8px; border:1px solid #e2e8f0;}
-    button{ background:#2a4d8f; color:white; border:none; cursor:pointer;}
-    pre{ background:#eef6ff; padding:10px; border-radius:8px; white-space:pre-wrap; }
-    .row{ display:flex; gap:12px; }
-    .col{ flex:1; }
-    label{ font-size:13px; color:#444; }
-    small.note{ color:#666; display:block; margin-top:6px; }
-  </style>
-</head>
-<body>
-
-  <h1 style="text-align:center">Sadicoin Vault — Browser Wallet</h1>
-
-  <div class="card">
-    <h3>1) Wallet (no MetaMask required)</h3>
-    <label>Create a new encrypted wallet (download keystore):</label>
-    <input id="new_pwd" type="password" autocomplete="off" placeholder="Enter a password to encrypt keystore">
-    <button onclick="createEncryptedWallet()">Create and Download Keystore</button>
-    <small class="note">A random wallet is generated and encrypted. Keep the keystore file safe.</small>
-
-    <hr/>
-
-    <label>Or load an encrypted keystore file:</label>
-    <input type="file" id="keystore_file">
-    <input id="load_pwd" type="password" autocomplete="off" placeholder="Password to decrypt">
-    <button onclick="loadKeystore()">Load Keystore</button>
-  </div>
-
-  <div class="card">
-    <h3>2) Network & Contract</h3>
-    <label>RPC URL</label>
-    <select id="rpc_url_select">
-      <option value="">-- Select an RPC URL --</option>
-      <option value="https://eth-mainnet.g.alchemy.com/v2/YOUR_PROJECT_ID">Alchemy Ethereum Mainnet</option>
-      <option value="custom">Custom RPC...</option>
-    </select>
-    <input id="rpc_url" placeholder="https://mainnet.infura.io/v3/YOUR_PROJECT_ID">
-    <label>Contract address (SadicoinUSD):</label>
-    <input id="contract_addr" placeholder="0x...">
-    <button onclick="connectContract()">Connect to Contract</button>
-  </div>
-
-  <div class="card">
-    <h3>3) Balances</h3>
-    <label>Connected wallet address:</label><pre id="addr">none</pre>
-    <label>ETH balance:</label><pre id="ethbal">—</pre>
-    <label>SUSD balance:</label><pre id="tokenbal">—</pre>
-  </div>
-
-  <div class="card">
-    <h3>4) Send SUSD tokens</h3>
-    <label>Recipient</label><input id="to_addr" placeholder="0x...">
-    <label>Amount (SUSD)</label><input id="to_amt" type="number" step="any" placeholder="e.g. 100.00">
-    <button onclick="sendToken()">Send SUSD</button>
-    <pre id="send_res"></pre>
-  </div>
-
-  <div class="card">
-    <h3>5) MoonPay Buy (on-ramp)</h3>
-    <label>MoonPay publishable key (public):</label>
-    <input id="moonpay_pk" placeholder="YOUR_MOONPAY_PUBLIC_KEY">
-    <label>USD amount to buy</label><input id="mp_usd" type="number" value="50">
-    <button onclick="moonpayBuy()">Open MoonPay Buy</button>
-    <small class="note">Only the public key is used client-side. Keep your secret key on the server.</small>
-  </div>
-
-  <div class="card">
-    <h3>6) Local Transaction Log & PDF receipts</h3>
-    <button onclick="showLocalTxs()">Show local txs</button>
-    <pre id="local_txs"></pre>
-  </div>
-
-  <!-- External libraries (pinned versions with integrity) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"
-          integrity="sha384-REPLACE_WITH_HASH" crossorigin="anonymous"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-          integrity="sha384-REPLACE_WITH_HASH" crossorigin="anonymous"></script>
-
-  <script defer>
-  // ---- App Logic ----
-  let wallet=null, provider=null, tokenContract=null;
-  const ERC20_ABI=[
-    "function name() view returns (string)",
-    "function symbol() view returns (string)",
-    "function decimals() view returns (uint8)",
-    "function balanceOf(address) view returns (uint256)",
-    "function transfer(address to, uint256 amount) returns (bool)"
+  // ====== Simple in-memory demo contact list (replace with server data) ======
+  const demoContacts = [
+    { id: 'u1', name: 'Alice', email: 'alice@example.com' },
+    { id: 'u2', name: 'Bob', email: 'bob@example.com' }
   ];
+  function renderContacts() {
+    contactsList.innerHTML = '';
+    demoContacts.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'd-flex align-items-center p-2 border-bottom';
+      div.innerHTML = `
+        <div class="flex-grow-1">
+          <div><strong>${c.name}</strong></div>
+          <div class="small-muted">${c.email}</div>
+        </div>
+        <div>
+          <button class="btn btn-sm btn-outline-primary startChatBtn" data-id="${c.id}">Chat</button>
+        </div>
+      `;
+      contactsList.appendChild(div);
+    });
+    Array.from(document.getElementsByClassName('startChatBtn')).forEach(b => {
+      b.onclick = (e) => {
+        const id = e.target.dataset.id;
+        openChatWith(id);
+      };
+    });
+  }
+  renderContacts();
 
-  function download(filename, text){
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([text], {type:'application/json'}));
-    a.download=filename; a.click();
+  // ====== Chat UI helpers ======
+  function appendMessage({ fromMe=false, text='', ts=new Date(), meta='' }) {
+    const div = document.createElement('div');
+    div.className = 'message ' + (fromMe ? 'me' : 'them');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = `<div>${escapeHtml(text)}</div><div class="small-muted" style="font-size:0.75rem;margin-top:4px;">${new Date(ts).toLocaleString()}</div>`;
+    div.appendChild(bubble);
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+  function escapeHtml(s){ return (''+s).replace(/[&<>"'/]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[c])); }
+
+  // ====== Chat open ======
+  function openChatWith(contactId) {
+    activeContact = demoContacts.find(c=>c.id===contactId);
+    document.getElementById('chatTitle').innerText = activeContact.name;
+    document.getElementById('chatMeta').innerText = activeContact.email;
+    chatWindow.innerHTML = '';
+    appendMessage({ text: `Chat started with ${activeContact.name}`, fromMe:false, ts: Date.now() });
+    // In a real app: fetch last messages from /api/messages?userId=...
   }
 
-  async function createEncryptedWallet(){
-    const pass=document.getElementById('new_pwd').value.trim();
-    if(!pass) return alert('Enter password');
-    wallet=ethers.Wallet.createRandom();
-    const json=await wallet.encrypt(pass);
-    download(`${wallet.address.replace('0x','')}_keystore.json`, json);
-    document.getElementById('addr').textContent=wallet.address;
-    localStorage.setItem('sadi_keystore', json);
-  }
-
-  async function loadKeystore(){
-    const fileInput=document.getElementById('keystore_file');
-    if(!fileInput.files.length) return alert('Choose a file');
-    const txt=await fileInput.files[0].text();
-    const pwd=document.getElementById('load_pwd').value;
-    if(!pwd) return alert('Enter password');
-    try{
-      wallet=await ethers.Wallet.fromEncryptedJson(txt,pwd);
-      document.getElementById('addr').textContent=wallet.address;
-      localStorage.setItem('sadi_keystore', txt);
-    }catch(e){ alert('Failed to load: '+e.message); }
-  }
-
-  document.getElementById('rpc_url_select').addEventListener('change',function(){
-    const val=this.value, rpc=document.getElementById('rpc_url');
-    if(val==='custom'||!val){ rpc.value=''; rpc.disabled=false; rpc.focus();}
-    else{ rpc.value=val; rpc.disabled=true; }
-  });
-
-  async function connectContract(){
-    const rpc=document.getElementById('rpc_url').value.trim();
-    const caddr=document.getElementById('contract_addr').value.trim();
-    if(!rpc||!caddr) return alert('Enter RPC & contract');
-    provider=new ethers.JsonRpcProvider(rpc);
-    if(wallet) wallet=wallet.connect(provider);
-    tokenContract=new ethers.Contract(caddr, ERC20_ABI, wallet||provider);
-    refreshBalances();
-    localStorage.setItem('sadi_rpc', rpc);
-    localStorage.setItem('sadi_contract', caddr);
-  }
-
-  async function refreshBalances(){
-    if(!wallet||!provider) return;
-    try{
-      const ethBal=await provider.getBalance(wallet.address);
-      document.getElementById('ethbal').textContent=ethers.formatEther(ethBal)+' ETH';
-    }catch{document.getElementById('ethbal').textContent='err';}
-    if(tokenContract){
-      try{
-        const raw=await tokenContract.balanceOf(wallet.address);
-        const dec=await tokenContract.decimals();
-        document.getElementById('tokenbal').textContent=ethers.formatUnits(raw,dec)+' SUSD';
-      }catch{document.getElementById('tokenbal').textContent='err';}
+  // ====== Send message (local + emit to socket) ======
+  sendBtn.onclick = sendMessage;
+  messageInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });
+  function sendMessage(){
+    const text = messageInput.value.trim();
+    if(!text) return;
+    if(!activeContact) { alert('Select a contact first'); return; }
+    appendMessage({ text, fromMe:true, ts:Date.now() });
+    messageInput.value = '';
+    // emit to server via socket
+    if(socket && socket.connected) {
+      socket.emit('chat.message', { to: activeContact.id, text });
+    } else {
+      console.warn('Socket not connected; message stored locally in demo only.');
     }
   }
 
-  async function sendToken(){
-    if(!wallet||!tokenContract) return alert('Load wallet & connect contract');
-    const to=document.getElementById('to_addr').value.trim();
-    const amt=document.getElementById('to_amt').value;
-    if(!ethers.isAddress(to)||!amt) return alert('Invalid input');
-    try{
-      const dec=await tokenContract.decimals();
-      const units=ethers.parseUnits(amt.toString(), dec);
-      const tx=await tokenContract.connect(wallet).transfer(to, units);
-      document.getElementById('send_res').textContent='Pending: '+tx.hash;
-      await tx.wait();
-      document.getElementById('send_res').textContent='Confirmed: '+tx.hash;
-      const rec={id:tx.hash,from:wallet.address,to,amount:amt,date:new Date().toLocaleString()};
-      const txs=JSON.parse(localStorage.getItem('sadi_local_txs')||'[]');
-      txs.push(rec); localStorage.setItem('sadi_local_txs', JSON.stringify(txs));
-      refreshBalances(); createPDF(rec);
-    }catch(e){ alert('Send failed: '+e.message); }
-  }
+  // ====== Add contact (demo) ======
+  addContactBtn.onclick = () => {
+    const val = addContactInput.value.trim();
+    if(!val) return;
+    const id = 'u'+(Math.random()*1e6|0);
+    demoContacts.push({ id, name: val.split('@')[0] || val, email: val });
+    renderContacts();
+    addContactInput.value = '';
+  };
 
-  function createPDF(tx){
-    const { jsPDF }=window.jspdf;
-    const doc=new jsPDF();
-    doc.text('Sadicoin Transaction Receipt',20,20);
-    doc.text('Tx: '+tx.id,20,40);
-    doc.text('From: '+tx.from,20,50);
-    doc.text('To: '+tx.to,20,60);
-    doc.text('Amount: '+tx.amount,20,70);
-    doc.text('Date: '+tx.date,20,80);
-    doc.save(`${tx.id}.pdf`);
+  // ====== Socket.IO connection (realtime) ======
+  function startSocket() {
+    if(!SOCKET_IO_URL) return console.warn('Socket URL not set. Setup socket server and set SOCKET_IO_URL.');
+    socket = io(SOCKET_IO_URL, { transports: ['websocket'] });
+    socket.on('connect', () => {
+      console.log('socket connected', socket.id);
+      // identify user on socket (server should authenticate)
+      socket.emit('identify', { userId: myUser.id || socket.id, email: myUser.email });
+    });
+    socket.on('chat.message', (msg) => {
+      // msg: { from, text }
+      appendMessage({ text: msg.text, fromMe:false, ts:Date.now() });
+    });
+    socket.on('disconnect', ()=>console.log('socket disconnected'));
   }
+  // Optionally call startSocket() after your auth flow
 
-  function showLocalTxs(){
-    const txs=JSON.parse(localStorage.getItem('sadi_local_txs')||'[]');
-    document.getElementById('local_txs').textContent=JSON.stringify(txs,null,2);
+  // ====== Wallet connect (MetaMask) ======
+  let provider = null;
+  let signer = null;
+  connectWalletBtn.onclick = async () => {
+    if(!window.ethereum) return alert('No Web3 wallet found. Install MetaMask or a compatible wallet.');
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    const address = await signer.getAddress();
+    walletAddressEl.innerText = short(address);
+    myUser.wallet = address;
+    try {
+      const balance = await provider.getBalance(address);
+      walletBalanceEl.innerText = 'ETH ' + ethers.utils.formatEther(balance);
+    } catch(e){ walletBalanceEl.innerText = 'Balance: —'; }
+    // Optionally register wallet with your backend
+    // fetch(`${SERVER_BASE}/api/wallet/register`, { method:'POST', body: JSON.stringify({address}) })
+  };
+  function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
+
+  // ====== Swap / quote (client -> backend) ======
+  document.getElementById('quoteBtn').onclick = async () => {
+    const from = document.getElementById('fromToken').value;
+    const to = document.getElementById('toToken').value;
+    const amt = document.getElementById('swapAmount').value || '0';
+    document.getElementById('swapResult').innerText = 'Fetching quote...';
+    // TODO: call your backend which in turn queries a DEX aggregator (0x, 1inch...)
+    // Example (backend): GET /api/swap/quote?from=ETH&to=USDC&amount=0.1
+    try {
+      const res = await fetch(`${SERVER_BASE}/api/swap/quote?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amt)}`);
+      if(!res.ok) throw new Error('quote failed');
+      const data = await res.json();
+      document.getElementById('swapResult').innerText = `Estimated receive: ${data.toAmount} ${to} • Price: ${data.price}`;
+    } catch(err){
+      document.getElementById('swapResult').innerText = 'Quote failed (backend required)';
+    }
+  };
+  document.getElementById('swapBtn').onclick = async () => {
+    if(!signer) return alert('Connect wallet first');
+    // For a real swap: backend should provide a signed quote or transaction data
+    alert('Swap requires backend and on-chain transaction signing. See comments in code.');
+  };
+
+  // ====== Payments (card) ======
+  openPaymentsBtn.onclick = ()=> connectModalPayments.show();
+  document.getElementById('startPaymentBtn').onclick = async () => {
+    const recv = document.getElementById('payRecipient').value;
+    const amt = document.getElementById('payAmount').value;
+    const cur = document.getElementById('payCurrency').value;
+    if(!recv || !amt) return alert('Recipient and amount required');
+    if(cur === 'card') {
+      // Create a checkout session on your server (Stripe recommended)
+      try {
+        const res = await fetch(`${SERVER_BASE}/api/payments/create-checkout-session`, {
+          method: 'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ amount: amt, currency: 'usd', recipient: recv })
+        });
+        const data = await res.json();
+        if(data.checkoutUrl) {
+          window.location.href = data.checkoutUrl; // redirect to payment
+        } else alert('Payment session failed');
+      } catch(e){ alert('Payment backend required'); }
+    } else {
+      // Crypto payment: user signs & sends to recipient
+      if(!signer) return alert('Connect wallet for crypto payments');
+      alert('Crypto payment flow: the front-end should present the recipient and amount, then call signer.sendTransaction(...)');
+    }
+  };
+
+  // ====== Ads and business pages (simple demo UI) ======
+  createAdBtn.onclick = ()=> adModal.show();
+  document.getElementById('submitAdBtn').onclick = async () => {
+    const title = document.getElementById('adTitle').value;
+    const text = document.getElementById('adText').value;
+    const budget = document.getElementById('adBudget').value;
+    // Send to backend to store + process billing
+    try {
+      const form = new FormData();
+      form.append('title', title);
+      form.append('text', text);
+      form.append('budget', budget);
+      const file = document.getElementById('adImage').files[0];
+      if(file) form.append('image', file);
+      const res = await fetch(`${SERVER_BASE}/api/ads/create`, { method:'POST', body: form });
+      if(!res.ok) throw new Error('create ad failed');
+      const ad = await res.json();
+      alert('Ad created: ' + JSON.stringify(ad));
+      adModal.hide();
+    } catch(e) {
+      alert('Ad creation requires backend');
+    }
+  };
+
+  createBusinessBtn.onclick = ()=> businessModal.show();
+  document.getElementById('createBizBtn').onclick = async () => {
+    const name = document.getElementById('bizName').value;
+    const contact = document.getElementById('bizContact').value;
+    const desc = document.getElementById('bizDesc').value;
+    try {
+      const res = await fetch(`${SERVER_BASE}/api/business/create`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ name, contact, desc })
+      });
+      if(!res.ok) throw new Error('create failed');
+      const biz = await res.json();
+      document.getElementById('businessList').innerHTML += `<div><strong>${biz.name}</strong><div class="small-muted">${biz.contact}</div></div>`;
+      businessModal.hide();
+    } catch(e){ alert('Business creation requires backend'); }
+  };
+
+  // ====== Presentation viewer ======
+  presentationInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      presentationViewer.src = ev.target.result;
+      presentationViewer.style.display = 'block';
+      // TODO: Upload to server if you want others to view in meeting
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ====== Basic media (local camera) and recording ======
+  startMeetingBtn.onclick = async () => {
+    const id = meetingIdInput.value || ('meet-' + Math.random().toString(36).slice(2,10));
+    meetingIdInput.value = id;
+    meetingLink.innerHTML = `Meeting: <a href="${location.origin}/meet/${id}" target="_blank">${location.origin}/meet/${id}</a>`;
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+      localVideo.srcObject = mediaStream;
+      // In production: initialize WebRTC peer connection and signalling (server)
+    } catch(err){ alert('Camera/mic access denied or not available'); }
+  };
+
+  recordBtn.onclick = () => {
+    if(!mediaStream) return alert('Start meeting first');
+    if(!recorder || recorder.state === 'inactive') {
+      recordedBlobs = [];
+      recorder = new MediaRecorder(mediaStream);
+      recorder.ondataavailable = e => { if(e.data && e.data.size) recordedBlobs.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'meeting.webm'; a.click();
+      };
+      recorder.start();
+      recordBtn.innerText = 'Stop';
+    } else {
+      recorder.stop();
+      recordBtn.innerText = 'Record';
+    }
+  };
+
+  // ====== Rates demo (simple fetch placeholder) ======
+  async function fetchRatesDemo(){
+    const ratesEl = document.getElementById('rates');
+    try {
+      // Replace with your own API key & endpoint if you need live FX data
+      const demo = { ZAR: '18.40', USD: '1.00', BWP: '0.08' };
+      ratesEl.innerHTML = Object.entries(demo).map(([k,v])=>`<div><strong>${k}</strong>: ${v}</div>`).join('');
+    } catch(e) { ratesEl.innerText = 'Rates unavailable'; }
   }
+  fetchRatesDemo();
 
-  function moonpayBuy(){
-    const pk=document.getElementById('moonpay_pk').value.trim();
-    const usd=document.getElementById('mp_usd').value||'50';
-    if(!pk) return alert('Set MoonPay publishable key');
-    if(!wallet) return alert('Load wallet first');
-    const url=`https://buy.moonpay.com?apiKey=${encodeURIComponent(pk)}&currencyCode=ethereum&walletAddress=${encodeURIComponent(wallet.address)}&baseCurrencyAmount=${encodeURIComponent(usd)}`;
-    window.open(url,'_blank');
-  }
+  // ====== Init ======
+  document.getElementById('userEmail').innerText = myUser.email;
+  // Optionally start socket now:
+  // startSocket();
 
-  document.addEventListener('DOMContentLoaded',()=>{
-    document.getElementById('rpc_url').value=localStorage.getItem('sadi_rpc')||'';
-    document.getElementById('contract_addr').value=localStorage.getItem('sadi_contract')||'';
-  });
+  // ====== Helpful notes for deployment (read-only) ======
+  console.log(`
+  PhotoChat front-end loaded.
+  IMPORTANT:
+  - Implement server-side: auth, socket.io signaling, message storage, payment session creation, DEX aggregator proxy, file upload storage (S3 or similar).
+  - Do NOT perform token swaps on client alone — use your backend to fetch quotes and then have user sign the final transaction via wallet.
+  - Secure keys (Stripe secret, aggregator API keys, DB credentials) must only live on server.
+  - For production, serve over HTTPS, enable CORS securely, validate and sanitize all inputs, and add rate-limiting + monitoring.
+  `);
+
   </script>
 </body>
 </html>
+
 

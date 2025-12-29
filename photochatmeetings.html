@@ -315,3 +315,173 @@ async function initUser() {
   const { data, error } = await supabase.auth.signInWithOtp({ email: `guest${Date.now()}@photohub.com` });
   myUser.email = `guest${Date.now()}@photohub.com`;
   document.getElement
+
+
+  document.getElementById('userEmail').innerText = myUser.email;
+}
+
+initUser();
+
+// ====== Contacts ======
+addContactBtn.onclick = async () => {
+  const email = addContactInput.value.trim();
+  if(!email) return alert('Enter an email or contact ID.');
+  try {
+    const { data, error } = await supabase.from('contacts').insert([{ user: myUser.email, contact: email }]);
+    if(error) throw error;
+    loadContacts();
+    addContactInput.value = '';
+  } catch(e){ alert('Error adding contact: '+e.message); }
+};
+
+async function loadContacts(){
+  const { data, error } = await supabase.from('contacts').select().eq('user', myUser.email);
+  if(error) return;
+  contactsList.innerHTML = '';
+  data.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'mb-1 p-1 border-bottom';
+    div.style.cursor = 'pointer';
+    div.innerText = c.contact;
+    div.onclick = () => { openChat(c.contact); };
+    contactsList.appendChild(div);
+  });
+}
+
+// ====== Chat ======
+function openChat(contactEmail){
+  activeContact = contactEmail;
+  document.getElementById('chatTitle').innerText = contactEmail;
+  chatWindow.innerHTML = '<div class="text-center small-muted py-4">Loading messages...</div>';
+  loadMessages();
+}
+
+async function loadMessages(){
+  if(!activeContact) return;
+  const { data, error } = await supabase.from('messages').select().or(`from.eq.${myUser.email},to.eq.${myUser.email}`).order('created_at');
+  if(error) return;
+  chatWindow.innerHTML = '';
+  data.forEach(msg => appendMessage({ fromMe: msg.from === myUser.email, text: msg.content, ts: msg.created_at }));
+}
+
+sendBtn.onclick = async () => {
+  if(!activeContact) return alert('Select a contact.');
+  const text = messageInput.value.trim();
+  if(!text) return;
+  appendMessage({ fromMe:true, text });
+  messageInput.value = '';
+  try {
+    await supabase.from('messages').insert([{ from: myUser.email, to: activeContact, content: text }]);
+  } catch(e){ console.error(e); }
+};
+
+// ====== Presentation Upload ======
+presentationInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const { data, error } = await supabase.storage.from('presentations').upload('public/' + file.name, file, { cacheControl: '3600', upsert: true });
+  if(error) return alert('Upload failed: '+error.message);
+  const url = supabase.storage.from('presentations').getPublicUrl(data.path).publicUrl;
+  presentationViewer.style.display = 'block';
+  presentationViewer.src = url;
+};
+
+// ====== Ads ======
+createAdBtn.onclick = () => adModal.show();
+document.getElementById('submitAdBtn').onclick = async () => {
+  const title = document.getElementById('adTitle').value.trim();
+  const text = document.getElementById('adText').value.trim();
+  const imgFile = document.getElementById('adImage').files[0];
+  const budget = document.getElementById('adBudget').value;
+  if(!title || !text || !imgFile) return alert('Fill all fields.');
+  const { data, error } = await supabase.storage.from('ads').upload('public/' + imgFile.name, imgFile, { upsert:true });
+  if(error) return alert(error.message);
+  const imgUrl = supabase.storage.from('ads').getPublicUrl(data.path).publicUrl;
+  await supabase.from('ads').insert([{ title, text, img: imgUrl, budget }]);
+  adModal.hide();
+  loadAds();
+};
+
+async function loadAds(){
+  const { data, error } = await supabase.from('ads').select().order('id', { ascending:false });
+  if(error) return;
+  const adsArea = document.getElementById('adsArea');
+  adsArea.innerHTML = '';
+  data.forEach(ad => {
+    const div = document.createElement('div');
+    div.className = 'ad-card mb-2';
+    div.innerHTML = `<strong>${ad.title}</strong><br>${ad.text}<br><img src="${ad.img}" style="width:100%; max-height:120px; border-radius:4px;">`;
+    adsArea.appendChild(div);
+  });
+}
+loadAds();
+
+// ====== Business Pages ======
+createBusinessBtn.onclick = () => businessModal.show();
+document.getElementById('createBizBtn').onclick = async () => {
+  const name = document.getElementById('bizName').value.trim();
+  const contact = document.getElementById('bizContact').value.trim();
+  const desc = document.getElementById('bizDesc').value.trim();
+  if(!name) return alert('Enter business name.');
+  await supabase.from('businesses').insert([{ owner: myUser.email, name, contact, description: desc }]);
+  businessModal.hide();
+  loadBusinesses();
+};
+
+async function loadBusinesses(){
+  const { data, error } = await supabase.from('businesses').select().order('id', { ascending:false });
+  if(error) return;
+  const list = document.getElementById('businessList');
+  list.innerHTML = '';
+  data.forEach(b => {
+    const div = document.createElement('div');
+    div.innerText = `${b.name} (${b.contact})`;
+    list.appendChild(div);
+  });
+}
+loadBusinesses();
+
+// ====== Meeting / Video (simple local) ======
+startMeetingBtn.onclick = async () => {
+  if(!mediaStream){
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+    localVideo.srcObject = mediaStream;
+  }
+  meetingLink.innerText = 'Local preview ready. Meeting ID: ' + (meetingIdInput.value || 'new-'+Date.now());
+};
+
+recordBtn.onclick = () => {
+  if(!mediaStream) return alert('Start camera first.');
+  if(!recorder){
+    recordedBlobs = [];
+    recorder = new MediaRecorder(mediaStream);
+    recorder.ondataavailable = e => recordedBlobs.push(e.data);
+    recorder.start();
+    recordBtn.innerText = 'Stop Recording';
+  } else {
+    recorder.stop();
+    recorder = null;
+    const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'recording.webm';
+    a.click();
+    recordBtn.innerText = 'Record';
+  }
+};
+
+// ====== Crypto Swap Placeholder ======
+document.getElementById('quoteBtn').onclick = () => {
+  const amount = document.getElementById('swapAmount').value;
+  swapResultEl.innerText = `Quote for ${amount} ${document.getElementById('fromToken').value} → ${document.getElementById('toToken').value}: (demo)`;
+};
+document.getElementById('swapBtn').onclick = () => alert('Swap functionality requires backend + aggregator API.');
+
+// ====== Payments modal ======
+openPaymentsBtn.onclick = () => connectModalPayments.show();
+document.getElementById('startPaymentBtn').onclick = () => alert('Payment executed (demo).');
+
+</script>
+</body>
+</html>

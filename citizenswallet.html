@@ -6,10 +6,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>SadiCoin Tech — Wallet Platform (Production-ready)</title>
 
-<!-- Firebase CDN (compat) -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 
 <!-- Ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
@@ -40,7 +38,8 @@
   nav a{color:var(--muted);text-decoration:none;margin-right:10px}
   @media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
   .notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
-  .monosmall{font-family:monospace;font-size:13px;color:#fff;background:rgba(0,0,0,0.1);padding:8px;border-radius:6px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{padding:6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06)}
 </style>
 </head>
 <body>
@@ -48,7 +47,7 @@
   <div class="logo">SDC</div>
   <div>
     <div class="brand">SadiCoin Tech</div>
-    <div class="muted">Wallet Platform — production setup (test first)</div>
+    <div class="muted">Wallet Platform — production setup</div>
   </div>
   <div style="margin-left:auto" id="headerActions"></div>
 </header>
@@ -61,141 +60,84 @@
 </nav>
 
 <main>
-  <!-- AUTH CARD (shows register/login first) -->
+  <!-- AUTH CARD -->
   <div id="authCard" class="card">
     <div id="signOutView">
       <h3>Sign in / Register</h3>
-
-      <label>Email</label>
-      <input id="emailInput" type="email" placeholder="you@example.com" />
-
-      <label>Password</label>
-      <input id="passwordInput" type="password" placeholder="Choose a strong password" />
-
+      <label>Email</label><input id="emailInput" type="email" placeholder="you@example.com" />
+      <label>Password</label><input id="passwordInput" type="password" placeholder="Choose a strong password" />
       <div style="display:flex;gap:8px;margin-top:12px">
         <button id="btnRegister">Register</button>
         <button id="btnLogin" class="link-btn" style="border-style:solid">Login</button>
-      </div>
-
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-        <button id="btnReset" class="link-btn">Forgot password</button>
-        <button id="btnSendVerify" class="link-btn">Send verification email</button>
-      </div>
-
-      <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-
-      <h4 class="small">Phone 2FA (optional)</h4>
-      <div class="small">Link a phone number for SMS 2FA (requires enabling Phone provider in Firebase Console).</div>
-      <label style="margin-top:8px">Phone (E.164)</label>
-      <input id="phoneNumber" placeholder="+2782XXXXXXX" />
-      <div id="recaptcha-container" style="margin-top:8px"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="btnLinkPhone">Link phone (2FA)</button>
-        <button id="btnUnlinkPhone" class="link-btn">Unlink phone</button>
       </div>
     </div>
 
     <div id="signedInView" class="hidden">
       <h3>Account</h3>
       <div><strong id="userEmail">—</strong></div>
-      <div class="small" id="emailVerifiedInfo">Email verified: —</div>
-      <div class="small" id="phoneLinkedInfo">Phone linked: —</div>
-
+      <div class="small" id="userIdInfo">User ID: —</div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button id="btnSignOut" class="link-btn">Sign out</button>
-        <button id="btnRefreshProfile" class="link-btn">Refresh</button>
       </div>
     </div>
   </div>
 
-  <!-- MAIN GRID (hidden until login) -->
+  <!-- MAIN GRID -->
   <div id="app" class="hidden" style="margin-top:18px">
     <div class="grid">
       <div>
+        <!-- Wallet Card -->
         <div class="card">
           <h3>Wallet</h3>
-          <div class="muted">Keystore is encrypted client-side with user-provided wallet password and stored in Firestore (encrypted).</div>
-
-          <label>Wallet address</label>
-          <div id="walletAddress" class="small">Not created</div>
-
-          <label style="margin-top:8px">SadiCoin balance</label>
-          <div id="walletBalance" class="small">0 SDC</div>
-
+          <label>Wallet address</label><div id="walletAddress" class="small">Not created</div>
+          <label>SadiCoin balance</label><div id="walletBalance" class="small">0 SDC</div>
           <div style="display:flex;gap:8px;margin-top:12px">
-            <button id="createWalletBtn">Create Wallet (if none)</button>
+            <button id="createWalletBtn">Create Wallet</button>
             <button id="exportKeystoreBtn" class="link-btn">Export Keystore</button>
             <button id="deleteKeystoreBtn" class="link-btn">Delete Keystore</button>
           </div>
-
           <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-
           <h4>Receive</h4>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
             <div id="receiveQr" class="qr">—</div>
             <div style="flex:1">
-              <div class="small">Show this QR or copy address</div>
+              <div class="small">Copy or scan address</div>
               <div style="display:flex;gap:8px;margin-top:8px">
                 <button id="copyAddrBtn" class="link-btn">Copy Address</button>
-                <button id="showAddrBtn" class="link-btn">Show Full</button>
               </div>
             </div>
           </div>
-
           <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-
           <h4>Send SadiCoin</h4>
-          <label>Recipient</label>
-          <input id="sendAddress" placeholder="0x..." />
-          <label style="margin-top:8px">Amount</label>
-          <input id="sendAmount" type="number" placeholder="0.0" />
+          <label>Recipient</label><input id="sendAddress" placeholder="0x..." />
+          <label>Amount</label><input id="sendAmount" type="number" placeholder="0.0" />
           <div style="display:flex;gap:8px;margin-top:10px">
-            <button id="sendBtn">Send (sign with keystore)</button>
-            <button id="genSendQR" class="link-btn">Generate payment QR</button>
+            <button id="sendBtn">Send</button>
           </div>
-          <div id="sendStatus" class="small" style="margin-top:8px;color:#c8f3e9"></div>
         </div>
 
+        <!-- Swap Card -->
         <div class="card" style="margin-top:16px">
-          <h3>Swap (via backend)</h3>
-          <label>Amount (SDC)</label>
-          <input id="swapAmount" placeholder="0.0" />
-          <label style="margin-top:8px">To token address</label>
-          <input id="swapToToken" placeholder="0x..." />
+          <h3>Swap</h3>
+          <label>Amount (SDC)</label><input id="swapAmount" placeholder="0.0" />
+          <label>To token address</label><input id="swapToToken" placeholder="0x..." />
           <div style="display:flex;gap:8px;margin-top:10px">
             <button id="swapBtn">Start Swap</button>
-            <button id="viewPoolBtn" class="link-btn">View Pool</button>
           </div>
-          <div id="swapStatus" class="small" style="margin-top:8px"></div>
-
-          <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
           <h4>Swap History</h4>
-          <div id="swapHistory" class="small">No swaps yet</div>
-        </div>
-
-        <div class="card" style="margin-top:16px">
-          <h3>Explorer</h3>
-          <div class="small">Contract & address quick links</div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            <button id="btnOpenContract" class="link-btn">View SDC on Polygonscan</button>
-            <button id="btnOpenAddress" class="link-btn">Open my address</button>
-          </div>
+          <table>
+            <thead><tr><th>When</th><th>Amount</th><th>Token</th><th>Status</th></tr></thead>
+            <tbody id="swapHistory"></tbody>
+          </table>
         </div>
       </div>
 
       <div>
+        <!-- Transaction History -->
         <div class="card">
-          <h3>Markets & Liquidity</h3>
-          <div class="small">Live pool view</div>
-          <div style="margin-top:12px">
-            <iframe id="dexFrame" src="https://dexscreener.com/polygon/0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96" style="width:100%;height:360px;border:0;border-radius:8px"></iframe>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:16px">
           <h3>Transaction History</h3>
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr><th style="text-align:left">When</th><th style="text-align:left">Type</th><th style="text-align:left">Amount</th><th style="text-align:left">TxHash</th></tr></thead>
+          <table>
+            <thead><tr><th>When</th><th>Type</th><th>Amount</th><th>TxHash</th></tr></thead>
             <tbody id="txBody"></tbody>
           </table>
         </div>
@@ -206,41 +148,18 @@
   <footer style="margin-top:18px">© SadiCoin Tech 2025</footer>
 </main>
 
-<!-- All logic below - runs after DOM loads -->
 <script>
-/* ================= CONFIG ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyBge7tAYfXo3UwQoy9f-75LOzr-rOcO_9s",
-  authDomain: "sadicoin-fa3d5.firebaseapp.com",
-  projectId: "sadicoin-fa3d5",
-  storageBucket: "sadicoin-fa3d5.firebasestorage.app",
-  messagingSenderId: "83847964912",
-  appId: "1:83847964912:web:e1e083fd0859660180fa35",
-  measurementId: "G-9NME9PCGQW"
-};
-
-// Backend endpoints you provide (fill these)
-const BACKEND = {
-  swap: "https://your-backend.com/api/swap",
-  viewPool: "https://app.uniswap.org",
-};
-
-/* ================ INIT FIREBASE ================ */
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+/* ================ SUPABASE SETUP ================ */
+const SUPABASE_URL = "https://YOUR_SUPABASE_PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ================ RPC / CONTRACT ================ */
 const POLYGON_RPC = "https://polygon-rpc.com/";
 const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
-
-// YOUR SDC contract
 const SDC_CONTRACT = "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96";
 const SDC_DECIMALS = 18;
-const sdcAbi = [
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint amount) returns (bool)"
-];
+const sdcAbi = ["function balanceOf(address) view returns (uint256)", "function transfer(address to, uint amount) returns (bool)"];
 const sdcContract = new ethers.Contract(SDC_CONTRACT, sdcAbi, provider);
 
 /* ================ UI refs ================ */
@@ -248,434 +167,145 @@ const signOutView = document.getElementById("signOutView");
 const signedInView = document.getElementById("signedInView");
 const appDiv = document.getElementById("app");
 const userEmailEl = document.getElementById("userEmail");
-const emailVerifiedInfo = document.getElementById("emailVerifiedInfo");
-const phoneLinkedInfo = document.getElementById("phoneLinkedInfo");
-
+const userIdInfo = document.getElementById("userIdInfo");
 const walletAddressEl = document.getElementById("walletAddress");
 const walletBalanceEl = document.getElementById("walletBalance");
 const receiveQrEl = document.getElementById("receiveQr");
 const txBody = document.getElementById("txBody");
 const swapHistoryEl = document.getElementById("swapHistory");
 
-/* ================ DOM helper ================ */
-function show(element){ element.classList.remove('hidden'); }
-function hide(element){ element.classList.add('hidden'); }
+/* ================ DOM helpers ================ */
+function show(el){ el.classList.remove('hidden'); }
+function hide(el){ el.classList.add('hidden'); }
 
-/* ================ Auth UI wiring ================ */
+/* ================ AUTH ================ */
 document.getElementById("btnRegister").onclick = async () => {
   const email = document.getElementById("emailInput").value.trim();
-  const pw = document.getElementById("passwordInput").value;
-  if (!email || !pw) return alert("Enter email and password");
-
-  try {
-    const res = await auth.createUserWithEmailAndPassword(email, pw);
-    const user = res.user;
-    // Prompt for wallet password (encrypt keystore with this)
-    const walletPw = prompt("Create a wallet password (used to encrypt your keystore). Keep it safe and different from your account password:");
-    if (!walletPw) {
-      // optional: delete user if they cancel wallet creation to avoid orphan account - here we keep account and ask to create wallet later
-      alert("Wallet password required to create and store encrypted keystore. You can create wallet later from dashboard.");
-      return;
-    }
-
-    // Create frontend wallet
-    const wallet = ethers.Wallet.createRandom();
-    // show mnemonic to user for backup (IMPORTANT)
-    const mnemonic = wallet.mnemonic && wallet.mnemonic.phrase ? wallet.mnemonic.phrase : null;
-    if (mnemonic) {
-      // Show mnemonic and instruct user to backup
-      alert("IMPORTANT: This is your wallet seed phrase. Write it down and keep it safe. Anyone with it can access your funds.\n\n" + mnemonic);
-    } else {
-      // fallback show private key if no mnemonic (not expected)
-      alert("Wallet created — make sure to export your keystore and keep it safe.");
-    }
-
-    // Encrypt keystore with walletPw
-    const encryptedJson = await wallet.encrypt(walletPw, { scrypt: { N: 1<<14 }});
-    const keystore = JSON.parse(encryptedJson);
-
-    // Save encrypted keystore and address to Firestore under 'wallets/{uid}'
-    await db.collection('wallets').doc(user.uid).set({
-      keystore,
-      address: wallet.address,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Save at users collection minimal info (optional)
-    await db.collection('users').doc(user.uid).set({
-      email: user.email,
-      address: wallet.address,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    alert("Wallet created and encrypted keystore saved to Firestore. Please keep your wallet password & seed phrase safe.");
-    // send verification email
-    await user.sendEmailVerification();
-    // show main
-    goToMain();
-  } catch (err) {
-    console.error(err);
-    alert(err.message);
-  }
+  const password = document.getElementById("passwordInput").value;
+  if(!email||!password) return alert("Enter email & password");
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if(error) return alert(error.message);
+  alert("Registered! Check email for verification.");
 };
 
 document.getElementById("btnLogin").onclick = async () => {
   const email = document.getElementById("emailInput").value.trim();
-  const pw = document.getElementById("passwordInput").value;
-  if (!email || !pw) return alert("Enter email and password");
-  try {
-    const res = await auth.signInWithEmailAndPassword(email, pw);
-    const user = res.user;
-    if (user && !user.emailVerified) {
-      // optional: warn user
-      console.warn("User logged in but email not verified");
-    }
-    goToMain();
-    // load wallet / UI done by auth state observer
-  } catch (err) { alert(err.message); }
-};
-
-document.getElementById("btnReset").onclick = async () => {
-  const email = document.getElementById("emailInput").value.trim();
-  if (!email) return alert("Enter your email first");
-  try {
-    await auth.sendPasswordResetEmail(email);
-    alert("Password reset email sent (check spam).");
-  } catch (err) { alert(err.message); }
-};
-
-document.getElementById("btnSendVerify").onclick = async () => {
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      await user.sendEmailVerification();
-      alert("Verification email sent.");
-    } catch (err) { alert(err.message); }
-  } else {
-    alert("Sign in first, then request verification.");
-  }
+  const password = document.getElementById("passwordInput").value;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error) return alert(error.message);
+  loadUserUI();
 };
 
 document.getElementById("btnSignOut").onclick = async () => {
-  await auth.signOut();
+  await supabase.auth.signOut();
   location.reload();
 };
 
-document.getElementById("btnRefreshProfile").onclick = async () => {
-  const u = auth.currentUser;
-  if (u) {
-    await u.reload();
-    refreshProfileUI(u);
-  }
-};
+/* ================ USER UI ================ */
+async function loadUserUI(){
+  const user = supabase.auth.user();
+  if(!user) return;
+  hide(signOutView); show(signedInView); show(appDiv);
+  userEmailEl.textContent = user.email;
+  userIdInfo.textContent = "User ID: "+user.id;
 
-/* ================ Phone 2FA (link/unlink) ================ */
-let confirmationResultForLink = null;
-window.onload = () => {
-  try {
-    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
-    window.recaptchaVerifier.render().catch(()=>{});
-  } catch(e){}
-};
-
-document.getElementById("btnLinkPhone").onclick = async () => {
-  const phone = document.getElementById("phoneNumber").value.trim();
-  if (!phone) return alert("Enter phone (E.164), e.g. +2782...");
-
-  const user = auth.currentUser;
-  if (!user) return alert("Sign in first");
-
-  try {
-    const appVerifier = window.recaptchaVerifier;
-    confirmationResultForLink = await user.linkWithPhoneNumber(phone, appVerifier);
-    const code = prompt("Enter the SMS code you received:");
-    if (!code) return alert("Code required");
-    const cred = firebase.auth.PhoneAuthProvider.credential(confirmationResultForLink.verificationId, code);
-    await user.linkWithCredential(cred);
-    alert("Phone linked successfully (2FA enabled).");
-    refreshProfileUI(user);
-  } catch (err) {
-    alert("Phone link failed: " + err.message);
-    try { window.recaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId)); } catch(e){}
-  }
-};
-
-document.getElementById("btnUnlinkPhone").onclick = async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("Sign in first");
-  try {
-    await user.unlink('phone');
-    alert("Phone unlinked");
-    refreshProfileUI(user);
-  } catch (err) {
-    alert("Unlink failed: " + err.message);
-  }
-};
-
-/* ================ Auth state observer ================ */
-auth.onAuthStateChanged(async user => {
-  if (user) {
-    hide(signOutView);
-    show(signedInView);
-    userEmailEl.textContent = user.email || '—';
-    refreshProfileUI(user);
-    goToMain();
-    await loadKeystoreAndUI(user);
-    await loadSwapHistory(user);
-  } else {
-    show(signOutView);
-    hide(signedInView);
-    hide(appDiv);
-    clearUI();
-  }
-});
-
-/* ================ Profile UI refresh ================ */
-function refreshProfileUI(user) {
-  emailVerifiedInfo.textContent = "Email verified: " + (user.emailVerified ? "Yes" : "No");
-  phoneLinkedInfo.textContent = "Phone linked: " + (user.phoneNumber ? user.phoneNumber : "No");
-}
-
-/* ================ Keystore storage helpers ================ */
-function keystoreDocRef(uid) {
-  return db.collection('wallets').doc(uid);
-}
-
-async function saveKeystoreToFirestore(user, keystore, address) {
-  await keystoreDocRef(user.uid).set({ keystore, address, createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-}
-
-async function loadKeystoreFromFirestore(user) {
-  const d = await keystoreDocRef(user.uid).get();
-  return d.exists ? d.data() : null;
-}
-
-async function deleteKeystoreFromFirestore(user) {
-  await keystoreDocRef(user.uid).delete();
-}
-
-/* ================ Create Wallet flow (manual) ================ */
-document.getElementById("createWalletBtn").onclick = async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("Sign in first");
-  const walletPw = prompt("Create a wallet password to encrypt keystore:");
-  if (!walletPw) return alert("Wallet password required");
-
-  try {
-    const wallet = ethers.Wallet.createRandom();
-    const mnemonic = wallet.mnemonic && wallet.mnemonic.phrase ? wallet.mnemonic.phrase : null;
-    if (mnemonic) alert("Wallet seed phrase (backup now):\n\n" + mnemonic);
-    const encryptedJson = await wallet.encrypt(walletPw, { scrypt: { N: 1<<14 }});
-    const keystore = JSON.parse(encryptedJson);
-    await saveKeystoreToFirestore(user, keystore, wallet.address);
-    await db.collection('users').doc(user.uid).set({ address: wallet.address }, { merge: true });
-    walletAddressEl.textContent = wallet.address;
-    generateReceiveQr(wallet.address);
-    pushTx({ when: Date.now(), type: "WALLET_CREATE", amount: "0", txHash: "", note: `Created ${wallet.address}` });
-    updateBalance();
-    alert("Wallet created and stored (encrypted). Keep your wallet password & seed safe.");
-  } catch (err) {
-    console.error(err);
-    alert("Failed to create wallet: " + err.message);
-  }
-};
-
-/* ================ Load keystore on sign-in ================ */
-async function loadKeystoreAndUI(user) {
-  const data = await loadKeystoreFromFirestore(user);
-  if (data && data.address) {
+  // Load wallet
+  const { data, error } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
+  if(data){
     walletAddressEl.textContent = data.address;
     generateReceiveQr(data.address);
-    updateBalance();
-    renderTxs();
-  } else {
-    walletAddressEl.textContent = "Not created";
-    walletBalanceEl.textContent = "0 SDC";
+    updateBalance(data.address);
   }
+  loadTxHistory();
+  loadSwapHistory();
 }
 
-/* ================ Export / Delete keystore ================ */
-document.getElementById("exportKeystoreBtn").onclick = async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("Login first");
-  const data = await loadKeystoreFromFirestore(user);
-  if (!data || !data.keystore) return alert("No keystore found");
-  const blob = new Blob([JSON.stringify(data.keystore)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `sadicoin_keystore_${user.uid}.json`; document.body.appendChild(a); a.click(); a.remove();
+/* ================ CREATE WALLET ================ */
+document.getElementById("createWalletBtn").onclick = async () => {
+  const user = supabase.auth.user(); if(!user) return alert("Sign in first");
+  const wallet = ethers.Wallet.createRandom();
+  const mnemonic = wallet.mnemonic.phrase;
+  alert("Backup wallet seed:\n\n"+mnemonic);
+  const walletPw = prompt("Enter wallet password to encrypt keystore:");
+  const encryptedJson = await wallet.encrypt(walletPw);
+  const { error } = await supabase.from('wallets').upsert({ user_id:user.id, address:wallet.address, keystore:encryptedJson });
+  if(error) return alert(error.message);
+  walletAddressEl.textContent = wallet.address;
+  generateReceiveQr(wallet.address);
+  updateBalance(wallet.address);
 };
 
-document.getElementById("deleteKeystoreBtn").onclick = async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("Sign in first");
-  if (!confirm("Delete stored keystore from Firestore? This cannot be undone unless you have an exported copy.")) return;
-  await deleteKeystoreFromFirestore(user);
-  walletAddressEl.textContent = "Not created";
-  walletBalanceEl.textContent = "0 SDC";
-  receiveQrEl.innerHTML = '';
-  alert("Keystore deleted from Firestore.");
-};
-
-/* ================ QR generation ================ */
-function generateReceiveQr(addr) {
-  receiveQrEl.innerHTML = '';
-  const div = document.createElement('div');
-  receiveQrEl.appendChild(div);
-  new QRCode(div, { text: `ethereum:${addr}`, width:150, height:150 });
+/* ================ QR CODE ================ */
+function generateReceiveQr(address){
+  receiveQrEl.innerHTML=""; new QRCode(receiveQrEl,{text:address,width:150,height:150});
 }
 
-/* ================ Copy / show address ================ */
-document.getElementById("copyAddrBtn").onclick = async () => {
-  const addr = walletAddressEl.textContent.trim();
-  if (!addr || addr === "Not created") return alert("No address");
-  await navigator.clipboard.writeText(addr);
-  alert("Address copied to clipboard");
-};
-document.getElementById("showAddrBtn").onclick = () => alert(walletAddressEl.textContent);
+/* ================ COPY ADDRESS ================ */
+document.getElementById("copyAddrBtn").onclick=()=>{ const addr = walletAddressEl.textContent; if(addr!=="Not created") navigator.clipboard.writeText(addr).then(()=>alert("Address copied")); }
 
-/* ================ Update balance ================ */
-async function updateBalance() {
-  const addr = walletAddressEl.textContent;
-  if (!addr || addr === "Not created") return;
-  try {
-    const bal = await sdcContract.balanceOf(addr);
-    walletBalanceEl.textContent = `${ethers.utils.formatUnits(bal, SDC_DECIMALS)} SDC`;
-  } catch (err) {
-    console.warn("Balance fetch failed", err);
-    walletBalanceEl.textContent = "Error";
-  }
+/* ================ BALANCE ================ */
+async function updateBalance(address){
+  const bal = await sdcContract.balanceOf(address);
+  walletBalanceEl.textContent = ethers.utils.formatUnits(bal,SDC_DECIMALS)+" SDC";
 }
 
-/* ================ Send SDC (sign with keystore) ================ */
-document.getElementById("sendBtn").onclick = async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("Sign in first");
-  const to = document.getElementById("sendAddress").value.trim();
-  const amount = document.getElementById("sendAmount").value;
-  if (!to || !amount) return alert("Provide recipient and amount");
-
-  const doc = await loadKeystoreFromFirestore(user);
-  if (!doc || !doc.keystore) return alert("No keystore found (create a wallet first)");
-
-  const walletPw = prompt("Enter wallet password (used to encrypt your keystore) to decrypt and sign:");
-  if (!walletPw) return alert("Password required");
-
-  try {
-    const wallet = await ethers.Wallet.fromEncryptedJson(JSON.stringify(doc.keystore), walletPw);
-    const signer = wallet.connect(provider);
-    const contractWithSigner = sdcContract.connect(signer);
-    const tx = await contractWithSigner.transfer(to, ethers.utils.parseUnits(amount.toString(), SDC_DECIMALS));
-    document.getElementById("sendStatus").textContent = "TX sent: " + tx.hash;
-    pushTx({ when: Date.now(), type: "SEND", amount, txHash: tx.hash });
-    await db.collection('txs').add({ uid: user.uid, when: firebase.firestore.FieldValue.serverTimestamp(), type: "SEND", amount, txHash: tx.hash });
-    updateBalance();
-    renderTxs();
-  } catch (err) {
-    console.error(err);
-    document.getElementById("sendStatus").textContent = "Error: " + (err.message || err);
-  }
+/* ================ SEND SDC ================ */
+document.getElementById("sendBtn").onclick=async()=>{
+  const user = supabase.auth.user(); if(!user) return alert("Sign in first");
+  const { data,error } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
+  if(error) return alert(error.message);
+  const walletPw = prompt("Enter wallet password to decrypt keystore:");
+  const wallet = await ethers.Wallet.fromEncryptedJson(data.keystore,walletPw);
+  const to=document.getElementById("sendAddress").value.trim();
+  const amount=document.getElementById("sendAmount").value;
+  if(!to||!amount) return alert("Enter recipient & amount");
+  const sdcWithSigner=sdcContract.connect(wallet);
+  const tx=await sdcWithSigner.transfer(to,ethers.utils.parseUnits(amount,SDC_DECIMALS));
+  alert("Transaction sent! Hash: "+tx.hash);
+  await supabase.from('transactions').insert([{ user_id:user.id, type:"SEND", amount, tx_hash:tx.hash, created_at:new Date() }]);
+  updateBalance(data.address); loadTxHistory();
 };
 
-/* ================ Generate payment QR (send) ================ */
-document.getElementById("genSendQR").onclick = () => {
-  const to = document.getElementById("sendAddress").value.trim();
-  const amount = document.getElementById("sendAmount").value || '';
-  if (!to) return alert("Enter recipient address");
-  const uri = `ethereum:${to}?amount=${amount}`;
-  const tmp = document.createElement('div');
-  tmp.style.marginTop = '8px';
-  receiveQrEl.appendChild(tmp);
-  new QRCode(tmp, { text: uri, width: 150, height: 150 });
+/* ================ SWAP ================ */
+document.getElementById("swapBtn").onclick=async()=>{
+  const user = supabase.auth.user(); if(!user) return alert("Sign in first");
+  const amount=document.getElementById("swapAmount").value;
+  const toToken=document.getElementById("swapToToken").value.trim();
+  if(!amount||!toToken) return alert("Enter amount & token address");
+  try{
+    // Call your backend API for swap (Vercel serverless)
+    const res=await fetch('/api/swap',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:user.id,amount,toToken}) });
+    const data=await res.json();
+    if(data.error) return alert(data.error);
+    await supabase.from('swaps').insert([{ user_id:user.id, amount, to_token:toToken, status:"SUCCESS", created_at:new Date() }]);
+    alert("Swap completed!");
+    loadSwapHistory();
+  }catch(e){ alert("Swap failed: "+e.message); }
 };
 
-/* ================ TX history push/render ================ */
-function pushTx(tx) {
-  const listKey = 'local_txs_' + (auth.currentUser ? auth.currentUser.uid : 'anon');
-  const arr = JSON.parse(localStorage.getItem(listKey) || '[]');
-  arr.unshift(tx);
-  localStorage.setItem(listKey, JSON.stringify(arr));
-  renderTxs();
-}
-
-function renderTxs() {
-  const listKey = 'local_txs_' + (auth.currentUser ? auth.currentUser.uid : 'anon');
-  const arr = JSON.parse(localStorage.getItem(listKey) || '[]');
-  txBody.innerHTML = arr.map(t => `<tr><td>${new Date(t.when).toLocaleString()}</td><td>${t.type}</td><td>${t.amount}</td><td style="word-break:break-all">${t.txHash ? `<a href="https://polygonscan.com/tx/${t.txHash}" target="_blank">${t.txHash}</a>` : ''}</td></tr>`).join('');
-}
-
-/* ================ Swap integration (backend) ================ */
-document.getElementById("swapBtn").onclick = async () => {
-  const amt = document.getElementById("swapAmount").value;
-  const toToken = document.getElementById("swapToToken").value.trim();
-  if (!amt || !toToken) return alert("Enter amount and token address");
-  if (!BACKEND.swap || !BACKEND.swap.startsWith('http')) return alert("Swap backend not configured");
-
-  document.getElementById("swapStatus").textContent = "Processing swap...";
-  try {
-    const res = await fetch(BACKEND.swap, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: amt, toToken, uid: auth.currentUser ? auth.currentUser.uid : null })
-    });
-    const data = await res.json();
-    document.getElementById("swapStatus").textContent = data.message || JSON.stringify(data);
-    await db.collection('swaps').add({ uid: auth.currentUser ? auth.currentUser.uid : null, when: firebase.firestore.FieldValue.serverTimestamp(), amount: amt, toToken, result: data });
-    loadSwapHistory(auth.currentUser);
-  } catch (err) {
-    document.getElementById("swapStatus").textContent = "Error: " + err.message;
-  }
-};
-
-async function loadSwapHistory(user) {
-  if (!user) return swapHistoryEl.textContent = "Sign in to see swap history";
-  const q = await db.collection('swaps').where('uid','==',user.uid).orderBy('when','desc').limit(10).get();
-  const rows = q.docs.map(d => {
-    const dt = d.data();
-    const when = dt.when && dt.when.toDate ? dt.when.toDate().toLocaleString() : '-';
-    return `<div>${when} — ${dt.amount} → ${dt.toToken} (${dt.result && dt.result.txHash ? dt.result.txHash : (dt.result && dt.result.message) || 'ok'})</div>`;
+/* ================ LOAD TRANSACTION HISTORY ================ */
+async function loadTxHistory(){
+  const user = supabase.auth.user(); if(!user) return;
+  const { data,error } = await supabase.from('transactions').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
+  txBody.innerHTML="";
+  if(data) data.forEach(tx=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${new Date(tx.created_at).toLocaleString()}</td><td>${tx.type}</td><td>${tx.amount}</td><td>${tx.tx_hash||'-'}</td>`;
+    txBody.appendChild(tr);
   });
-  swapHistoryEl.innerHTML = rows.join('') || 'No swaps yet';
 }
 
-/* ================ Explorer buttons ================ */
-document.getElementById("btnOpenContract").onclick = () => {
-  window.open(`https://polygonscan.com/address/${SDC_CONTRACT}`, '_blank');
-};
-document.getElementById("btnOpenAddress").onclick = () => {
-  const addr = walletAddressEl.textContent;
-  if (!addr || addr === 'Not created') return alert("No address yet");
-  window.open(`https://polygonscan.com/address/${addr}`, '_blank');
-};
-
-/* ================ Navigation helpers ================ */
-function goToMain() {
-  hide(document.getElementById('authCard'));
-  show(appDiv);
-  try { history.replaceState(null, '', window.location.pathname + '#app'); } catch(e){}
+/* ================ LOAD SWAP HISTORY ================ */
+async function loadSwapHistory(){
+  const user = supabase.auth.user(); if(!user) return;
+  const { data,error } = await supabase.from('swaps').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
+  swapHistoryEl.innerHTML="";
+  if(data) data.forEach(swap=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${new Date(swap.created_at).toLocaleString()}</td><td>${swap.amount}</td><td>${swap.to_token}</td><td>${swap.status}</td>`;
+    swapHistoryEl.appendChild(tr);
+  });
 }
-
-/* ================ Clear UI ================ */
-function clearUI() {
-  walletAddressEl.textContent = 'Not created';
-  walletBalanceEl.textContent = '0 SDC';
-  receiveQrEl.innerHTML = '';
-  swapHistoryEl.textContent = 'Sign in to see swap history';
-  txBody.innerHTML = '';
-  document.getElementById("emailInput").value = '';
-  document.getElementById("passwordInput").value = '';
-}
-
-/* ================ On load behavior ================ */
-window.addEventListener('load', () => {
-  if (window.location.hash === '#app' && auth.currentUser) {
-    goToMain();
-  }
-  renderTxs();
-});
 </script>
 </body>
 </html>
-
-
-

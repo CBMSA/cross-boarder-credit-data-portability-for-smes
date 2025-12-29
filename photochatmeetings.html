@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,8 +15,8 @@
   <!-- Ethers.js for wallet connect -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
-  <!-- Socket.IO client (for chat realtime) -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.12.0/dist/supabase.min.js"></script>
 
   <style>
     body { background:#f7f8fb; padding:1.5rem; }
@@ -37,550 +36,282 @@
   </style>
 </head>
 <body>
-  <div class="container-fluid">
-    <div class="d-flex align-items-center mb-3">
-      <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="PhotoChat Logo" class="logo me-3">
-      <h3 class="mb-0">PhotoChat — Social • Payments • Crypto</h3>
-      <div class="ms-auto small-muted">Signed in as <strong id="userEmail">guest</strong></div>
-    </div>
-
-    <div class="row g-3">
-      <!-- LEFT: contacts & wallet -->
-      <div class="col-md-3 left-col">
-        <div class="panel mb-3">
-          <h6>Wallet</h6>
-          <div id="walletArea" class="mb-2">
-            <div><strong id="walletAddress">Not connected</strong></div>
-            <div class="small-muted" id="walletBalance">—</div>
-            <button id="connectWalletBtn" class="btn btn-outline-primary btn-sm mt-2 w-100"><i class="bi bi-wallet2"></i> Connect Wallet</button>
-          </div>
-          <hr />
-          <h6>Quick Actions</h6>
-          <button class="btn btn-sm btn-primary w-100 mb-2" id="openPaymentsBtn"><i class="bi bi-credit-card"></i> Payments</button>
-          <button class="btn btn-sm btn-outline-secondary w-100 mb-2" id="openSwapBtn"><i class="bi bi-arrow-left-right"></i> Crypto Swap</button>
-          <button class="btn btn-sm btn-outline-success w-100" id="createAdBtn"><i class="bi bi-megaphone"></i> Create Ad / Promo</button>
-        </div>
-
-        <div class="panel mb-3">
-          <h6>Business Pages</h6>
-          <div id="businessList" class="small-muted">
-            <!-- populated by JS -->
-          </div>
-          <hr />
-          <button class="btn btn-sm btn-outline-dark w-100" id="createBusinessBtn">+ Create Business Page</button>
-        </div>
-
-        <div class="panel">
-          <h6>Contacts</h6>
-          <div class="contacts" id="contactsList">
-            <!-- contacts rendered here -->
-            <div class="text-center small-muted py-4">No contacts yet — start a chat or import</div>
-          </div>
-          <div class="mt-2 d-flex">
-            <input id="addContactInput" class="form-control form-control-sm me-2" placeholder="Search / add contact (email)">
-            <button id="addContactBtn" class="btn btn-sm btn-primary">Add</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- CENTER: Chat & media -->
-      <div class="col-md-6">
-        <div class="panel">
-          <div class="d-flex align-items-center mb-2">
-            <h6 class="mb-0" id="chatTitle">Welcome</h6>
-            <div class="ms-auto small-muted" id="chatMeta">Offline</div>
-          </div>
-
-          <!-- video preview & meeting -->
-          <div class="mb-3">
-            <video id="localVideo" class="video-preview mb-2" autoplay muted playsinline></video>
-            <div class="d-flex gap-2">
-              <input id="meetingIdInput" class="form-control form-control-sm" placeholder="Meeting ID (or create)">
-              <button id="startMeetingBtn" class="btn btn-sm btn-outline-primary">Start / Join</button>
-              <button id="recordBtn" class="btn btn-sm btn-outline-danger">Record</button>
-            </div>
-            <div id="meetingLink" class="small-muted mt-2"></div>
-          </div>
-
-          <!-- chat window -->
-          <div class="chat-window" id="chatWindow">
-            <div class="text-center small-muted py-4">Choose a contact to start chat</div>
-          </div>
-
-          <!-- input -->
-          <div class="mt-2 d-flex gap-2">
-            <input id="messageInput" class="form-control" placeholder="Write a message... (Enter to send)">
-            <input type="file" id="fileInput" class="form-control form-control-sm" style="max-width:120px;">
-            <button id="sendBtn" class="btn btn-primary">Send</button>
-          </div>
-        </div>
-
-        <!-- presentation uploader -->
-        <div class="panel mt-3">
-          <h6>Upload Presentation / Document</h6>
-          <input type="file" id="presentationInput" accept=".pdf,.ppt,.pptx" class="form-control mb-2">
-          <iframe id="presentationViewer" style="width:100%; height:300px; border:1px solid #e9ecef; display:none;"></iframe>
-        </div>
-      </div>
-
-      <!-- RIGHT: trading, ads, admin -->
-      <div class="col-md-3">
-        <div class="panel mb-3">
-          <h6>Crypto Trading (Demo)</h6>
-          <div id="swapPanel">
-            <div class="mb-2">
-              <label class="form-label small-muted">From</label>
-              <select id="fromToken" class="form-select form-select-sm">
-                <option value="ETH">ETH</option>
-                <option value="USDC">USDC</option>
-                <option value="SDC">SDC</option>
-              </select>
-            </div>
-            <div class="mb-2">
-              <label class="form-label small-muted">To</label>
-              <select id="toToken" class="form-select form-select-sm">
-                <option value="USDC">USDC</option>
-                <option value="ETH">ETH</option>
-                <option value="SDC">SDC</option>
-              </select>
-            </div>
-            <div class="mb-2">
-              <input id="swapAmount" class="form-control form-control-sm" placeholder="Amount">
-            </div>
-            <button id="quoteBtn" class="btn btn-sm btn-outline-secondary w-100">Get Quote</button>
-            <button id="swapBtn" class="btn btn-sm btn-success w-100 mt-2">Execute Swap</button>
-            <div id="swapResult" class="small-muted mt-2"></div>
-            <div class="small-muted mt-2">Note: This requires backend/wallet approval and access to a DEX aggregator API. See the TODOs below.</div>
-          </div>
-        </div>
-
-        <div class="panel mb-3">
-          <h6>Ads / Promotions</h6>
-          <div id="adsArea">
-            <div class="ad-card mb-2">
-              <strong>Promoted: Local Sports Shop</strong>
-              <div class="small-muted">Reach: 1.2k • Ends: 2026-01-31</div>
-              <div class="mt-2"><button class="btn btn-sm btn-primary w-100 viewAdBtn">View</button></div>
-            </div>
-            <!-- new ads populated here -->
-          </div>
-          <div class="mt-2">
-            <button id="buyAdBtn" class="btn btn-sm btn-outline-primary w-100">Buy Ad Space</button>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h6>Platform Tools</h6>
-          <div class="small-muted">Exchange rates & market tickers</div>
-          <div id="rates" class="mt-2 small-muted">Loading rates...</div>
-          <hr />
-          <div class="small-muted">System</div>
-          <div id="systemInfo" class="small-muted mt-2">v1.0 front-end</div>
-        </div>
-      </div>
-    </div>
-
-    <footer class="mt-4 text-center small-muted">
-      © PhotoChat — build responsibly. Backend required for payments, swaps and secure storage.
-    </footer>
+<div class="container-fluid">
+  <div class="d-flex align-items-center mb-3">
+    <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="PhotoChat Logo" class="logo me-3">
+    <h3 class="mb-0">PhotoChat — Social • Payments • Crypto</h3>
+    <div class="ms-auto small-muted">Signed in as <strong id="userEmail">guest</strong></div>
   </div>
 
-  <!-- Modal placeholders for Payments / Ad creation / Business -->
-  <div class="modal" tabindex="-1" id="paymentsModal">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Payments</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-          <label class="form-label">Recipient (email or wallet)</label>
-          <input id="payRecipient" class="form-control mb-2" placeholder="user@example.com or 0x...">
-          <label class="form-label">Amount</label>
-          <input id="payAmount" class="form-control mb-2" placeholder="0.00">
-          <select id="payCurrency" class="form-select mb-2">
-            <option value="card">Card (fiat)</option>
-            <option value="crypto">Crypto (wallet)</option>
-          </select>
-          <div id="cardNote" class="small-muted">Card payments: client will call backend to create a checkout session (Stripe recommended).</div>
+  <div class="row g-3">
+    <!-- LEFT: contacts & wallet -->
+    <div class="col-md-3 left-col">
+      <div class="panel mb-3">
+        <h6>Wallet</h6>
+        <div id="walletArea" class="mb-2">
+          <div><strong id="walletAddress">Not connected</strong></div>
+          <div class="small-muted" id="walletBalance">—</div>
+          <button id="connectWalletBtn" class="btn btn-outline-primary btn-sm mt-2 w-100"><i class="bi bi-wallet2"></i> Connect Wallet</button>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button id="startPaymentBtn" class="btn btn-primary">Pay</button>
+        <hr />
+        <h6>Quick Actions</h6>
+        <button class="btn btn-sm btn-primary w-100 mb-2" id="openPaymentsBtn"><i class="bi bi-credit-card"></i> Payments</button>
+        <button class="btn btn-sm btn-outline-secondary w-100 mb-2" id="openSwapBtn"><i class="bi bi-arrow-left-right"></i> Crypto Swap</button>
+        <button class="btn btn-sm btn-outline-success w-100" id="createAdBtn"><i class="bi bi-megaphone"></i> Create Ad / Promo</button>
+      </div>
+
+      <div class="panel mb-3">
+        <h6>Business Pages</h6>
+        <div id="businessList" class="small-muted">
+          <!-- populated by JS -->
         </div>
+        <hr />
+        <button class="btn btn-sm btn-outline-dark w-100" id="createBusinessBtn">+ Create Business Page</button>
+      </div>
+
+      <div class="panel">
+        <h6>Contacts</h6>
+        <div class="contacts" id="contactsList">
+          <div class="text-center small-muted py-4">No contacts yet — start a chat or import</div>
+        </div>
+        <div class="mt-2 d-flex">
+          <input id="addContactInput" class="form-control form-control-sm me-2" placeholder="Search / add contact (email)">
+          <button id="addContactBtn" class="btn btn-sm btn-primary">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Chat & media -->
+    <div class="col-md-6">
+      <div class="panel">
+        <div class="d-flex align-items-center mb-2">
+          <h6 class="mb-0" id="chatTitle">Welcome</h6>
+          <div class="ms-auto small-muted" id="chatMeta">Offline</div>
+        </div>
+
+        <!-- video preview & meeting -->
+        <div class="mb-3">
+          <video id="localVideo" class="video-preview mb-2" autoplay muted playsinline></video>
+          <div class="d-flex gap-2">
+            <input id="meetingIdInput" class="form-control form-control-sm" placeholder="Meeting ID (or create)">
+            <button id="startMeetingBtn" class="btn btn-sm btn-outline-primary">Start / Join</button>
+            <button id="recordBtn" class="btn btn-sm btn-outline-danger">Record</button>
+          </div>
+          <div id="meetingLink" class="small-muted mt-2"></div>
+        </div>
+
+        <!-- chat window -->
+        <div class="chat-window" id="chatWindow">
+          <div class="text-center small-muted py-4">Choose a contact to start chat</div>
+        </div>
+
+        <!-- input -->
+        <div class="mt-2 d-flex gap-2">
+          <input id="messageInput" class="form-control" placeholder="Write a message... (Enter to send)">
+          <input type="file" id="fileInput" class="form-control form-control-sm" style="max-width:120px;">
+          <button id="sendBtn" class="btn btn-primary">Send</button>
+        </div>
+      </div>
+
+      <!-- presentation uploader -->
+      <div class="panel mt-3">
+        <h6>Upload Presentation / Document</h6>
+        <input type="file" id="presentationInput" accept=".pdf,.ppt,.pptx" class="form-control mb-2">
+        <iframe id="presentationViewer" style="width:100%; height:300px; border:1px solid #e9ecef; display:none;"></iframe>
+      </div>
+    </div>
+
+    <!-- RIGHT: trading, ads, admin -->
+    <div class="col-md-3">
+      <div class="panel mb-3">
+        <h6>Crypto Trading (Demo)</h6>
+        <div id="swapPanel">
+          <div class="mb-2">
+            <label class="form-label small-muted">From</label>
+            <select id="fromToken" class="form-select form-select-sm">
+              <option value="ETH">ETH</option>
+              <option value="USDC">USDC</option>
+              <option value="SDC">SDC</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small-muted">To</label>
+            <select id="toToken" class="form-select form-select-sm">
+              <option value="USDC">USDC</option>
+              <option value="ETH">ETH</option>
+              <option value="SDC">SDC</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <input id="swapAmount" class="form-control form-control-sm" placeholder="Amount">
+          </div>
+          <button id="quoteBtn" class="btn btn-sm btn-outline-secondary w-100">Get Quote</button>
+          <button id="swapBtn" class="btn btn-sm btn-success w-100 mt-2">Execute Swap</button>
+          <div id="swapResult" class="small-muted mt-2"></div>
+          <div class="small-muted mt-2">Note: Requires backend/wallet approval and DEX aggregator API.</div>
+        </div>
+      </div>
+
+      <div class="panel mb-3">
+        <h6>Ads / Promotions</h6>
+        <div id="adsArea">
+          <!-- live ads -->
+        </div>
+        <div class="mt-2">
+          <button id="buyAdBtn" class="btn btn-sm btn-outline-primary w-100">Buy Ad Space</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h6>Platform Tools</h6>
+        <div class="small-muted">Exchange rates & market tickers</div>
+        <div id="rates" class="mt-2 small-muted">Loading rates...</div>
+        <hr />
+        <div class="small-muted">System</div>
+        <div id="systemInfo" class="small-muted mt-2">v1.0 front-end</div>
       </div>
     </div>
   </div>
 
-  <!-- Ad creation modal -->
-  <div class="modal" tabindex="-1" id="adModal">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Create Ad</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-          <input id="adTitle" class="form-control mb-2" placeholder="Ad Title">
-          <textarea id="adText" class="form-control mb-2" placeholder="Ad text / call to action"></textarea>
-          <input type="file" id="adImage" class="form-control mb-2">
-          <label class="small-muted">Budget (USD)</label>
-          <input id="adBudget" class="form-control mb-2" placeholder="100">
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button id="submitAdBtn" class="btn btn-success">Submit Ad</button>
-        </div>
+  <footer class="mt-4 text-center small-muted">
+    © PhotoChat — build responsibly. Backend required for payments, swaps and secure storage.
+  </footer>
+</div>
+
+<!-- Modals (Payments, Ads, Business) -->
+<div class="modal" tabindex="-1" id="paymentsModal">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Payments</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <label class="form-label">Recipient (email or wallet)</label>
+        <input id="payRecipient" class="form-control mb-2" placeholder="user@example.com or 0x...">
+        <label class="form-label">Amount</label>
+        <input id="payAmount" class="form-control mb-2" placeholder="0.00">
+        <select id="payCurrency" class="form-select mb-2">
+          <option value="card">Card (fiat)</option>
+          <option value="crypto">Crypto (wallet)</option>
+        </select>
+        <div id="cardNote" class="small-muted">Card payments: backend Stripe session required.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button id="startPaymentBtn" class="btn btn-primary">Pay</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Business page modal -->
-  <div class="modal" tabindex="-1" id="businessModal">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Create Business Page</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-          <input id="bizName" class="form-control mb-2" placeholder="Business Name">
-          <input id="bizContact" class="form-control mb-2" placeholder="Contact (email/phone)">
-          <textarea id="bizDesc" class="form-control mb-2" placeholder="Description"></textarea>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button id="createBizBtn" class="btn btn-primary">Create</button>
-        </div>
+<div class="modal" tabindex="-1" id="adModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Create Ad</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input id="adTitle" class="form-control mb-2" placeholder="Ad Title">
+        <textarea id="adText" class="form-control mb-2" placeholder="Ad text / call to action"></textarea>
+        <input type="file" id="adImage" class="form-control mb-2">
+        <label class="small-muted">Budget (USD)</label>
+        <input id="adBudget" class="form-control mb-2" placeholder="100">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="submitAdBtn" class="btn btn-success">Submit Ad</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Bootstrap JS (for modals) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<div class="modal" tabindex="-1" id="businessModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Create Business Page</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input id="bizName" class="form-control mb-2" placeholder="Business Name">
+        <input id="bizContact" class="form-control mb-2" placeholder="Contact (email/phone)">
+        <textarea id="bizDesc" class="form-control mb-2" placeholder="Description"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="createBizBtn" class="btn btn-primary">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <script>
-  /************************************************************************
-   * PhotoChat — front-end logic
-   * Notes:
-   *  - This file provides UI and client-side wiring.
-   *  - **You MUST implement secure backend endpoints** for:
-   *      /api/auth (login/session), /ws (socket.io server),
-   *      /create-checkout-session (Stripe), /swap/quote, /swap/execute,
-   *      /presentations/upload, /ads (create/list), /business (create/list)
-   *  - Wallet actions that transfer tokens must be signed by the user's wallet.
-   ************************************************************************/
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-  // ====== Config placeholders ======
-  const SERVER_BASE = ""; // e.g. https://api.yoursite.com
-  const SOCKET_IO_URL = SERVER_BASE; // must point to your socket.io server
-  // ================================
+<script>
+// ===== Supabase config =====
+const SUPABASE_URL = 'https://jbhhfzbhcvzxtthhmfhz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc';
 
-  // UI elements
-  const contactsList = document.getElementById('contactsList');
-  const chatWindow = document.getElementById('chatWindow');
-  const messageInput = document.getElementById('messageInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const addContactBtn = document.getElementById('addContactBtn');
-  const addContactInput = document.getElementById('addContactInput');
-  const walletAddressEl = document.getElementById('walletAddress');
-  const walletBalanceEl = document.getElementById('walletBalance');
-  const connectWalletBtn = document.getElementById('connectWalletBtn');
-  const openPaymentsBtn = document.getElementById('openPaymentsBtn');
-  const openSwapBtn = document.getElementById('openSwapBtn');
-  const createAdBtn = document.getElementById('createAdBtn');
-  const createBusinessBtn = document.getElementById('createBusinessBtn');
-  const presentationInput = document.getElementById('presentationInput');
-  const presentationViewer = document.getElementById('presentationViewer');
-  const startMeetingBtn = document.getElementById('startMeetingBtn');
-  const localVideo = document.getElementById('localVideo');
-  const meetingIdInput = document.getElementById('meetingIdInput');
-  const meetingLink = document.getElementById('meetingLink');
-  const recordBtn = document.getElementById('recordBtn');
-  const connectModalPayments = new bootstrap.Modal(document.getElementById('paymentsModal'));
-  const adModal = new bootstrap.Modal(document.getElementById('adModal'));
-  const businessModal = new bootstrap.Modal(document.getElementById('businessModal'));
+const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Basic app state
-  let socket = null;
-  let activeContact = null;
-  let myUser = { id: null, email: 'guest' };
-  let mediaStream = null;
-  let recorder = null;
-  let recordedBlobs = [];
+// ===== UI elements =====
+const contactsList = document.getElementById('contactsList');
+const chatWindow = document.getElementById('chatWindow');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const addContactBtn = document.getElementById('addContactBtn');
+const addContactInput = document.getElementById('addContactInput');
+const walletAddressEl = document.getElementById('walletAddress');
+const walletBalanceEl = document.getElementById('walletBalance');
+const connectWalletBtn = document.getElementById('connectWalletBtn');
+const openPaymentsBtn = document.getElementById('openPaymentsBtn');
+const createAdBtn = document.getElementById('createAdBtn');
+const createBusinessBtn = document.getElementById('createBusinessBtn');
+const presentationInput = document.getElementById('presentationInput');
+const presentationViewer = document.getElementById('presentationViewer');
+const startMeetingBtn = document.getElementById('startMeetingBtn');
+const localVideo = document.getElementById('localVideo');
+const meetingIdInput = document.getElementById('meetingIdInput');
+const meetingLink = document.getElementById('meetingLink');
+const recordBtn = document.getElementById('recordBtn');
+const connectModalPayments = new bootstrap.Modal(document.getElementById('paymentsModal'));
+const adModal = new bootstrap.Modal(document.getElementById('adModal'));
+const businessModal = new bootstrap.Modal(document.getElementById('businessModal'));
+const swapResultEl = document.getElementById('swapResult');
 
-  // ====== Simple in-memory demo contact list (replace with server data) ======
-  const demoContacts = [
-    { id: 'u1', name: 'Alice', email: 'alice@example.com' },
-    { id: 'u2', name: 'Bob', email: 'bob@example.com' }
-  ];
-  function renderContacts() {
-    contactsList.innerHTML = '';
-    demoContacts.forEach(c => {
-      const div = document.createElement('div');
-      div.className = 'd-flex align-items-center p-2 border-bottom';
-      div.innerHTML = `
-        <div class="flex-grow-1">
-          <div><strong>${c.name}</strong></div>
-          <div class="small-muted">${c.email}</div>
-        </div>
-        <div>
-          <button class="btn btn-sm btn-outline-primary startChatBtn" data-id="${c.id}">Chat</button>
-        </div>
-      `;
-      contactsList.appendChild(div);
-    });
-    Array.from(document.getElementsByClassName('startChatBtn')).forEach(b => {
-      b.onclick = (e) => {
-        const id = e.target.dataset.id;
-        openChatWith(id);
-      };
-    });
-  }
-  renderContacts();
+let activeContact = null;
+let myUser = { id: null, email: 'guest', wallet: null };
+let mediaStream = null;
+let recorder = null;
+let recordedBlobs = [];
 
-  // ====== Chat UI helpers ======
-  function appendMessage({ fromMe=false, text='', ts=new Date(), meta='' }) {
-    const div = document.createElement('div');
-    div.className = 'message ' + (fromMe ? 'me' : 'them');
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.innerHTML = `<div>${escapeHtml(text)}</div><div class="small-muted" style="font-size:0.75rem;margin-top:4px;">${new Date(ts).toLocaleString()}</div>`;
-    div.appendChild(bubble);
-    chatWindow.appendChild(div);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-  }
-  function escapeHtml(s){ return (''+s).replace(/[&<>"'/]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[c])); }
+// ====== Helper functions ======
+function escapeHtml(s){ return (''+s).replace(/[&<>"'/]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[c])); }
+function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
+function appendMessage({ fromMe=false, text='', ts=new Date() }) {
+  const div = document.createElement('div');
+  div.className = 'message ' + (fromMe ? 'me' : 'them');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = `<div>${escapeHtml(text)}</div><div class="small-muted" style="font-size:0.75rem;margin-top:4px;">${new Date(ts).toLocaleString()}</div>`;
+  div.appendChild(bubble);
+  chatWindow.appendChild(div);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
 
-  // ====== Chat open ======
-  function openChatWith(contactId) {
-    activeContact = demoContacts.find(c=>c.id===contactId);
-    document.getElementById('chatTitle').innerText = activeContact.name;
-    document.getElementById('chatMeta').innerText = activeContact.email;
-    chatWindow.innerHTML = '';
-    appendMessage({ text: `Chat started with ${activeContact.name}`, fromMe:false, ts: Date.now() });
-    // In a real app: fetch last messages from /api/messages?userId=...
-  }
+// ====== Wallet Connect (MetaMask) ======
+let provider = null;
+let signer = null;
+connectWalletBtn.onclick = async () => {
+  if(!window.ethereum) return alert('No Web3 wallet found.');
+  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  const address = await signer.getAddress();
+  walletAddressEl.innerText = short(address);
+  myUser.wallet = address;
+  try {
+    const balance = await provider.getBalance(address);
+    walletBalanceEl.innerText = 'ETH ' + ethers.utils.formatEther(balance);
+  } catch(e){ walletBalanceEl.innerText = 'Balance: —'; }
+};
 
-  // ====== Send message (local + emit to socket) ======
-  sendBtn.onclick = sendMessage;
-  messageInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });
-  function sendMessage(){
-    const text = messageInput.value.trim();
-    if(!text) return;
-    if(!activeContact) { alert('Select a contact first'); return; }
-    appendMessage({ text, fromMe:true, ts:Date.now() });
-    messageInput.value = '';
-    // emit to server via socket
-    if(socket && socket.connected) {
-      socket.emit('chat.message', { to: activeContact.id, text });
-    } else {
-      console.warn('Socket not connected; message stored locally in demo only.');
-    }
-  }
-
-  // ====== Add contact (demo) ======
-  addContactBtn.onclick = () => {
-    const val = addContactInput.value.trim();
-    if(!val) return;
-    const id = 'u'+(Math.random()*1e6|0);
-    demoContacts.push({ id, name: val.split('@')[0] || val, email: val });
-    renderContacts();
-    addContactInput.value = '';
-  };
-
-  // ====== Socket.IO connection (realtime) ======
-  function startSocket() {
-    if(!SOCKET_IO_URL) return console.warn('Socket URL not set. Setup socket server and set SOCKET_IO_URL.');
-    socket = io(SOCKET_IO_URL, { transports: ['websocket'] });
-    socket.on('connect', () => {
-      console.log('socket connected', socket.id);
-      // identify user on socket (server should authenticate)
-      socket.emit('identify', { userId: myUser.id || socket.id, email: myUser.email });
-    });
-    socket.on('chat.message', (msg) => {
-      // msg: { from, text }
-      appendMessage({ text: msg.text, fromMe:false, ts:Date.now() });
-    });
-    socket.on('disconnect', ()=>console.log('socket disconnected'));
-  }
-  // Optionally call startSocket() after your auth flow
-
-  // ====== Wallet connect (MetaMask) ======
-  let provider = null;
-  let signer = null;
-  connectWalletBtn.onclick = async () => {
-    if(!window.ethereum) return alert('No Web3 wallet found. Install MetaMask or a compatible wallet.');
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    const address = await signer.getAddress();
-    walletAddressEl.innerText = short(address);
-    myUser.wallet = address;
-    try {
-      const balance = await provider.getBalance(address);
-      walletBalanceEl.innerText = 'ETH ' + ethers.utils.formatEther(balance);
-    } catch(e){ walletBalanceEl.innerText = 'Balance: —'; }
-    // Optionally register wallet with your backend
-    // fetch(`${SERVER_BASE}/api/wallet/register`, { method:'POST', body: JSON.stringify({address}) })
-  };
-  function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
-
-  // ====== Swap / quote (client -> backend) ======
-  document.getElementById('quoteBtn').onclick = async () => {
-    const from = document.getElementById('fromToken').value;
-    const to = document.getElementById('toToken').value;
-    const amt = document.getElementById('swapAmount').value || '0';
-    document.getElementById('swapResult').innerText = 'Fetching quote...';
-    // TODO: call your backend which in turn queries a DEX aggregator (0x, 1inch...)
-    // Example (backend): GET /api/swap/quote?from=ETH&to=USDC&amount=0.1
-    try {
-      const res = await fetch(`${SERVER_BASE}/api/swap/quote?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=${encodeURIComponent(amt)}`);
-      if(!res.ok) throw new Error('quote failed');
-      const data = await res.json();
-      document.getElementById('swapResult').innerText = `Estimated receive: ${data.toAmount} ${to} • Price: ${data.price}`;
-    } catch(err){
-      document.getElementById('swapResult').innerText = 'Quote failed (backend required)';
-    }
-  };
-  document.getElementById('swapBtn').onclick = async () => {
-    if(!signer) return alert('Connect wallet first');
-    // For a real swap: backend should provide a signed quote or transaction data
-    alert('Swap requires backend and on-chain transaction signing. See comments in code.');
-  };
-
-  // ====== Payments (card) ======
-  openPaymentsBtn.onclick = ()=> connectModalPayments.show();
-  document.getElementById('startPaymentBtn').onclick = async () => {
-    const recv = document.getElementById('payRecipient').value;
-    const amt = document.getElementById('payAmount').value;
-    const cur = document.getElementById('payCurrency').value;
-    if(!recv || !amt) return alert('Recipient and amount required');
-    if(cur === 'card') {
-      // Create a checkout session on your server (Stripe recommended)
-      try {
-        const res = await fetch(`${SERVER_BASE}/api/payments/create-checkout-session`, {
-          method: 'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ amount: amt, currency: 'usd', recipient: recv })
-        });
-        const data = await res.json();
-        if(data.checkoutUrl) {
-          window.location.href = data.checkoutUrl; // redirect to payment
-        } else alert('Payment session failed');
-      } catch(e){ alert('Payment backend required'); }
-    } else {
-      // Crypto payment: user signs & sends to recipient
-      if(!signer) return alert('Connect wallet for crypto payments');
-      alert('Crypto payment flow: the front-end should present the recipient and amount, then call signer.sendTransaction(...)');
-    }
-  };
-
-  // ====== Ads and business pages (simple demo UI) ======
-  createAdBtn.onclick = ()=> adModal.show();
-  document.getElementById('submitAdBtn').onclick = async () => {
-    const title = document.getElementById('adTitle').value;
-    const text = document.getElementById('adText').value;
-    const budget = document.getElementById('adBudget').value;
-    // Send to backend to store + process billing
-    try {
-      const form = new FormData();
-      form.append('title', title);
-      form.append('text', text);
-      form.append('budget', budget);
-      const file = document.getElementById('adImage').files[0];
-      if(file) form.append('image', file);
-      const res = await fetch(`${SERVER_BASE}/api/ads/create`, { method:'POST', body: form });
-      if(!res.ok) throw new Error('create ad failed');
-      const ad = await res.json();
-      alert('Ad created: ' + JSON.stringify(ad));
-      adModal.hide();
-    } catch(e) {
-      alert('Ad creation requires backend');
-    }
-  };
-
-  createBusinessBtn.onclick = ()=> businessModal.show();
-  document.getElementById('createBizBtn').onclick = async () => {
-    const name = document.getElementById('bizName').value;
-    const contact = document.getElementById('bizContact').value;
-    const desc = document.getElementById('bizDesc').value;
-    try {
-      const res = await fetch(`${SERVER_BASE}/api/business/create`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ name, contact, desc })
-      });
-      if(!res.ok) throw new Error('create failed');
-      const biz = await res.json();
-      document.getElementById('businessList').innerHTML += `<div><strong>${biz.name}</strong><div class="small-muted">${biz.contact}</div></div>`;
-      businessModal.hide();
-    } catch(e){ alert('Business creation requires backend'); }
-  };
-
-  // ====== Presentation viewer ======
-  presentationInput.onchange = (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev)=>{
-      presentationViewer.src = ev.target.result;
-      presentationViewer.style.display = 'block';
-      // TODO: Upload to server if you want others to view in meeting
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ====== Basic media (local camera) and recording ======
-  startMeetingBtn.onclick = async () => {
-    const id = meetingIdInput.value || ('meet-' + Math.random().toString(36).slice(2,10));
-    meetingIdInput.value = id;
-    meetingLink.innerHTML = `Meeting: <a href="${location.origin}/meet/${id}" target="_blank">${location.origin}/meet/${id}</a>`;
-    try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-      localVideo.srcObject = mediaStream;
-      // In production: initialize WebRTC peer connection and signalling (server)
-    } catch(err){ alert('Camera/mic access denied or not available'); }
-  };
-
-  recordBtn.onclick = () => {
-    if(!mediaStream) return alert('Start meeting first');
-    if(!recorder || recorder.state === 'inactive') {
-      recordedBlobs = [];
-      recorder = new MediaRecorder(mediaStream);
-      recorder.ondataavailable = e => { if(e.data && e.data.size) recordedBlobs.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'meeting.webm'; a.click();
-      };
-      recorder.start();
-      recordBtn.innerText = 'Stop';
-    } else {
-      recorder.stop();
-      recordBtn.innerText = 'Record';
-    }
-  };
-
-  // ====== Rates demo (simple fetch placeholder) ======
-  async function fetchRatesDemo(){
-    const ratesEl = document.getElementById('rates');
-    try {
-      // Replace with your own API key & endpoint if you need live FX data
-      const demo = { ZAR: '18.40', USD: '1.00', BWP: '0.08' };
-      ratesEl.innerHTML = Object.entries(demo).map(([k,v])=>`<div><strong>${k}</strong>: ${v}</div>`).join('');
-    } catch(e) { ratesEl.innerText = 'Rates unavailable'; }
-  }
-  fetchRatesDemo();
-
-  // ====== Init ======
-  document.getElementById('userEmail').innerText = myUser.email;
-  // Optionally start socket now:
-  // startSocket();
-
-  // ====== Helpful notes for deployment (read-only) ======
-  console.log(`
-  PhotoChat front-end loaded.
-  IMPORTANT:
-  - Implement server-side: auth, socket.io signaling, message storage, payment session creation, DEX aggregator proxy, file upload storage (S3 or similar).
-  - Do NOT perform token swaps on client alone — use your backend to fetch quotes and then have user sign the final transaction via wallet.
-  - Secure keys (Stripe secret, aggregator API keys, DB credentials) must only live on server.
-  - For production, serve over HTTPS, enable CORS securely, validate and sanitize all inputs, and add rate-limiting + monitoring.
-  `);
-
-  </script>
-</body>
-</html>
-
-
+// ====== Supabase Auth (Anonymous login) ======
+async function initUser() {
+  const { data, error } = await supabase.auth.signInWithOtp({ email: `guest${Date.now()}@photohub.com` });
+  myUser.email = `guest${Date.now()}@photohub.com`;
+  document.getElement

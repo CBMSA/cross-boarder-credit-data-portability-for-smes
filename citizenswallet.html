@@ -1,7 +1,4 @@
-Got it! I can provide a full, complete, production-ready HTML file including the cash/ETF buy option via WhatsApp API integration, along with all wallet, SDC, swap, transaction history, and session persistence features.
-Here’s the full updated code:
-Copy code
-Html
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -19,30 +16,30 @@ Html
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
-  :root{--accent:#2dd4bf;--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071026 0%,#0b1220 100%);color:#e6eef6}
-  header{padding:18px 24px;display:flex;align-items:center;gap:12px}
-  .logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#00509e);color:#042a2b;font-weight:700}
-  .brand{font-weight:700;font-size:18px}
-  main{max-width:1100px;margin:18px auto;padding:20px}
-  .grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.6);}
-  label{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
-  input,select,button{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-  button{background:var(--accent);color:#042a2b;border:0;cursor:pointer;font-weight:600}
-  .link-btn{background:transparent;border:1px dashed rgba(255,255,255,0.06);color:var(--accent)}
-  .muted{color:var(--muted);font-size:13px}
-  .hidden{display:none}
-  .small{font-size:13px;color:var(--muted)}
-  .qr { width:150px; height:150px; background:#fff; padding:8px; border-radius:8px; display:flex;align-items:center;justify-content:center }
-  footer{color:var(--muted);text-align:center;padding:18px 0}
-  nav{padding:6px 24px;color:var(--muted)}
-  nav a{color:var(--muted);text-decoration:none;margin-right:10px}
-  @media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
-  .notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  th,td{padding:6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06)}
+:root{--accent:#2dd4bf;--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071026 0%,#0b1220 100%);color:#e6eef6}
+header{padding:18px 24px;display:flex;align-items:center;gap:12px}
+.logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#00509e);color:#042a2b;font-weight:700}
+.brand{font-weight:700;font-size:18px}
+main{max-width:1100px;margin:18px auto;padding:20px}
+.grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.6);}
+label{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
+input,select,button{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+button{background:var(--accent);color:#042a2b;border:0;cursor:pointer;font-weight:600}
+.link-btn{background:transparent;border:1px dashed rgba(255,255,255,0.06);color:var(--accent)}
+.muted{color:var(--muted);font-size:13px}
+.hidden{display:none}
+.small{font-size:13px;color:var(--muted)}
+.qr { width:150px; height:150px; background:#fff; padding:8px; border-radius:8px; display:flex;align-items:center;justify-content:center }
+footer{color:var(--muted);text-align:center;padding:18px 0}
+nav{padding:6px 24px;color:var(--muted)}
+nav a{color:var(--muted);text-decoration:none;margin-right:10px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
+.notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{padding:6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06)}
 </style>
 </head>
 <body>
@@ -50,121 +47,106 @@ Html
   <div class="logo">SDC</div>
   <div>
     <div class="brand">SadiCoin Tech</div>
-    <div class="muted">Wallet Platform — production setup</div>
+    <div class="muted">Wallet Platform — Production-ready</div>
   </div>
   <div style="margin-left:auto" id="headerActions"></div>
 </header>
 
 <nav>
-  <a href="citizenswallet.html">SDC Wallet</a>|
-  <a href="Sadicoinapi.js">SadicoinApi</a>|
-  <a href="SadiCoin.html">SadiCoin DApp</a>|
-  <a href="tokenomics.html">Tokenomics</a>
+  <a href="#">SDC Wallet</a>|
+  <a href="#">SadiCoin DApp</a>|
+  <a href="#">Tokenomics</a>
 </nav>
 
 <main>
-  <!-- AUTH CARD -->
-  <div id="authCard" class="card">
-    <div id="signOutView">
-      <h3>Sign in / Register</h3>
-      <label>Email</label><input id="emailInput" type="email" placeholder="you@example.com" />
-      <label>Password</label><input id="passwordInput" type="password" placeholder="Choose a strong password" />
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button id="btnRegister">Register</button>
-        <button id="btnLogin" class="link-btn" style="border-style:solid">Login</button>
-      </div>
-    </div>
-
-    <div id="signedInView" class="hidden">
-      <h3>Account</h3>
-      <div><strong id="userEmail">—</strong></div>
-      <div class="small" id="userIdInfo">User ID: —</div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button id="btnSignOut" class="link-btn">Sign out</button>
-      </div>
+<!-- AUTH CARD -->
+<div id="authCard" class="card">
+  <div id="signOutView">
+    <h3>Sign in / Register</h3>
+    <label>Email</label><input id="emailInput" type="email" placeholder="you@example.com" />
+    <label>Password</label><input id="passwordInput" type="password" placeholder="Choose a strong password" />
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="btnRegister">Register</button>
+      <button id="btnLogin" class="link-btn" style="border-style:solid">Login</button>
     </div>
   </div>
+  <div id="signedInView" class="hidden">
+    <h3>Account</h3>
+    <div><strong id="userEmail">—</strong></div>
+    <div class="small" id="userIdInfo">User ID: —</div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="btnSignOut" class="link-btn">Sign out</button>
+    </div>
+  </div>
+</div>
 
-  <!-- MAIN GRID -->
-  <div id="app" class="hidden" style="margin-top:18px">
-    <div class="grid">
-      <div>
-        <!-- Wallet Card -->
-        <div class="card">
-          <h3>Wallet</h3>
-          <label>Wallet address</label><div id="walletAddress" class="small">Not created</div>
-          <label>SadiCoin balance</label><div id="walletBalance" class="small">0 SDC</div>
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <button id="createWalletBtn">Create Wallet</button>
-            <button id="exportKeystoreBtn" class="link-btn">Export Keystore</button>
-            <button id="deleteKeystoreBtn" class="link-btn">Delete Keystore</button>
-          </div>
-          <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-          <h4>Receive</h4>
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-            <div id="receiveQr" class="qr">—</div>
-            <div style="flex:1">
-              <div class="small">Copy or scan address</div>
-              <div style="display:flex;gap:8px;margin-top:8px">
-                <button id="copyAddrBtn" class="link-btn">Copy Address</button>
-              </div>
+<!-- MAIN GRID -->
+<div id="app" class="hidden" style="margin-top:18px">
+  <div class="grid">
+    <div>
+      <!-- Wallet Card -->
+      <div class="card">
+        <h3>Wallet</h3>
+        <label>Wallet address</label><div id="walletAddress" class="small">Not created</div>
+        <label>SadiCoin balance</label><div id="walletBalance" class="small">0 SDC</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button id="createWalletBtn">Create Wallet</button>
+          <button id="exportKeystoreBtn" class="link-btn">Export Keystore</button>
+          <button id="deleteKeystoreBtn" class="link-btn">Delete Keystore</button>
+        </div>
+        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
+        <h4>Receive</h4>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div id="receiveQr" class="qr">—</div>
+          <div style="flex:1">
+            <div class="small">Copy or scan address</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="copyAddrBtn" class="link-btn">Copy Address</button>
             </div>
           </div>
-          <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-          <h4>Send SadiCoin</h4>
-          <label>Recipient</label><input id="sendAddress" placeholder="0x..." />
-          <label>Amount</label><input id="sendAmount" type="number" placeholder="0.0" />
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button id="sendBtn">Send</button>
-          </div>
         </div>
-
-        <!-- Swap Card -->
-        <div class="card" style="margin-top:16px">
-          <h3>Swap</h3>
-          <label>Amount (SDC)</label><input id="swapAmount" placeholder="0.0" />
-          <label>To token address</label><input id="swapToToken" placeholder="0x..." />
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button id="swapBtn">Start Swap</button>
-          </div>
-          <h4>Swap History</h4>
-          <table>
-            <thead><tr><th>When</th><th>Amount</th><th>Token</th><th>Status</th></tr></thead>
-            <tbody id="swapHistory"></tbody>
-          </table>
+        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
+        <h4>Send SadiCoin</h4>
+        <label>Recipient</label><input id="sendAddress" placeholder="0x..." />
+        <label>Amount</label><input id="sendAmount" type="number" placeholder="0.0" />
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="sendBtn">Send</button>
         </div>
-
-        <!-- Buy via WhatsApp Card -->
-        <div class="card" style="margin-top:16px">
-          <h3>Buy Cash / ETF via WhatsApp</h3>
-          <label>Amount (ZAR / USD / Crypto)</label><input id="buyAmount" placeholder="0.0" />
-          <label>Payment Type</label>
-          <select id="buyType">
-            <option value="cash">Cash</option>
-            <option value="ETF">ETF</option>
-          </select>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button id="whatsappBuyBtn">Generate WhatsApp Order</button>
-          </div>
-          <div class="small" style="margin-top:8px">This generates a WhatsApp message to complete your purchase with SadiCoin.</div>
-        </div>
-
+        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
+        <h4>Buy Cash / ETF via WhatsApp</h4>
+        <button id="whatsappBuyBtn">💸 Buy via WhatsApp</button>
       </div>
 
-      <div>
-        <!-- Transaction History -->
-        <div class="card">
-          <h3>Transaction History</h3>
-          <table>
-            <thead><tr><th>When</th><th>Type</th><th>Amount</th><th>TxHash</th></tr></thead>
-            <tbody id="txBody"></tbody>
-          </table>
+      <!-- Swap Card -->
+      <div class="card" style="margin-top:16px">
+        <h3>Swap</h3>
+        <label>Amount (SDC)</label><input id="swapAmount" placeholder="0.0" />
+        <label>To token address</label><input id="swapToToken" placeholder="0x..." />
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="swapBtn">Start Swap</button>
         </div>
+        <h4>Swap History</h4>
+        <table>
+          <thead><tr><th>When</th><th>Amount</th><th>Token</th><th>Status</th></tr></thead>
+          <tbody id="swapHistory"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <!-- Transaction History -->
+      <div class="card">
+        <h3>Transaction History</h3>
+        <table>
+          <thead><tr><th>When</th><th>Type</th><th>Amount</th><th>TxHash</th></tr></thead>
+          <tbody id="txBody"></tbody>
+        </table>
       </div>
     </div>
   </div>
+</div>
 
-  <footer style="margin-top:18px">© SadiCoin Tech 2025</footer>
+<footer style="margin-top:18px">© SadiCoin Tech 2025</footer>
 </main>
 
 <script>
@@ -173,12 +155,12 @@ const SUPABASE_URL = 'https://jbhhfzbhcvzxtthhmfhz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc';
 const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== RPC / SDC =====
+// ===== RPC / Contract =====
 const POLYGON_RPC = "https://polygon-rpc.com/";
 const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
 const SDC_CONTRACT = "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96";
 const SDC_DECIMALS = 18;
-const sdcAbi = ["function balanceOf(address) view returns (uint256)", "function transfer(address to, uint amount) returns (bool)"];
+const sdcAbi = ["function balanceOf(address) view returns (uint256)","function transfer(address to, uint amount) returns (bool)"];
 const sdcContract = new ethers.Contract(SDC_CONTRACT, sdcAbi, provider);
 
 // ===== UI refs =====
@@ -197,7 +179,7 @@ const swapHistoryEl = document.getElementById("swapHistory");
 function show(el){ el.classList.remove('hidden'); }
 function hide(el){ el.classList.add('hidden'); }
 
-// ===== AUTH =====
+// ===== Auth =====
 document.getElementById("btnRegister").onclick = async () => {
   const email = document.getElementById("emailInput").value.trim();
   const password = document.getElementById("passwordInput").value;
@@ -205,6 +187,19 @@ document.getElementById("btnRegister").onclick = async () => {
   const { data, error } = await supabase.auth.signUp({ email, password });
   if(error) return alert(error.message);
   alert("Registered! Check email for verification.");
+
+  // Auto create wallet on registration
+  const user = data.user;
+  if(user){
+    const wallet = ethers.Wallet.createRandom();
+    const mnemonic = wallet.mnemonic.phrase;
+    alert("Backup wallet seed:\n\n"+mnemonic);
+    const walletPw = prompt("Enter wallet password to encrypt keystore:");
+    const encryptedJson = await wallet.encrypt(walletPw);
+    await supabase.from('wallets').upsert({ user_id:user.id, address:wallet.address, keystore:encryptedJson });
+    walletAddressEl.textContent = wallet.address;
+    generateReceiveQr(wallet.address);
+  }
 };
 
 document.getElementById("btnLogin").onclick = async () => {
@@ -220,71 +215,65 @@ document.getElementById("btnSignOut").onclick = async () => {
   location.reload();
 };
 
-// ===== SESSION PERSISTENCE =====
-window.addEventListener('load', async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) loadUserUI();
-});
-
-// ===== USER UI =====
+// ===== Load user UI =====
 async function loadUserUI(){
-  const user = supabase.auth.user();
+  const { data:{ user } } = await supabase.auth.getUser();
   if(!user) return;
   hide(signOutView); show(signedInView); show(appDiv);
   userEmailEl.textContent = user.email;
   userIdInfo.textContent = "User ID: "+user.id;
 
   // Load wallet
-  const { data, error } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
-  if(data){
-    walletAddressEl.textContent = data.address;
-    generateReceiveQr(data.address);
-    updateBalance(data.address);
+  const { data:walletData } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
+  if(walletData){
+    walletAddressEl.textContent = walletData.address;
+    generateReceiveQr(walletData.address);
+    updateBalance(walletData.address);
   }
   loadTxHistory();
   loadSwapHistory();
 }
 
-// ===== WALLET =====
+// ===== Wallet =====
 document.getElementById("createWalletBtn").onclick = async () => {
-  const user = supabase.auth.user(); if(!user) return alert("Sign in first");
+  const { data:{ user } } = await supabase.auth.getUser();
+  if(!user) return alert("Sign in first");
   const wallet = ethers.Wallet.createRandom();
   const mnemonic = wallet.mnemonic.phrase;
   alert("Backup wallet seed:\n\n"+mnemonic);
   const walletPw = prompt("Enter wallet password to encrypt keystore:");
   const encryptedJson = await wallet.encrypt(walletPw);
-  const { error } = await supabase.from('wallets').upsert({ user_id:user.id, address:wallet.address, keystore:encryptedJson });
-  if(error) return alert(error.message);
+  await supabase.from('wallets').upsert({ user_id:user.id, address:wallet.address, keystore:encryptedJson });
   walletAddressEl.textContent = wallet.address;
   generateReceiveQr(wallet.address);
   updateBalance(wallet.address);
 };
 
-// ===== QR CODE =====
+// ===== QR code =====
 function generateReceiveQr(address){
   receiveQrEl.innerHTML="";
   new QRCode(receiveQrEl,{text:address,width:150,height:150});
 }
 
-// ===== COPY ADDRESS =====
-document.getElementById("copyAddrBtn").onclick = () => {
+// ===== Copy address =====
+document.getElementById("copyAddrBtn").onclick=()=>{
   const addr = walletAddressEl.textContent;
   if(addr!=="Not created") navigator.clipboard.writeText(addr).then(()=>alert("Address copied"));
 };
 
-// ===== BALANCE =====
+// ===== Balance =====
 async function updateBalance(address){
   const bal = await sdcContract.balanceOf(address);
   walletBalanceEl.textContent = ethers.utils.formatUnits(bal,SDC_DECIMALS)+" SDC";
 }
 
-// ===== SEND SDC =====
+// ===== Send =====
 document.getElementById("sendBtn").onclick=async()=>{
-  const user = supabase.auth.user(); if(!user) return alert("Sign in first");
-  const { data,error } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
-  if(error) return alert(error.message);
+  const { data:{ user } } = await supabase.auth.getUser();
+  if(!user) return alert("Sign in first");
+  const { data:walletData } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
   const walletPw = prompt("Enter wallet password to decrypt keystore:");
-  const wallet = await ethers.Wallet.fromEncryptedJson(data.keystore,walletPw);
+  const wallet = await ethers.Wallet.fromEncryptedJson(walletData.keystore,walletPw);
   const to=document.getElementById("sendAddress").value.trim();
   const amount=document.getElementById("sendAmount").value;
   if(!to||!amount) return alert("Enter recipient & amount");
@@ -292,18 +281,20 @@ document.getElementById("sendBtn").onclick=async()=>{
   const tx=await sdcWithSigner.transfer(to,ethers.utils.parseUnits(amount,SDC_DECIMALS));
   alert("Transaction sent! Hash: "+tx.hash);
   await supabase.from('transactions').insert([{ user_id:user.id, type:"SEND", amount, tx_hash:tx.hash, created_at:new Date() }]);
-  updateBalance(data.address); loadTxHistory();
+  updateBalance(walletData.address); loadTxHistory();
 };
 
-// ===== SWAP =====
+// ===== Swap =====
 document.getElementById("swapBtn").onclick=async()=>{
-  const user = supabase.auth.user(); if(!user) return alert("Sign in first");
+  const { data:{ user } } = await supabase.auth.getUser();
+  if(!user) return alert("Sign in first");
   const amount=document.getElementById("swapAmount").value;
   const toToken=document.getElementById("swapToToken").value.trim();
   if(!amount||!toToken) return alert("Enter amount & token address");
   try{
-    const res=await fetch('/api/swap',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:user.id,amount,toToken}) });
-    const data=await res.json();
+    // Example backend call; replace with your API
+    const res = await fetch('/api/swap',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:user.id,amount,toToken}) });
+    const data = await res.json();
     if(data.error) return alert(data.error);
     await supabase.from('swaps').insert([{ user_id:user.id, amount, to_token:toToken, status:"SUCCESS", created_at:new Date() }]);
     alert("Swap completed!");
@@ -311,10 +302,11 @@ document.getElementById("swapBtn").onclick=async()=>{
   }catch(e){ alert("Swap failed: "+e.message); }
 };
 
-// ===== LOAD TRANSACTION HISTORY =====
+// ===== Load transaction history =====
 async function loadTxHistory(){
-  const user = supabase.auth.user(); if(!user) return;
-  const { data,error } = await supabase.from('transactions').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
+  const { data:{ user } } = await supabase.auth.getUser();
+  if(!user) return;
+  const { data } = await supabase.from('transactions').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
   txBody.innerHTML="";
   if(data) data.forEach(tx=>{
     const tr=document.createElement('tr');
@@ -323,7 +315,18 @@ async function loadTxHistory(){
   });
 }
 
-// ===== LOAD SWAP HISTORY =====
+// ===== Load swap history =====
 async function loadSwapHistory(){
-  const user = supabase.auth.user(); if(!user) return;
-  const { data,error } = await supabase.from('swaps').select('*').eq('user_id',user.id).order('created_at',{ascending:false
+  const { data:{ user } } = await supabase.auth.getUser();
+  if(!user) return;
+  const { data } = await supabase.from('swaps').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
+  swapHistoryEl.innerHTML="";
+  if(data) data.forEach(swap=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${new Date(swap.created_at).toLocaleString()}</td><td>${swap.amount}</td><td>${swap.to_token}</td><td>${swap.status}</td>`;
+    swapHistoryEl.appendChild(tr);
+  });
+}
+
+// ===== WhatsApp buy button =====
+document

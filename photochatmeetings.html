@@ -311,14 +311,34 @@ connectWalletBtn.onclick = async () => {
 };
 
 // ====== Supabase Auth (Anonymous login) ======
+let currentUser = null;
+
 async function initUser() {
-  const { data, error } = await supabase.auth.signInWithOtp({ email: `guest${Date.now()}@photohub.com` });
-  myUser.email = `guest${Date.now()}@photohub.com`;
-  document.getElement
+  // 1. Check existing session
+  const { data: { session } } = await supabase.auth.getSession();
 
+  if (session?.user) {
+    currentUser = session.user;
+  } else {
+    // 2. Create anonymous user (NO EMAIL SENT)
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      console.error("Anonymous auth failed", error);
+      alert("Unable to initialize session");
+      return;
+    }
+    currentUser = data.user;
+  }
 
-  document.getElementById('userEmail').innerText = myUser.email;
+  // 3. Update UI safely
+  const emailEl = document.getElementById("userEmail");
+  if (emailEl) {
+    emailEl.innerText = currentUser.email || "Guest user";
+  }
 }
+
+/* ===== Run after DOM is ready ===== */
+window.addEventListener("DOMContentLoaded", initUser);
 
 initUser();
 

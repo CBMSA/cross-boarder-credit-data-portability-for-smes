@@ -65,9 +65,11 @@
    SUPABASE CONFIG
 ================================ */
 const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc';
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc";
 
-const supabase = window.supabase.createClient(
+// ✅ THIS is the important line
+const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );

@@ -329,14 +329,25 @@ async function loadSwapHistory(){
 }
 
 // ===== WhatsApp buy button =====
-document.getElementById("whatsappBuyBtn").onclick = () => {
-  const { data: { user } } = supabase.auth.getUserSync ? supabase.auth.getUserSync() : { data: { user: null } };
-  const email = user ? user.email : "guest@example.com";
-  const message = encodeURIComponent(`Hello, I would like to buy SadiCoin (cash or ETF option).\nEmail: ${email}`);
-  const whatsappNumber = "YOUR_WHATSAPP_NUMBER"; // e.g., +26377xxxxxxx
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${message}`;
-  window.open(whatsappLink, "_blank");
-};
+window.addEventListener("DOMContentLoaded", async () => {
+  const whatsappBtn = document.getElementById("whatsappBuyBtn");
+  if (!whatsappBtn) return;
+
+  whatsappBtn.onclick = async () => {
+    // Supabase v2 – async user fetch
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const email = user?.email || "guest@citizenswallet.io";
+
+    const message = encodeURIComponent(
+      `Hello, I would like to buy SadiCoin (cash or ETF option).
+Email: ${email}`
+    );
+
+    const whatsappNumber = "26377XXXXXXX"; // ← PUT REAL NUMBER (no +)
+    const whatsappLink = `https://wa.me/${whatsappNumber}?text=${message}`;
+
+    window.open(whatsappLink, "_blank");
 
 // ===== SESSION PERSISTENCE =====
 window.addEventListener('load', async () => {

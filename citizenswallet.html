@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SadiCoin Tech — Wallet Platform (Production-ready)</title>
+<title>SadiCoin Tech — Wallet Platform</title>
 
 <!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
@@ -16,30 +16,30 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
-  :root{--accent:#2dd4bf;--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071026 0%,#0b1220 100%);color:#e6eef6}
-  header{padding:18px 24px;display:flex;align-items:center;gap:12px}
-  .logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#00509e);color:#042a2b;font-weight:700}
-  .brand{font-weight:700;font-size:18px}
-  main{max-width:1100px;margin:18px auto;padding:20px}
-  .grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.6);}
-  label{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
-  input,select,button{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-  button{background:var(--accent);color:#042a2b;border:0;cursor:pointer;font-weight:600}
-  .link-btn{background:transparent;border:1px dashed rgba(255,255,255,0.06);color:var(--accent)}
-  .muted{color:var(--muted);font-size:13px}
-  .hidden{display:none}
-  .small{font-size:13px;color:var(--muted)}
-  .qr { width:150px; height:150px; background:#fff; padding:8px; border-radius:8px; display:flex;align-items:center;justify-content:center }
-  footer{color:var(--muted);text-align:center;padding:18px 0}
-  nav{padding:6px 24px;color:var(--muted)}
-  nav a{color:var(--muted);text-decoration:none;margin-right:10px}
-  @media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
-  .notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  th,td{padding:6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06)}
+:root{--accent:#2dd4bf;--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071026 0%,#0b1220 100%);color:#e6eef6}
+header{padding:18px 24px;display:flex;align-items:center;gap:12px}
+.logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#00509e);color:#042a2b;font-weight:700}
+.brand{font-weight:700;font-size:18px}
+main{max-width:1100px;margin:18px auto;padding:20px}
+.grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.6);}
+label{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
+input,select,button{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+button{background:var(--accent);color:#042a2b;border:0;cursor:pointer;font-weight:600}
+.link-btn{background:transparent;border:1px dashed rgba(255,255,255,0.06);color:var(--accent)}
+.muted{color:var(--muted);font-size:13px}
+.hidden{display:none}
+.small{font-size:13px;color:var(--muted)}
+.qr { width:150px; height:150px; background:#fff; padding:8px; border-radius:8px; display:flex;align-items:center;justify-content:center }
+footer{color:var(--muted);text-align:center;padding:18px 0}
+nav{padding:6px 24px;color:var(--muted)}
+nav a{color:var(--muted);text-decoration:none;margin-right:10px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
+.notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{padding:6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06)}
 </style>
 </head>
 <body>
@@ -47,7 +47,7 @@
   <div class="logo">SDC</div>
   <div>
     <div class="brand">SadiCoin Tech</div>
-    <div class="muted">Wallet Platform — production setup</div>
+    <div class="muted">Wallet Platform — production ready</div>
   </div>
   <div style="margin-left:auto" id="headerActions"></div>
 </header>
@@ -149,12 +149,12 @@
 </main>
 
 <script>
-/* ================ SUPABASE SETUP ================ */
-const SUPABASE_URL = "https://YOUR_SUPABASE_PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+// ===== Supabase config =====
+const SUPABASE_URL = 'https://jbhhfzbhcvzxtthhmfhz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc';
 const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ================ RPC / CONTRACT ================ */
+// ===== RPC / CONTRACT =====
 const POLYGON_RPC = "https://polygon-rpc.com/";
 const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
 const SDC_CONTRACT = "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96";
@@ -162,7 +162,7 @@ const SDC_DECIMALS = 18;
 const sdcAbi = ["function balanceOf(address) view returns (uint256)", "function transfer(address to, uint amount) returns (bool)"];
 const sdcContract = new ethers.Contract(SDC_CONTRACT, sdcAbi, provider);
 
-/* ================ UI refs ================ */
+// ===== UI refs =====
 const signOutView = document.getElementById("signOutView");
 const signedInView = document.getElementById("signedInView");
 const appDiv = document.getElementById("app");
@@ -174,18 +174,29 @@ const receiveQrEl = document.getElementById("receiveQr");
 const txBody = document.getElementById("txBody");
 const swapHistoryEl = document.getElementById("swapHistory");
 
-/* ================ DOM helpers ================ */
+// ===== DOM helpers =====
 function show(el){ el.classList.remove('hidden'); }
 function hide(el){ el.classList.add('hidden'); }
 
-/* ================ AUTH ================ */
+// ===== AUTH =====
 document.getElementById("btnRegister").onclick = async () => {
   const email = document.getElementById("emailInput").value.trim();
   const password = document.getElementById("passwordInput").value;
   if(!email||!password) return alert("Enter email & password");
   const { data, error } = await supabase.auth.signUp({ email, password });
   if(error) return alert(error.message);
-  alert("Registered! Check email for verification.");
+
+  // Auto-create wallet for new user
+  const userId = data.user.id;
+  const wallet = ethers.Wallet.createRandom();
+  const mnemonic = wallet.mnemonic.phrase;
+  alert("Backup wallet seed phrase:\n\n"+mnemonic);
+  const walletPw = prompt("Enter wallet password to encrypt keystore:");
+  const encryptedJson = await wallet.encrypt(walletPw);
+  const { error: walletError } = await supabase.from('wallets').insert({ user_id:userId, address:wallet.address, keystore:encryptedJson });
+  if(walletError) return alert(walletError.message);
+
+  alert("Registered successfully! Check your email for verification and your wallet is ready.");
 };
 
 document.getElementById("btnLogin").onclick = async () => {
@@ -201,7 +212,7 @@ document.getElementById("btnSignOut").onclick = async () => {
   location.reload();
 };
 
-/* ================ USER UI ================ */
+// ===== LOAD USER UI =====
 async function loadUserUI(){
   const user = supabase.auth.user();
   if(!user) return;
@@ -216,11 +227,12 @@ async function loadUserUI(){
     generateReceiveQr(data.address);
     updateBalance(data.address);
   }
+
   loadTxHistory();
   loadSwapHistory();
 }
 
-/* ================ CREATE WALLET ================ */
+// ===== CREATE WALLET MANUALLY =====
 document.getElementById("createWalletBtn").onclick = async () => {
   const user = supabase.auth.user(); if(!user) return alert("Sign in first");
   const wallet = ethers.Wallet.createRandom();
@@ -235,21 +247,24 @@ document.getElementById("createWalletBtn").onclick = async () => {
   updateBalance(wallet.address);
 };
 
-/* ================ QR CODE ================ */
+// ===== QR CODE =====
 function generateReceiveQr(address){
   receiveQrEl.innerHTML=""; new QRCode(receiveQrEl,{text:address,width:150,height:150});
 }
 
-/* ================ COPY ADDRESS ================ */
-document.getElementById("copyAddrBtn").onclick=()=>{ const addr = walletAddressEl.textContent; if(addr!=="Not created") navigator.clipboard.writeText(addr).then(()=>alert("Address copied")); }
+// ===== COPY ADDRESS =====
+document.getElementById("copyAddrBtn").onclick=()=>{
+  const addr = walletAddressEl.textContent; 
+  if(addr!=="Not created") navigator.clipboard.writeText(addr).then(()=>alert("Address copied"));
+}
 
-/* ================ BALANCE ================ */
+// ===== UPDATE BALANCE =====
 async function updateBalance(address){
   const bal = await sdcContract.balanceOf(address);
   walletBalanceEl.textContent = ethers.utils.formatUnits(bal,SDC_DECIMALS)+" SDC";
 }
 
-/* ================ SEND SDC ================ */
+// ===== SEND SDC =====
 document.getElementById("sendBtn").onclick=async()=>{
   const user = supabase.auth.user(); if(!user) return alert("Sign in first");
   const { data,error } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
@@ -266,14 +281,13 @@ document.getElementById("sendBtn").onclick=async()=>{
   updateBalance(data.address); loadTxHistory();
 };
 
-/* ================ SWAP ================ */
+// ===== SWAP =====
 document.getElementById("swapBtn").onclick=async()=>{
   const user = supabase.auth.user(); if(!user) return alert("Sign in first");
   const amount=document.getElementById("swapAmount").value;
   const toToken=document.getElementById("swapToToken").value.trim();
   if(!amount||!toToken) return alert("Enter amount & token address");
   try{
-    // Call your backend API for swap (Vercel serverless)
     const res=await fetch('/api/swap',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:user.id,amount,toToken}) });
     const data=await res.json();
     if(data.error) return alert(data.error);
@@ -283,7 +297,7 @@ document.getElementById("swapBtn").onclick=async()=>{
   }catch(e){ alert("Swap failed: "+e.message); }
 };
 
-/* ================ LOAD TRANSACTION HISTORY ================ */
+// ===== LOAD TRANSACTION HISTORY =====
 async function loadTxHistory(){
   const user = supabase.auth.user(); if(!user) return;
   const { data,error } = await supabase.from('transactions').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
@@ -295,7 +309,7 @@ async function loadTxHistory(){
   });
 }
 
-/* ================ LOAD SWAP HISTORY ================ */
+// ===== LOAD SWAP HISTORY =====
 async function loadSwapHistory(){
   const user = supabase.auth.user(); if(!user) return;
   const { data,error } = await supabase.from('swaps').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
@@ -306,6 +320,5 @@ async function loadSwapHistory(){
     swapHistoryEl.appendChild(tr);
   });
 }
-</script>
-</body>
-</html>
+
+// =====

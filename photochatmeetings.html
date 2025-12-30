@@ -1,507 +1,220 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PhotoChat — Social + Payments + Crypto Trading</title>
+  <meta charset="UTF-8" />
+  <title>SadiCoin Tech</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
-  <!-- Ethers.js for wallet connect -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-
-  <!-- Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.12.0/dist/supabase.min.js"></script>
+  <!-- Ethers -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 
   <style>
-    body { background:#f7f8fb; padding:1.5rem; }
-    .logo { max-height:64px; }
-    .left-col { max-width:360px; }
-    .chat-window { height:520px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
-    .message { margin-bottom:10px; }
-    .message.me { text-align:right; }
-    .message .bubble { display:inline-block; padding:8px 12px; border-radius:12px; max-width:78%; }
-    .message.me .bubble { background:#0d6efd; color:#fff; }
-    .message.them .bubble { background:#e9ecef; color:#000; }
-    .contacts { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:8px; max-height:520px; overflow:auto; }
-    .panel { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
-    .small-muted { font-size:0.85rem; color:#6c757d; }
-    .video-preview { width:100%; max-height:210px; border-radius:8px; background:#000; }
-    .ad-card { border:1px dashed #ced4da; border-radius:8px; padding:12px; background:#fff; }
+    body { font-family: Arial, sans-serif; background:#0b0b0b; color:#fff; }
+    button { padding:10px; margin:5px; cursor:pointer; }
+    input { padding:8px; margin:5px; width:90%; }
+    .hidden { display:none; }
   </style>
 </head>
+
 <body>
-<div class="container-fluid">
-  <div class="d-flex align-items-center mb-3">
-    <img src="file_00000000a29461f8b024cd6dbdc42bcf (1).png" alt="PhotoChat Logo" class="logo me-3">
-    <h3 class="mb-0">PhotoChat — Social • Payments • Crypto</h3>
-    <div class="ms-auto small-muted">Signed in as <strong id="userEmail">guest</strong></div>
-  </div>
 
-  <div class="row g-3">
-    <!-- LEFT: contacts & wallet -->
-    <div class="col-md-3 left-col">
-      <div class="panel mb-3">
-        <h6>Wallet</h6>
-        <div id="walletArea" class="mb-2">
-          <div><strong id="walletAddress">Not connected</strong></div>
-          <div class="small-muted" id="walletBalance">—</div>
-          <button id="connectWalletBtn" class="btn btn-outline-primary btn-sm mt-2 w-100"><i class="bi bi-wallet2"></i> Connect Wallet</button>
-        </div>
-        <hr />
-        <h6>Quick Actions</h6>
-        <button class="btn btn-sm btn-primary w-100 mb-2" id="openPaymentsBtn"><i class="bi bi-credit-card"></i> Payments</button>
-        <button class="btn btn-sm btn-outline-secondary w-100 mb-2" id="openSwapBtn"><i class="bi bi-arrow-left-right"></i> Crypto Swap</button>
-        <button class="btn btn-sm btn-outline-success w-100" id="createAdBtn"><i class="bi bi-megaphone"></i> Create Ad / Promo</button>
-      </div>
+<h2>SadiCoin (SDC) Platform</h2>
 
-      <div class="panel mb-3">
-        <h6>Business Pages</h6>
-        <div id="businessList" class="small-muted">
-          <!-- populated by JS -->
-        </div>
-        <hr />
-        <button class="btn btn-sm btn-outline-dark w-100" id="createBusinessBtn">+ Create Business Page</button>
-      </div>
-
-      <div class="panel">
-        <h6>Contacts</h6>
-        <div class="contacts" id="contactsList">
-          <div class="text-center small-muted py-4">No contacts yet — start a chat or import</div>
-        </div>
-        <div class="mt-2 d-flex">
-          <input id="addContactInput" class="form-control form-control-sm me-2" placeholder="Search / add contact (email)">
-          <button id="addContactBtn" class="btn btn-sm btn-primary">Add</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- CENTER: Chat & media -->
-    <div class="col-md-6">
-      <div class="panel">
-        <div class="d-flex align-items-center mb-2">
-          <h6 class="mb-0" id="chatTitle">Welcome</h6>
-          <div class="ms-auto small-muted" id="chatMeta">Offline</div>
-        </div>
-
-        <!-- video preview & meeting -->
-        <div class="mb-3">
-          <video id="localVideo" class="video-preview mb-2" autoplay muted playsinline></video>
-          <div class="d-flex gap-2">
-            <input id="meetingIdInput" class="form-control form-control-sm" placeholder="Meeting ID (or create)">
-            <button id="startMeetingBtn" class="btn btn-sm btn-outline-primary">Start / Join</button>
-            <button id="recordBtn" class="btn btn-sm btn-outline-danger">Record</button>
-          </div>
-          <div id="meetingLink" class="small-muted mt-2"></div>
-        </div>
-
-        <!-- chat window -->
-        <div class="chat-window" id="chatWindow">
-          <div class="text-center small-muted py-4">Choose a contact to start chat</div>
-        </div>
-
-        <!-- input -->
-        <div class="mt-2 d-flex gap-2">
-          <input id="messageInput" class="form-control" placeholder="Write a message... (Enter to send)">
-          <input type="file" id="fileInput" class="form-control form-control-sm" style="max-width:120px;">
-          <button id="sendBtn" class="btn btn-primary">Send</button>
-        </div>
-      </div>
-
-      <!-- presentation uploader -->
-      <div class="panel mt-3">
-        <h6>Upload Presentation / Document</h6>
-        <input type="file" id="presentationInput" accept=".pdf,.ppt,.pptx" class="form-control mb-2">
-        <iframe id="presentationViewer" style="width:100%; height:300px; border:1px solid #e9ecef; display:none;"></iframe>
-      </div>
-    </div>
-
-    <!-- RIGHT: trading, ads, admin -->
-    <div class="col-md-3">
-      <div class="panel mb-3">
-        <h6>Crypto Trading (Demo)</h6>
-        <div id="swapPanel">
-          <div class="mb-2">
-            <label class="form-label small-muted">From</label>
-            <select id="fromToken" class="form-select form-select-sm">
-              <option value="ETH">ETH</option>
-              <option value="USDC">USDC</option>
-              <option value="SDC">SDC</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <label class="form-label small-muted">To</label>
-            <select id="toToken" class="form-select form-select-sm">
-              <option value="USDC">USDC</option>
-              <option value="ETH">ETH</option>
-              <option value="SDC">SDC</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <input id="swapAmount" class="form-control form-control-sm" placeholder="Amount">
-          </div>
-          <button id="quoteBtn" class="btn btn-sm btn-outline-secondary w-100">Get Quote</button>
-          <button id="swapBtn" class="btn btn-sm btn-success w-100 mt-2">Execute Swap</button>
-          <div id="swapResult" class="small-muted mt-2"></div>
-          <div class="small-muted mt-2">Note: Requires backend/wallet approval and DEX aggregator API.</div>
-        </div>
-      </div>
-
-      <div class="panel mb-3">
-        <h6>Ads / Promotions</h6>
-        <div id="adsArea">
-          <!-- live ads -->
-        </div>
-        <div class="mt-2">
-          <button id="buyAdBtn" class="btn btn-sm btn-outline-primary w-100">Buy Ad Space</button>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h6>Platform Tools</h6>
-        <div class="small-muted">Exchange rates & market tickers</div>
-        <div id="rates" class="mt-2 small-muted">Loading rates...</div>
-        <hr />
-        <div class="small-muted">System</div>
-        <div id="systemInfo" class="small-muted mt-2">v1.0 front-end</div>
-      </div>
-    </div>
-  </div>
-
-  <footer class="mt-4 text-center small-muted">
-    © PhotoChat — build responsibly. Backend required for payments, swaps and secure storage.
-  </footer>
+<!-- AUTH -->
+<div id="authBox">
+  <input id="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
+  <button onclick="signUp()">Register</button>
+  <button onclick="signIn()">Login</button>
 </div>
 
-<!-- Modals (Payments, Ads, Business) -->
-<div class="modal" tabindex="-1" id="paymentsModal">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Payments</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <label class="form-label">Recipient (email or wallet)</label>
-        <input id="payRecipient" class="form-control mb-2" placeholder="user@example.com or 0x...">
-        <label class="form-label">Amount</label>
-        <input id="payAmount" class="form-control mb-2" placeholder="0.00">
-        <select id="payCurrency" class="form-select mb-2">
-          <option value="card">Card (fiat)</option>
-          <option value="crypto">Crypto (wallet)</option>
-        </select>
-        <div id="cardNote" class="small-muted">Card payments: backend Stripe session required.</div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button id="startPaymentBtn" class="btn btn-primary">Pay</button>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- APP -->
+<div id="app" class="hidden">
 
-<div class="modal" tabindex="-1" id="adModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Create Ad</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input id="adTitle" class="form-control mb-2" placeholder="Ad Title">
-        <textarea id="adText" class="form-control mb-2" placeholder="Ad text / call to action"></textarea>
-        <input type="file" id="adImage" class="form-control mb-2">
-        <label class="small-muted">Budget (USD)</label>
-        <input id="adBudget" class="form-control mb-2" placeholder="100">
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button id="submitAdBtn" class="btn btn-success">Submit Ad</button>
-      </div>
-    </div>
-  </div>
-</div>
+  <h3 id="userEmail"></h3>
 
-<div class="modal" tabindex="-1" id="businessModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Create Business Page</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input id="bizName" class="form-control mb-2" placeholder="Business Name">
-        <input id="bizContact" class="form-control mb-2" placeholder="Contact (email/phone)">
-        <textarea id="bizDesc" class="form-control mb-2" placeholder="Description"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button id="createBizBtn" class="btn btn-primary">Create</button>
-      </div>
-    </div>
-  </div>
-</div>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <p id="walletAddress"></p>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <hr>
+
+  <h4>Buy SDC</h4>
+  <button onclick="whatsappBuy('CASH')">Buy with Cash</button>
+  <button onclick="whatsappBuy('ETF')">Buy with ETF</button>
+
+  <hr>
+
+  <h4>DEX Swap</h4>
+  <button onclick="getQuote()">Get Swap Quote</button>
+  <button onclick="executeSwap()">Execute Swap</button>
+
+  <hr>
+
+  <h4>Meetings / Camera Test</h4>
+  <button onclick="testCamera()">Test Camera</button>
+  <video id="cam" autoplay muted width="250"></video>
+
+  <button onclick="logout()">Logout</button>
+</div>
 
 <script>
-// ===== Supabase config =====
-const SUPABASE_URL = 'https://jbhhfzbhcvzxtthhmfhz.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc';
+/* ===============================
+   SUPABASE CONFIG
+================================ */
+const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY"; // OK for frontend
 
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
-// ===== UI elements =====
-const contactsList = document.getElementById('contactsList');
-const chatWindow = document.getElementById('chatWindow');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const addContactBtn = document.getElementById('addContactBtn');
-const addContactInput = document.getElementById('addContactInput');
-const walletAddressEl = document.getElementById('walletAddress');
-const walletBalanceEl = document.getElementById('walletBalance');
-const connectWalletBtn = document.getElementById('connectWalletBtn');
-const openPaymentsBtn = document.getElementById('openPaymentsBtn');
-const createAdBtn = document.getElementById('createAdBtn');
-const createBusinessBtn = document.getElementById('createBusinessBtn');
-const presentationInput = document.getElementById('presentationInput');
-const presentationViewer = document.getElementById('presentationViewer');
-const startMeetingBtn = document.getElementById('startMeetingBtn');
-const localVideo = document.getElementById('localVideo');
-const meetingIdInput = document.getElementById('meetingIdInput');
-const meetingLink = document.getElementById('meetingLink');
-const recordBtn = document.getElementById('recordBtn');
-const connectModalPayments = new bootstrap.Modal(document.getElementById('paymentsModal'));
-const adModal = new bootstrap.Modal(document.getElementById('adModal'));
-const businessModal = new bootstrap.Modal(document.getElementById('businessModal'));
-const swapResultEl = document.getElementById('swapResult');
-
-let activeContact = null;
-let myUser = { id: null, email: 'guest', wallet: null };
-let mediaStream = null;
-let recorder = null;
-let recordedBlobs = [];
-
-// ====== Helper functions ======
-function escapeHtml(s){ return (''+s).replace(/[&<>"'/]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;'}[c])); }
-function short(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
-function appendMessage({ fromMe=false, text='', ts=new Date() }) {
-  const div = document.createElement('div');
-  div.className = 'message ' + (fromMe ? 'me' : 'them');
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.innerHTML = `<div>${escapeHtml(text)}</div><div class="small-muted" style="font-size:0.75rem;margin-top:4px;">${new Date(ts).toLocaleString()}</div>`;
-  div.appendChild(bubble);
-  chatWindow.appendChild(div);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-}
-
-// ====== Wallet Connect (MetaMask) ======
-let provider = null;
-let signer = null;
-connectWalletBtn.onclick = async () => {
-  if(!window.ethereum) return alert('No Web3 wallet found.');
-  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  const address = await signer.getAddress();
-  walletAddressEl.innerText = short(address);
-  myUser.wallet = address;
-  try {
-    const balance = await provider.getBalance(address);
-    walletBalanceEl.innerText = 'ETH ' + ethers.utils.formatEther(balance);
-  } catch(e){ walletBalanceEl.innerText = 'Balance: —'; }
-};
-
-// ====== Supabase Auth (Anonymous login) ======
 let currentUser = null;
+let provider, signer, userWallet = null;
+let lastQuote = null;
 
-async function initUser() {
-  // 1. Check existing session
+/* ===============================
+   AUTH
+================================ */
+async function signUp() {
+  const email = email.value;
+  const password = password.value;
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return alert(error.message);
+
+  await supabase.from("profiles").insert({
+    id: data.user.id,
+    email
+  });
+
+  alert("Registered successfully");
+}
+
+async function signIn() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email, password
+  });
+
+  if (error) return alert(error.message);
+  loadUserUI();
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  location.reload();
+}
+
+/* ===============================
+   SESSION PERSISTENCE
+================================ */
+window.addEventListener("load", async () => {
   const { data: { session } } = await supabase.auth.getSession();
+  if (session) loadUserUI();
+});
 
-  if (session?.user) {
-    currentUser = session.user;
-  } else {
-    // 2. Create anonymous user (NO EMAIL SENT)
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      console.error("Anonymous auth failed", error);
-      alert("Unable to initialize session");
-      return;
-    }
-    currentUser = data.user;
-  }
+async function loadUserUI() {
+  const { data: { user } } = await supabase.auth.getUser();
+  currentUser = user;
 
-  // 3. Update UI safely
-  const emailEl = document.getElementById("userEmail");
-  if (emailEl) {
-    emailEl.innerText = currentUser.email || "Guest user";
-  }
+  document.getElementById("authBox").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("userEmail").innerText = user.email;
+
+  await loadWallet();
 }
 
-/* ===== Run after DOM is ready ===== */
-window.addEventListener("DOMContentLoaded", initUser);
+/* ===============================
+   WALLET
+================================ */
+async function connectWallet() {
+  if (!window.ethereum) return alert("Install MetaMask");
 
-initUser();
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer = await provider.getSigner();
+  userWallet = await signer.getAddress();
 
-// ====== Contacts ======
-addContactBtn.onclick = async () => {
-  const email = addContactInput.value.trim();
-  if(!email) return alert('Enter an email or contact ID.');
-  try {
-    const { data, error } = await supabase.from('contacts').insert([{ user: myUser.email, contact: email }]);
-    if(error) throw error;
-    loadContacts();
-    addContactInput.value = '';
-  } catch(e){ alert('Error adding contact: '+e.message); }
-};
+  document.getElementById("walletAddress").innerText = userWallet;
 
-async function loadContacts(){
-  const { data, error } = await supabase.from('contacts').select().eq('user', myUser.email);
-  if(error) return;
-  contactsList.innerHTML = '';
-  data.forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'mb-1 p-1 border-bottom';
-    div.style.cursor = 'pointer';
-    div.innerText = c.contact;
-    div.onclick = () => { openChat(c.contact); };
-    contactsList.appendChild(div);
+  await supabase.from("wallets").upsert({
+    user_id: currentUser.id,
+    address: userWallet,
+    chain: "polygon"
   });
 }
 
-// ====== Chat ======
-function openChat(contactEmail){
-  activeContact = contactEmail;
-  document.getElementById('chatTitle').innerText = contactEmail;
-  chatWindow.innerHTML = '<div class="text-center small-muted py-4">Loading messages...</div>';
-  loadMessages();
-}
+async function loadWallet() {
+  const { data } = await supabase
+    .from("wallets")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .single();
 
-async function loadMessages(){
-  if(!activeContact) return;
-  const { data, error } = await supabase.from('messages').select().or(`from.eq.${myUser.email},to.eq.${myUser.email}`).order('created_at');
-  if(error) return;
-  chatWindow.innerHTML = '';
-  data.forEach(msg => appendMessage({ fromMe: msg.from === myUser.email, text: msg.content, ts: msg.created_at }));
-}
-
-sendBtn.onclick = async () => {
-  if(!activeContact) return alert('Select a contact.');
-  const text = messageInput.value.trim();
-  if(!text) return;
-  appendMessage({ fromMe:true, text });
-  messageInput.value = '';
-  try {
-    await supabase.from('messages').insert([{ from: myUser.email, to: activeContact, content: text }]);
-  } catch(e){ console.error(e); }
-};
-
-// ====== Presentation Upload ======
-presentationInput.onchange = async (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const { data, error } = await supabase.storage.from('presentations').upload('public/' + file.name, file, { cacheControl: '3600', upsert: true });
-  if(error) return alert('Upload failed: '+error.message);
-  const url = supabase.storage.from('presentations').getPublicUrl(data.path).publicUrl;
-  presentationViewer.style.display = 'block';
-  presentationViewer.src = url;
-};
-
-// ====== Ads ======
-createAdBtn.onclick = () => adModal.show();
-document.getElementById('submitAdBtn').onclick = async () => {
-  const title = document.getElementById('adTitle').value.trim();
-  const text = document.getElementById('adText').value.trim();
-  const imgFile = document.getElementById('adImage').files[0];
-  const budget = document.getElementById('adBudget').value;
-  if(!title || !text || !imgFile) return alert('Fill all fields.');
-  const { data, error } = await supabase.storage.from('ads').upload('public/' + imgFile.name, imgFile, { upsert:true });
-  if(error) return alert(error.message);
-  const imgUrl = supabase.storage.from('ads').getPublicUrl(data.path).publicUrl;
-  await supabase.from('ads').insert([{ title, text, img: imgUrl, budget }]);
-  adModal.hide();
-  loadAds();
-};
-
-async function loadAds(){
-  const { data, error } = await supabase.from('ads').select().order('id', { ascending:false });
-  if(error) return;
-  const adsArea = document.getElementById('adsArea');
-  adsArea.innerHTML = '';
-  data.forEach(ad => {
-    const div = document.createElement('div');
-    div.className = 'ad-card mb-2';
-    div.innerHTML = `<strong>${ad.title}</strong><br>${ad.text}<br><img src="${ad.img}" style="width:100%; max-height:120px; border-radius:4px;">`;
-    adsArea.appendChild(div);
-  });
-}
-loadAds();
-
-// ====== Business Pages ======
-createBusinessBtn.onclick = () => businessModal.show();
-document.getElementById('createBizBtn').onclick = async () => {
-  const name = document.getElementById('bizName').value.trim();
-  const contact = document.getElementById('bizContact').value.trim();
-  const desc = document.getElementById('bizDesc').value.trim();
-  if(!name) return alert('Enter business name.');
-  await supabase.from('businesses').insert([{ owner: myUser.email, name, contact, description: desc }]);
-  businessModal.hide();
-  loadBusinesses();
-};
-
-async function loadBusinesses(){
-  const { data, error } = await supabase.from('businesses').select().order('id', { ascending:false });
-  if(error) return;
-  const list = document.getElementById('businessList');
-  list.innerHTML = '';
-  data.forEach(b => {
-    const div = document.createElement('div');
-    div.innerText = `${b.name} (${b.contact})`;
-    list.appendChild(div);
-  });
-}
-loadBusinesses();
-
-// ====== Meeting / Video (simple local) ======
-startMeetingBtn.onclick = async () => {
-  if(!mediaStream){
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-    localVideo.srcObject = mediaStream;
+  if (data) {
+    userWallet = data.address;
+    document.getElementById("walletAddress").innerText = userWallet;
   }
-  meetingLink.innerText = 'Local preview ready. Meeting ID: ' + (meetingIdInput.value || 'new-'+Date.now());
-};
+}
 
-recordBtn.onclick = () => {
-  if(!mediaStream) return alert('Start camera first.');
-  if(!recorder){
-    recordedBlobs = [];
-    recorder = new MediaRecorder(mediaStream);
-    recorder.ondataavailable = e => recordedBlobs.push(e.data);
-    recorder.start();
-    recordBtn.innerText = 'Stop Recording';
-  } else {
-    recorder.stop();
-    recorder = null;
-    const blob = new Blob(recordedBlobs, { type: 'video/webm' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'recording.webm';
-    a.click();
-    recordBtn.innerText = 'Record';
-  }
-};
+/* ===============================
+   WHATSAPP BUY (CASH / ETF)
+================================ */
+async function whatsappBuy(type) {
+  await fetch("https://api.sacreserve.africa/api/whatsapp/buy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: currentUser.id,
+      email: currentUser.email,
+      wallet: userWallet,
+      type
+    })
+  });
 
-// ====== Crypto Swap Placeholder ======
-document.getElementById('quoteBtn').onclick = () => {
-  const amount = document.getElementById('swapAmount').value;
-  swapResultEl.innerText = `Quote for ${amount} ${document.getElementById('fromToken').value} → ${document.getElementById('toToken').value}: (demo)`;
-};
-document.getElementById('swapBtn').onclick = () => alert('Swap functionality requires backend + aggregator API.');
+  alert("WhatsApp request sent. Our desk will contact you.");
+}
 
-// ====== Payments modal ======
-openPaymentsBtn.onclick = () => connectModalPayments.show();
-document.getElementById('startPaymentBtn').onclick = () => alert('Payment executed (demo).');
+/* ===============================
+   DEX AGGREGATOR (0x)
+================================ */
+async function getQuote() {
+  if (!userWallet) return alert("Connect wallet first");
 
+  const res = await fetch(
+    `https://api.sacreserve.africa/api/swap/quote?fromToken=ETH&toToken=SDC&amount=1000000000000000000&userAddress=${userWallet}`
+  );
+
+  lastQuote = await res.json();
+  alert("Quote received");
+}
+
+async function executeSwap() {
+  if (!lastQuote) return alert("Get quote first");
+
+  const tx = {
+    to: lastQuote.to,
+    data: lastQuote.data,
+    value: lastQuote.value
+  };
+
+  await signer.sendTransaction(tx);
+  alert("Swap submitted");
+}
+
+/* ===============================
+   CAMERA / MEETINGS
+================================ */
+async function testCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  document.getElementById("cam").srcObject = stream;
+}
 </script>
+
 </body>
-</html>
+</html

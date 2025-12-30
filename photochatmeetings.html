@@ -1,62 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>SadiCoin Tech</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8" />
+<title>SadiCoin Tech — Wallet & Marketplace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Ethers -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+<!-- Ethers -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; background:#0b0b0b; color:#fff; }
-    button { padding:10px; margin:5px; cursor:pointer; }
-    input { padding:8px; margin:5px; width:90%; }
-    .hidden { display:none; }
-  </style>
+<style>
+  body { font-family: Arial, sans-serif; background:#0b0b0b; color:#fff; margin:0; padding:1rem;}
+  h2,h3,h4 { margin:0.5rem 0; }
+  button { padding:10px; margin:5px; cursor:pointer; }
+  input, select, textarea { padding:8px; margin:5px 0; width:95%; }
+  .hidden { display:none; }
+  .panel { border:1px solid #444; border-radius:8px; padding:12px; margin:8px 0; }
+  .video-preview { width:100%; max-height:240px; border-radius:8px; background:#000; }
+  .product-card { border:1px solid #555; padding:8px; border-radius:6px; margin-bottom:8px; }
+  .tab { display:none; }
+  .tab.active { display:block; }
+  .tab-buttons button { margin-right:5px; }
+</style>
 </head>
-
 <body>
 
 <h2>SadiCoin (SDC) Platform</h2>
 
 <!-- AUTH -->
-<div id="authBox">
-  <input id="email" placeholder="Email" />
-  <input id="password" type="password" placeholder="Password" />
-  <button onclick="signUp()">Register</button>
-  <button onclick="signIn()">Login</button>
+<div id="authBox" class="panel">
+  <button onclick="walletLogin()">Connect Wallet / Login</button>
+  <p class="small-muted">Wallet-first authentication enabled (MetaMask required)</p>
 </div>
 
-<!-- APP -->
+<!-- MAIN APP -->
 <div id="app" class="hidden">
 
   <h3 id="userEmail"></h3>
+  <p>Wallet: <span id="walletAddress">Not connected</span> | Balance: <span id="walletBalance">—</span></p>
 
-  <button onclick="connectWallet()">Connect Wallet</button>
-  <p id="walletAddress"></p>
+  <!-- TABS -->
+  <div class="tab-buttons panel">
+    <button onclick="showTab('walletTab')">Wallet / Swap</button>
+    <button onclick="showTab('marketTab')">Marketplace</button>
+    <button onclick="showTab('chatTab')">Chat</button>
+    <button onclick="showTab('fxTab')">FX / ETF</button>
+    <button onclick="showTab('cameraTab')">Video</button>
+  </div>
 
-  <hr>
+  <!-- WALLET / DEX -->
+  <div id="walletTab" class="tab active panel">
+    <h4>DEX Swap</h4>
+    <select id="fromToken">
+      <option value="ETH">ETH</option>
+      <option value="USDC">USDC</option>
+      <option value="SDC">SDC</option>
+    </select>
+    <select id="toToken">
+      <option value="USDC">USDC</option>
+      <option value="ETH">ETH</option>
+      <option value="SDC">SDC</option>
+    </select>
+    <input id="swapAmount" placeholder="Amount" />
+    <button onclick="getQuote()">Get Quote</button>
+    <button onclick="executeSwap()">Execute Swap</button>
+    <p id="swapResult">—</p>
 
-  <h4>Buy SDC</h4>
-  <button onclick="whatsappBuy('CASH')">Buy with Cash</button>
-  <button onclick="whatsappBuy('ETF')">Buy with ETF</button>
+    <h4>Buy SDC (WhatsApp OTC)</h4>
+    <button onclick="whatsappBuy('CASH')">Cash</button>
+    <button onclick="whatsappBuy('ETF')">ETF</button>
+  </div>
 
-  <hr>
+  <!-- MARKETPLACE -->
+  <div id="marketTab" class="tab panel">
+    <h4>Marketplace</h4>
+    <input id="productName" placeholder="Product Name" />
+    <input id="productPrice" placeholder="Price (USD)" />
+    <textarea id="productDesc" placeholder="Description"></textarea>
+    <button onclick="addProduct()">Add Product</button>
+    <h5>Products</h5>
+    <div id="marketplace"></div>
+  </div>
 
-  <h4>DEX Swap</h4>
-  <button onclick="getQuote()">Get Swap Quote</button>
-  <button onclick="executeSwap()">Execute Swap</button>
+  <!-- CHAT -->
+  <div id="chatTab" class="tab panel">
+    <h4>Chat + Wallet Transfers</h4>
+    <input id="chatContact" placeholder="Recipient Email / Wallet" />
+    <input id="chatAmount" placeholder="Amount (SDC / Fiat / ETF)" />
+    <textarea id="chatMsg" placeholder="Message"></textarea>
+    <button onclick="sendChat()">Send / Transfer</button>
+    <div id="chatWindow" style="height:150px; overflow:auto; border:1px solid #444; padding:6px; margin-top:6px;"></div>
+  </div>
 
-  <hr>
+  <!-- FX / ETFs -->
+  <div id="fxTab" class="tab panel">
+    <h4>FX / ETFs / Bank Transfers (Demo)</h4>
+    <button onclick="fxDemo()">Start FX / Bank Transfer</button>
+    <p id="fxResult">—</p>
+  </div>
 
-  <h4>Meetings / Camera Test</h4>
-  <button onclick="testCamera()">Test Camera</button>
-  <video id="cam" autoplay muted width="250"></video>
+  <!-- CAMERA / VIDEO -->
+  <div id="cameraTab" class="tab panel">
+    <h4>Video / Camera Test</h4>
+    <button onclick="testCamera()">Test Camera</button>
+    <video id="cam" autoplay muted class="video-preview"></video>
+  </div>
 
+  <!-- LOGOUT -->
   <button onclick="logout()">Logout</button>
 </div>
 
@@ -65,158 +117,157 @@
    SUPABASE CONFIG
 ================================ */
 const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ✅ THIS is the important line
-const supabaseClient = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
-
-let currentUser = null;
-let provider, signer, userWallet = null;
-let lastQuote = null;
+let currentUser=null, provider=null, signer=null, userWallet=null, lastQuote=null;
 
 /* ===============================
-   AUTH
+   UI TABS
 ================================ */
-async function signUp() {
-  const email = email.value;
-  const password = password.value;
-
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) return alert(error.message);
-
-  await supabase.from("profiles").insert({
-    id: data.user.id,
-    email
-  });
-
-  alert("Registered successfully");
-}
-
-async function signIn() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email, password
-  });
-
-  if (error) return alert(error.message);
-  loadUserUI();
-}
-
-async function logout() {
-  await supabase.auth.signOut();
-  location.reload();
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
 /* ===============================
-   SESSION PERSISTENCE
+   WALLET-FIRST LOGIN
 ================================ */
-window.addEventListener("load", async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) loadUserUI();
-});
-
-async function loadUserUI() {
-  const { data: { user } } = await supabase.auth.getUser();
-  currentUser = user;
-
-  document.getElementById("authBox").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  document.getElementById("userEmail").innerText = user.email;
-
-  await loadWallet();
-}
-
-/* ===============================
-   WALLET
-================================ */
-async function connectWallet() {
-  if (!window.ethereum) return alert("Install MetaMask");
-
+async function walletLogin(){
+  if(!window.ethereum) return alert("Install MetaMask");
   provider = new ethers.BrowserProvider(window.ethereum);
   signer = await provider.getSigner();
   userWallet = await signer.getAddress();
 
-  document.getElementById("walletAddress").innerText = userWallet;
-
-  await supabase.from("wallets").upsert({
-    user_id: currentUser.id,
-    address: userWallet,
-    chain: "polygon"
+  // Upsert user in Supabase profiles
+  const { data, error } = await supabase.from('profiles').upsert({
+    id:userWallet, email:userWallet
   });
-}
+  currentUser = { id:userWallet, email:userWallet };
 
-async function loadWallet() {
-  const { data } = await supabase
-    .from("wallets")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .single();
+  document.getElementById("authBox").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("userEmail").innerText=userWallet;
+  document.getElementById("walletAddress").innerText=userWallet;
 
-  if (data) {
-    userWallet = data.address;
-    document.getElementById("walletAddress").innerText = userWallet;
-  }
+  const bal = await provider.getBalance(userWallet);
+  document.getElementById("walletBalance").innerText='ETH '+ethers.formatEther(bal);
+
+  loadMarketplace();
 }
 
 /* ===============================
-   WHATSAPP BUY (CASH / ETF)
+   LOGOUT
 ================================ */
-async function whatsappBuy(type) {
+async function logout(){ location.reload(); }
+
+/* ===============================
+   WhatsApp Buy (CASH / ETF)
+================================ */
+async function whatsappBuy(type){
   await fetch("https://api.sacreserve.africa/api/whatsapp/buy", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId: currentUser.id,
-      email: currentUser.email,
-      wallet: userWallet,
-      type
-    })
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ userId:currentUser.id, email:currentUser.email, wallet:userWallet, type })
+  });
+  alert("WhatsApp OTC request sent.");
+}
+
+/* ===============================
+   DEX AGGREGATOR
+================================ */
+async function getQuote(){
+  const fromToken=document.getElementById("fromToken").value;
+  const toToken=document.getElementById("toToken").value;
+  const amount=document.getElementById("swapAmount").value;
+  if(!userWallet) return alert("Connect wallet first");
+  if(!amount) return alert("Enter amount");
+
+  const res=await fetch(`https://api.sacreserve.africa/api/swap/quote?fromToken=${fromToken}&toToken=${toToken}&amount=${amount}&userAddress=${userWallet}`);
+  lastQuote=await res.json();
+  document.getElementById("swapResult").innerText="Quote received (demo)";
+}
+async function executeSwap(){
+  if(!lastQuote) return alert("Get quote first");
+  try{
+    const tx={ to:lastQuote.to, data:lastQuote.data, value:lastQuote.value };
+    await signer.sendTransaction(tx);
+    alert("Swap submitted");
+  }catch(e){ alert("Swap failed: "+e.message); }
+}
+
+/* ===============================
+   FX / ETF / Bank Demo
+================================ */
+function fxDemo(){
+  alert("FX / ETFs / Bank transfers are in demo mode (backend integration pending).");
+  document.getElementById("fxResult").innerText="Demo transaction created. Redirect placeholder.";
+}
+
+/* ===============================
+   Marketplace
+================================ */
+async function addProduct(){
+  const name=document.getElementById("productName").value;
+  const price=document.getElementById("productPrice").value;
+  const desc=document.getElementById("productDesc").value;
+  if(!name || !price) return alert("Fill all fields");
+
+  await fetch("https://api.sacreserve.africa/api/market",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ userId:currentUser.id, name, price, desc })
+  });
+  loadMarketplace();
+}
+
+async function loadMarketplace(){
+  const res=await fetch("https://api.sacreserve.africa/api/market");
+  const products=await res.json();
+  const container=document.getElementById("marketplace");
+  container.innerHTML="";
+  products.forEach(p=>{
+    const div=document.createElement("div");
+    div.className="product-card";
+    div.innerHTML=`<strong>${p.name}</strong><br>Price: ${p.price} USD<br>${p.desc}<br>Seller: ${p.userId}`;
+    container.appendChild(div);
+  });
+}
+
+/* ===============================
+   Chat + SDC Transfers
+================================ */
+async function sendChat(){
+  const contact=document.getElementById("chatContact").value;
+  const msg=document.getElementById("chatMsg").value;
+  const amt=document.getElementById("chatAmount").value;
+  if(!contact || (!msg && !amt)) return alert("Enter message or amount");
+
+  await fetch("https://api.sacreserve.africa/api/chat/send",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ fromId:currentUser.id, to:contact, message:msg, amount:amt })
   });
 
-  alert("WhatsApp request sent. Our desk will contact you.");
+  const windowEl=document.getElementById("chatWindow");
+  const div=document.createElement("div");
+  div.innerHTML=`<strong>To ${contact}:</strong> ${msg} ${amt?('['+amt+' SDC]'):""}`;
+  windowEl.appendChild(div);
+  windowEl.scrollTop=windowEl.scrollHeight;
+
+  document.getElementById("chatMsg").value="";
+  document.getElementById("chatAmount").value="";
+  document.getElementById("chatContact").value="";
 }
 
 /* ===============================
-   DEX AGGREGATOR (0x)
+   Camera / Video
 ================================ */
-async function getQuote() {
-  if (!userWallet) return alert("Connect wallet first");
-
-  const res = await fetch(
-    `https://api.sacreserve.africa/api/swap/quote?fromToken=ETH&toToken=SDC&amount=1000000000000000000&userAddress=${userWallet}`
-  );
-
-  lastQuote = await res.json();
-  alert("Quote received");
-}
-
-async function executeSwap() {
-  if (!lastQuote) return alert("Get quote first");
-
-  const tx = {
-    to: lastQuote.to,
-    data: lastQuote.data,
-    value: lastQuote.value
-  };
-
-  await signer.sendTransaction(tx);
-  alert("Swap submitted");
-}
-
-/* ===============================
-   CAMERA / MEETINGS
-================================ */
-async function testCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  document.getElementById("cam").srcObject = stream;
+async function testCamera(){
+  const stream=await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+  document.getElementById("cam").srcObject=stream;
 }
 </script>
 
 </body>
-</html
+</html>

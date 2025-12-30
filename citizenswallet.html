@@ -329,4 +329,22 @@ async function loadSwapHistory(){
 }
 
 // ===== WhatsApp buy button =====
-document
+document.getElementById("whatsappBuyBtn").onclick = () => {
+  const { data: { user } } = supabase.auth.getUserSync ? supabase.auth.getUserSync() : { data: { user: null } };
+  const email = user ? user.email : "guest@example.com";
+  const message = encodeURIComponent(`Hello, I would like to buy SadiCoin (cash or ETF option).\nEmail: ${email}`);
+  const whatsappNumber = "YOUR_WHATSAPP_NUMBER"; // e.g., +26377xxxxxxx
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${message}`;
+  window.open(whatsappLink, "_blank");
+};
+
+// ===== SESSION PERSISTENCE =====
+window.addEventListener('load', async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    loadUserUI();
+  }
+});
+</script>
+</body>
+</html>

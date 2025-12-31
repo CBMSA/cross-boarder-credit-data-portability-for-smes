@@ -1,272 +1,258 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>SadiCoin Tech — Wallet & Marketplace</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PhotoChat — Social • Payments • Crypto</title>
 
-<!-- Supabase -->
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<!-- Supabase v2 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- Ethers -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+<!-- Ethers (optional wallet) -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
 <style>
-  body { font-family: Arial, sans-serif; background:#0b0b0b; color:#fff; margin:0; padding:1rem;}
-  h2,h3,h4 { margin:0.5rem 0; }
-  button { padding:10px; margin:5px; cursor:pointer; }
-  input, select, textarea { padding:8px; margin:5px 0; width:95%; }
-  .hidden { display:none; }
-  .panel { border:1px solid #444; border-radius:8px; padding:12px; margin:8px 0; }
-  .video-preview { width:100%; max-height:240px; border-radius:8px; background:#000; }
-  .product-card { border:1px solid #555; padding:8px; border-radius:6px; margin-bottom:8px; }
-  .tab { display:none; }
-  .tab.active { display:block; }
-  .tab-buttons button { margin-right:5px; }
+body { background:#f7f8fb; padding:1.5rem; }
+.chat-window { height:520px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+.message { margin-bottom:10px; }
+.message.me { text-align:right; }
+.bubble { display:inline-block; padding:8px 12px; border-radius:12px; max-width:78%; }
+.message.me .bubble { background:#0d6efd; color:#fff; }
+.message.them .bubble { background:#e9ecef; }
+.panel { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+.small-muted { font-size:.85rem; color:#6c757d; }
+.video-preview { width:100%; max-height:210px; border-radius:8px; background:#000; }
 </style>
 </head>
+
 <body>
+<div class="container-fluid">
 
-<h2>SadiCoin (SDC) Platform</h2>
-
-<!-- AUTH -->
-<div id="authBox" class="panel">
-  <button onclick="walletLogin()">Connect Wallet / Login</button>
-  <p class="small-muted">Wallet-first authentication enabled (MetaMask required)</p>
+<!-- HEADER -->
+<div class="d-flex align-items-center mb-3">
+  <h3 class="mb-0">PhotoChat</h3>
+  <div class="ms-auto small-muted">
+    User ID: <strong id="userLabel">initializing…</strong>
+  </div>
 </div>
 
-<!-- MAIN APP -->
-<div id="app" class="hidden">
+<div class="row g-3">
 
-  <h3 id="userEmail"></h3>
-  <p>Wallet: <span id="walletAddress">Not connected</span> | Balance: <span id="walletBalance">—</span></p>
-
-  <!-- TABS -->
-  <div class="tab-buttons panel">
-    <button onclick="showTab('walletTab')">Wallet / Swap</button>
-    <button onclick="showTab('marketTab')">Marketplace</button>
-    <button onclick="showTab('chatTab')">Chat</button>
-    <button onclick="showTab('fxTab')">FX / ETF</button>
-    <button onclick="showTab('cameraTab')">Video</button>
+<!-- LEFT -->
+<div class="col-md-3">
+  <div class="panel mb-3">
+    <h6>Wallet (optional)</h6>
+    <div id="walletAddress">Not connected</div>
+    <div id="walletBalance" class="small-muted">—</div>
+    <button id="connectWalletBtn" class="btn btn-sm btn-outline-primary w-100 mt-2">
+      <i class="bi bi-wallet2"></i> Connect Wallet
+    </button>
   </div>
 
-  <!-- WALLET / DEX -->
-  <div id="walletTab" class="tab active panel">
-    <h4>DEX Swap</h4>
-    <select id="fromToken">
-      <option value="ETH">ETH</option>
-      <option value="USDC">USDC</option>
-      <option value="SDC">SDC</option>
-    </select>
-    <select id="toToken">
-      <option value="USDC">USDC</option>
-      <option value="ETH">ETH</option>
-      <option value="SDC">SDC</option>
-    </select>
-    <input id="swapAmount" placeholder="Amount" />
-    <button onclick="getQuote()">Get Quote</button>
-    <button onclick="executeSwap()">Execute Swap</button>
-    <p id="swapResult">—</p>
+  <div class="panel">
+    <h6>Contacts</h6>
+    <div id="contactsList" class="small-muted">No contacts</div>
+    <input id="addContactInput" class="form-control form-control-sm mt-2" placeholder="Paste User ID">
+    <button id="addContactBtn" class="btn btn-sm btn-primary w-100 mt-2">Add</button>
+  </div>
+</div>
 
-    <h4>Buy SDC (WhatsApp OTC)</h4>
-    <button onclick="whatsappBuy('CASH')">Cash</button>
-    <button onclick="whatsappBuy('ETF')">ETF</button>
+<!-- CENTER -->
+<div class="col-md-6">
+  <div class="panel">
+    <h6 id="chatTitle">Chat</h6>
+
+    <video id="localVideo" class="video-preview mb-2" autoplay muted></video>
+    <button id="startMeetingBtn" class="btn btn-sm btn-outline-secondary mb-2">
+      <i class="bi bi-camera-video"></i> Start Camera
+    </button>
+
+    <div id="chatWindow" class="chat-window">
+      <div class="text-center small-muted">Select a contact</div>
+    </div>
+
+    <div class="d-flex gap-2 mt-2">
+      <input id="messageInput" class="form-control" placeholder="Message">
+      <button id="sendBtn" class="btn btn-primary">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="col-md-3">
+  <div class="panel mb-3">
+    <h6>Crypto Swap (Demo)</h6>
+    <input id="swapAmount" class="form-control form-control-sm mb-2" placeholder="Amount">
+    <button id="quoteBtn" class="btn btn-sm btn-outline-secondary w-100">Get Quote</button>
+    <button id="swapBtn" class="btn btn-sm btn-success w-100 mt-2">Swap</button>
+    <div id="swapResult" class="small-muted mt-2"></div>
   </div>
 
-  <!-- MARKETPLACE -->
-  <div id="marketTab" class="tab panel">
-    <h4>Marketplace</h4>
-    <input id="productName" placeholder="Product Name" />
-    <input id="productPrice" placeholder="Price (USD)" />
-    <textarea id="productDesc" placeholder="Description"></textarea>
-    <button onclick="addProduct()">Add Product</button>
-    <h5>Products</h5>
-    <div id="marketplace"></div>
+  <div class="panel">
+    <h6>Ads</h6>
+    <div id="adsArea" class="small-muted">No ads</div>
   </div>
+</div>
 
-  <!-- CHAT -->
-  <div id="chatTab" class="tab panel">
-    <h4>Chat + Wallet Transfers</h4>
-    <input id="chatContact" placeholder="Recipient Email / Wallet" />
-    <input id="chatAmount" placeholder="Amount (SDC / Fiat / ETF)" />
-    <textarea id="chatMsg" placeholder="Message"></textarea>
-    <button onclick="sendChat()">Send / Transfer</button>
-    <div id="chatWindow" style="height:150px; overflow:auto; border:1px solid #444; padding:6px; margin-top:6px;"></div>
-  </div>
-
-  <!-- FX / ETFs -->
-  <div id="fxTab" class="tab panel">
-    <h4>FX / ETFs / Bank Transfers (Demo)</h4>
-    <button onclick="fxDemo()">Start FX / Bank Transfer</button>
-    <p id="fxResult">—</p>
-  </div>
-
-  <!-- CAMERA / VIDEO -->
-  <div id="cameraTab" class="tab panel">
-    <h4>Video / Camera Test</h4>
-    <button onclick="testCamera()">Test Camera</button>
-    <video id="cam" autoplay muted class="video-preview"></video>
-  </div>
-
-  <!-- LOGOUT -->
-  <button onclick="logout()">Logout</button>
+</div>
 </div>
 
 <script>
-/* ===============================
+/* =======================
    SUPABASE CONFIG
-================================ */
+======================= */
 const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
 
-let currentUser=null, provider=null, signer=null, userWallet=null, lastQuote=null;
+const supabase = supabasejs.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
-/* ===============================
-   UI TABS
-================================ */
-function showTab(id){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+let currentUser = null;
+let activeContact = null;
+
+/* =======================
+   INIT USER (NO LOGIN)
+======================= */
+async function initUser() {
+  const { data:{ session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) return alert("Auth error");
+    currentUser = data.user;
+  } else {
+    currentUser = session.user;
+  }
+
+  document.getElementById("userLabel").innerText =
+    currentUser.id.slice(0,8);
+
+  loadContacts();
 }
+window.addEventListener("DOMContentLoaded", initUser);
 
-/* ===============================
-   WALLET-FIRST LOGIN
-================================ */
-async function walletLogin(){
-  if(!window.ethereum) return alert("Install MetaMask");
-  provider = new ethers.BrowserProvider(window.ethereum);
-  signer = await provider.getSigner();
-  userWallet = await signer.getAddress();
+/* =======================
+   WALLET (OPTIONAL)
+======================= */
+document.getElementById("connectWalletBtn").onclick = async () => {
+  if (!window.ethereum) return alert("Wallet not installed");
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  const signer = provider.getSigner();
+  const addr = await signer.getAddress();
+  document.getElementById("walletAddress").innerText =
+    addr.slice(0,6)+"..."+addr.slice(-4);
+  const bal = await provider.getBalance(addr);
+  document.getElementById("walletBalance").innerText =
+    "ETH "+ethers.utils.formatEther(bal);
+};
 
-  // Upsert user in Supabase profiles
-  const { data, error } = await supabase.from('profiles').upsert({
-    id:userWallet, email:userWallet
-  });
-  currentUser = { id:userWallet, email:userWallet };
+/* =======================
+   CONTACTS
+======================= */
+async function loadContacts() {
+  const { data } = await supabase
+    .from("contacts")
+    .select("*")
+    .eq("owner", currentUser.id);
 
-  document.getElementById("authBox").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  document.getElementById("userEmail").innerText=userWallet;
-  document.getElementById("walletAddress").innerText=userWallet;
+  const list = document.getElementById("contactsList");
+  list.innerHTML = "";
 
-  const bal = await provider.getBalance(userWallet);
-  document.getElementById("walletBalance").innerText='ETH '+ethers.formatEther(bal);
+  if (!data || !data.length) {
+    list.innerHTML = "No contacts";
+    return;
+  }
 
-  loadMarketplace();
-}
-
-/* ===============================
-   LOGOUT
-================================ */
-async function logout(){ location.reload(); }
-
-/* ===============================
-   WhatsApp Buy (CASH / ETF)
-================================ */
-async function whatsappBuy(type){
-  await fetch("https://api.sacreserve.africa/api/whatsapp/buy", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ userId:currentUser.id, email:currentUser.email, wallet:userWallet, type })
-  });
-  alert("WhatsApp OTC request sent.");
-}
-
-/* ===============================
-   DEX AGGREGATOR
-================================ */
-async function getQuote(){
-  const fromToken=document.getElementById("fromToken").value;
-  const toToken=document.getElementById("toToken").value;
-  const amount=document.getElementById("swapAmount").value;
-  if(!userWallet) return alert("Connect wallet first");
-  if(!amount) return alert("Enter amount");
-
-  const res=await fetch(`https://api.sacreserve.africa/api/swap/quote?fromToken=${fromToken}&toToken=${toToken}&amount=${amount}&userAddress=${userWallet}`);
-  lastQuote=await res.json();
-  document.getElementById("swapResult").innerText="Quote received (demo)";
-}
-async function executeSwap(){
-  if(!lastQuote) return alert("Get quote first");
-  try{
-    const tx={ to:lastQuote.to, data:lastQuote.data, value:lastQuote.value };
-    await signer.sendTransaction(tx);
-    alert("Swap submitted");
-  }catch(e){ alert("Swap failed: "+e.message); }
-}
-
-/* ===============================
-   FX / ETF / Bank Demo
-================================ */
-function fxDemo(){
-  alert("FX / ETFs / Bank transfers are in demo mode (backend integration pending).");
-  document.getElementById("fxResult").innerText="Demo transaction created. Redirect placeholder.";
-}
-
-/* ===============================
-   Marketplace
-================================ */
-async function addProduct(){
-  const name=document.getElementById("productName").value;
-  const price=document.getElementById("productPrice").value;
-  const desc=document.getElementById("productDesc").value;
-  if(!name || !price) return alert("Fill all fields");
-
-  await fetch("https://api.sacreserve.africa/api/market",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ userId:currentUser.id, name, price, desc })
-  });
-  loadMarketplace();
-}
-
-async function loadMarketplace(){
-  const res=await fetch("https://api.sacreserve.africa/api/market");
-  const products=await res.json();
-  const container=document.getElementById("marketplace");
-  container.innerHTML="";
-  products.forEach(p=>{
-    const div=document.createElement("div");
-    div.className="product-card";
-    div.innerHTML=`<strong>${p.name}</strong><br>Price: ${p.price} USD<br>${p.desc}<br>Seller: ${p.userId}`;
-    container.appendChild(div);
+  data.forEach(c => {
+    const d = document.createElement("div");
+    d.className = "border-bottom py-1";
+    d.style.cursor = "pointer";
+    d.innerText = c.contact.slice(0,8);
+    d.onclick = () => openChat(c.contact);
+    list.appendChild(d);
   });
 }
 
-/* ===============================
-   Chat + SDC Transfers
-================================ */
-async function sendChat(){
-  const contact=document.getElementById("chatContact").value;
-  const msg=document.getElementById("chatMsg").value;
-  const amt=document.getElementById("chatAmount").value;
-  if(!contact || (!msg && !amt)) return alert("Enter message or amount");
+document.getElementById("addContactBtn").onclick = async () => {
+  const id = document.getElementById("addContactInput").value.trim();
+  if (!id) return;
+  await supabase.from("contacts").insert({
+    owner: currentUser.id,
+    contact: id
+  });
+  document.getElementById("addContactInput").value = "";
+  loadContacts();
+};
 
-  await fetch("https://api.sacreserve.africa/api/chat/send",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ fromId:currentUser.id, to:contact, message:msg, amount:amt })
+/* =======================
+   CHAT
+======================= */
+function openChat(id) {
+  activeContact = id;
+  document.getElementById("chatTitle").innerText =
+    "Chat with " + id.slice(0,8);
+  loadMessages();
+}
+
+async function loadMessages() {
+  const { data } = await supabase
+    .from("messages")
+    .select("*")
+    .or(`sender.eq.${currentUser.id},receiver.eq.${currentUser.id}`)
+    .order("created_at");
+
+  const win = document.getElementById("chatWindow");
+  win.innerHTML = "";
+
+  data?.forEach(m => {
+    if (![currentUser.id, activeContact].includes(m.sender) ||
+        ![currentUser.id, activeContact].includes(m.receiver)) return;
+
+    const div = document.createElement("div");
+    div.className = "message " +
+      (m.sender === currentUser.id ? "me":"them");
+    div.innerHTML = `<div class="bubble">${m.content}</div>`;
+    win.appendChild(div);
   });
 
-  const windowEl=document.getElementById("chatWindow");
-  const div=document.createElement("div");
-  div.innerHTML=`<strong>To ${contact}:</strong> ${msg} ${amt?('['+amt+' SDC]'):""}`;
-  windowEl.appendChild(div);
-  windowEl.scrollTop=windowEl.scrollHeight;
-
-  document.getElementById("chatMsg").value="";
-  document.getElementById("chatAmount").value="";
-  document.getElementById("chatContact").value="";
+  win.scrollTop = win.scrollHeight;
 }
 
-/* ===============================
-   Camera / Video
-================================ */
-async function testCamera(){
-  const stream=await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-  document.getElementById("cam").srcObject=stream;
-}
+document.getElementById("sendBtn").onclick = async () => {
+  if (!activeContact) return alert("Select contact");
+  const msg = document.getElementById("messageInput").value.trim();
+  if (!msg) return;
+  document.getElementById("messageInput").value = "";
+  await supabase.from("messages").insert({
+    sender: currentUser.id,
+    receiver: activeContact,
+    content: msg
+  });
+  loadMessages();
+};
+
+/* =======================
+   CAMERA
+======================= */
+document.getElementById("startMeetingBtn").onclick = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+  document.getElementById("localVideo").srcObject = stream;
+};
+
+/* =======================
+   SWAP DEMO
+======================= */
+document.getElementById("quoteBtn").onclick = () =>
+  document.getElementById("swapResult").innerText = "Quote received (demo)";
+document.getElementById("swapBtn").onclick = () =>
+  alert("DEX swap via api.sacreserve.africa (coming soon)");
 </script>
 
 </body>

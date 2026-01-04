@@ -1,361 +1,236 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SadiCoin Tech — Wallet Platform (Production-ready)</title>
+<title>SadiPay — Social · Pay · Market · Trade</title>
 
-<!-- Supabase JS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
-
-<!-- Ethers.js -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
-
-<!-- QRCode.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{--accent:#2dd4bf;--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;}
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071026 0%,#0b1220 100%);color:#e6eef6}
-header{padding:18px 24px;display:flex;align-items:center;gap:12px}
-.logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#00509e);color:#042a2b;font-weight:700}
-.brand{font-weight:700;font-size:18px}
-main{max-width:1100px;margin:18px auto;padding:20px}
-.grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
-.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,0.6);}
-label{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
-input,select,button{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-button{background:var(--accent);color:#042a2b;border:0;cursor:pointer;font-weight:600}
-.link-btn{background:transparent;border:1px dashed rgba(255,255,255,0.06);color:var(--accent)}
-.muted{color:var(--muted);font-size:13px}
-.hidden{display:none}
-.small{font-size:13px;color:var(--muted)}
-.qr { width:150px; height:150px; background:#fff; padding:8px; border-radius:8px; display:flex;align-items:center;justify-content:center }
-footer{color:var(--muted);text-align:center;padding:18px 0}
-nav{padding:6px 24px;color:var(--muted)}
-nav a{color:var(--muted);text-decoration:none;margin-right:10px}
-@media(max-width:900px){.grid{grid-template-columns:1fr}.qr{width:120px;height:120px}}
-.notice { background: rgba(255,255,255,0.02); padding:10px;border-radius:8px;margin-top:8px;color:var(--muted) }
-table{width:100%;border-collapse:collapse;margin-top:8px}
-th,td{padding:6px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06)}
+:root {
+  --bg:#f5f6f8;
+  --card:#ffffff;
+  --text:#111827;
+  --muted:#6b7280;
+  --accent:#0b5cff;
+}
+[data-theme="dark"] {
+  --bg:#0b0e11;
+  --card:#1e2329;
+  --text:#eaecef;
+  --muted:#848e9c;
+  --accent:#f0b90b;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  font-family:system-ui,-apple-system;
+  background:var(--bg);
+  color:var(--text);
+}
+header {
+  height:56px;
+  background:var(--card);
+  border-bottom:1px solid #e5e7eb;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 16px;
+}
+.logo { font-weight:700; }
+.app {
+  display:flex;
+  height:calc(100vh - 56px);
+}
+.sidebar {
+  width:64px;
+  background:var(--card);
+  border-right:1px solid #e5e7eb;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding-top:8px;
+}
+.sidebar button {
+  background:none;
+  border:none;
+  font-size:20px;
+  padding:12px;
+  cursor:pointer;
+  color:var(--muted);
+}
+.sidebar button:hover { color:var(--accent); }
+main {
+  flex:1;
+  padding:16px;
+  overflow:auto;
+}
+.page { display:none; }
+.page.active { display:block; }
+
+.card {
+  background:var(--card);
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:12px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:12px;
+}
+
+.chat-layout {
+  display:grid;
+  grid-template-columns:260px 1fr;
+  height:75vh;
+  background:var(--card);
+  border-radius:10px;
+  overflow:hidden;
+}
+.chat-list { border-right:1px solid #e5e7eb; padding:12px; }
+.chat-window { padding:12px; }
+
+button.primary {
+  background:var(--accent);
+  color:#000;
+  border:none;
+  padding:10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+button.outline {
+  border:1px solid var(--accent);
+  background:none;
+  color:var(--accent);
+  padding:10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+small { color:var(--muted); }
 </style>
 </head>
-<body>
+
+<body data-theme="light">
+
 <header>
-  <div class="logo">SDC</div>
+  <div class="logo">SadiPay</div>
   <div>
-    <div class="brand">SadiCoin Tech</div>
-    <div class="muted">Wallet Platform — Production-ready</div>
+    <button onclick="toggleTheme()">🌓</button>
+    <span id="userRole" style="margin-left:10px">Observer</span>
   </div>
-  <div style="margin-left:auto" id="headerActions"></div>
 </header>
 
-<nav>
-  <a href="#">SDC Wallet</a>|
-  <a href="#">SadiCoin DApp</a>|
-  <a href="#">Tokenomics</a>
-</nav>
+<div class="app">
+
+<aside class="sidebar">
+  <button onclick="go('home')"><i class="bi bi-house"></i></button>
+  <button onclick="go('chat')"><i class="bi bi-chat"></i></button>
+  <button onclick="go('pay')"><i class="bi bi-credit-card"></i></button>
+  <button onclick="go('market')"><i class="bi bi-bag"></i></button>
+  <button onclick="go('trade')"><i class="bi bi-graph-up"></i></button>
+  <button onclick="go('admin')"><i class="bi bi-shield-check"></i></button>
+</aside>
 
 <main>
-<!-- AUTH CARD -->
-<div id="authCard" class="card">
-  <div id="signOutView">
-    <h3>Sign in / Register</h3>
-    <label>Email</label><input id="emailInput" type="email" placeholder="you@example.com" />
-    <label>Password</label><input id="passwordInput" type="password" placeholder="Choose a strong password" />
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button id="btnRegister">Register</button>
-      <button id="btnLogin" class="link-btn" style="border-style:solid">Login</button>
-    </div>
-  </div>
-  <div id="signedInView" class="hidden">
-    <h3>Account</h3>
-    <div><strong id="userEmail">—</strong></div>
-    <div class="small" id="userIdInfo">User ID: —</div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button id="btnSignOut" class="link-btn">Sign out</button>
-    </div>
-  </div>
-</div>
 
-<!-- MAIN GRID -->
-<div id="app" class="hidden" style="margin-top:18px">
+<section id="home" class="page active">
+  <div class="card">
+    <h2>Welcome to SadiPay</h2>
+    <p class="muted">
+      Social-first financial platform. Observer-safe. Regulator-ready.
+    </p>
+  </div>
+</section>
+
+<section id="chat" class="page">
+  <h3>Chats</h3>
+  <div class="chat-layout">
+    <div class="chat-list">Contacts (Supabase)</div>
+    <div class="chat-window">Messages</div>
+  </div>
+</section>
+
+<section id="pay" class="page">
+  <h3>Wallet</h3>
+  <div class="card">
+    <h1>R 0.00</h1>
+    <small>ZAR Balance</small>
+  </div>
   <div class="grid">
-    <div>
-      <!-- Wallet Card -->
-      <div class="card">
-        <h3>Wallet</h3>
-        <label>Wallet address</label><div id="walletAddress" class="small">Not created</div>
-        <label>SadiCoin balance</label><div id="walletBalance" class="small">0 SDC</div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button id="createWalletBtn">Create Wallet</button>
-          <button id="exportKeystoreBtn" class="link-btn">Export Keystore</button>
-          <button id="deleteKeystoreBtn" class="link-btn">Delete Keystore</button>
-        </div>
-        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-        <h4>Receive</h4>
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <div id="receiveQr" class="qr">—</div>
-          <div style="flex:1">
-            <div class="small">Copy or scan address</div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button id="copyAddrBtn" class="link-btn">Copy Address</button>
-            </div>
-          </div>
-        </div>
-        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-        <h4>Send SadiCoin</h4>
-        <label>Recipient</label><input id="sendAddress" placeholder="0x..." />
-        <label>Amount</label><input id="sendAmount" type="number" placeholder="0.0" />
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button id="sendBtn">Send</button>
-        </div>
-        <hr style="margin:12px 0;border-color:rgba(255,255,255,0.02)">
-        <h4>Buy Cash / ETF via WhatsApp</h4>
-        <button id="whatsappBuyBtn">💸 Buy via WhatsApp</button>
-      </div>
+    <button class="primary">Send</button>
+    <button class="outline">Receive</button>
+    <button class="outline">Crypto</button>
+  </div>
+</section>
 
-      <!-- Swap Card -->
-      <div class="card" style="margin-top:16px">
-        <h3>Swap</h3>
-        <label>Amount (SDC)</label><input id="swapAmount" placeholder="0.0" />
-        <label>To token address</label><input id="swapToToken" placeholder="0x..." />
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button id="swapBtn">Start Swap</button>
-        </div>
-        <h4>Swap History</h4>
-        <table>
-          <thead><tr><th>When</th><th>Amount</th><th>Token</th><th>Status</th></tr></thead>
-          <tbody id="swapHistory"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div>
-      <!-- Transaction History -->
-      <div class="card">
-        <h3>Transaction History</h3>
-        <table>
-          <thead><tr><th>When</th><th>Type</th><th>Amount</th><th>TxHash</th></tr></thead>
-          <tbody id="txBody"></tbody>
-        </table>
-      </div>
+<section id="market" class="page">
+  <h3>Marketplace</h3>
+  <div class="grid">
+    <div class="card">
+      <strong>Product</strong>
+      <p>Escrow protected</p>
+      <button class="primary">Buy</button>
     </div>
   </div>
-</div>
+</section>
 
-<footer style="margin-top:18px">© SadiCoin Tech 2025</footer>
+<section id="trade" class="page">
+  <h3>Markets</h3>
+  <div class="card">
+    <strong>BTC / ZAR</strong>
+    <h2 id="btcPrice">Loading…</h2>
+    <small>View-only · Public prices</small>
+  </div>
+</section>
+
+<section id="admin" class="page">
+  <h3>Compliance Dashboard</h3>
+  <div class="card">
+    <ul>
+      <li>Users (read-only)</li>
+      <li>Messages (audit)</li>
+      <li>Ads</li>
+    </ul>
+  </div>
+</section>
+
 </main>
+</div>
 
 <script>
-// ===== Supabase config =====
-const SUPABASE_URL = 'https://jbhhfzbhcvzxtthhmfhz.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc';
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* ========= SUPABASE ========= */
+const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===== RPC / Contract =====
-const POLYGON_RPC = "https://polygon-rpc.com/";
-const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
-const SDC_CONTRACT = "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96";
-const SDC_DECIMALS = 18;
-const sdcAbi = ["function balanceOf(address) view returns (uint256)","function transfer(address to, uint amount) returns (bool)"];
-const sdcContract = new ethers.Contract(SDC_CONTRACT, sdcAbi, provider);
+/* ========= ROUTER ========= */
+function go(p) {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById(p).classList.add('active');
+  location.hash = p;
+}
+window.onload = () => go(location.hash.replace('#','')||'home');
 
-// ===== UI refs =====
-const signOutView = document.getElementById("signOutView");
-const signedInView = document.getElementById("signedInView");
-const appDiv = document.getElementById("app");
-const userEmailEl = document.getElementById("userEmail");
-const userIdInfo = document.getElementById("userIdInfo");
-const walletAddressEl = document.getElementById("walletAddress");
-const walletBalanceEl = document.getElementById("walletBalance");
-const receiveQrEl = document.getElementById("receiveQr");
-const txBody = document.getElementById("txBody");
-const swapHistoryEl = document.getElementById("swapHistory");
-
-// ===== DOM helpers =====
-function show(el){ el.classList.remove('hidden'); }
-function hide(el){ el.classList.add('hidden'); }
-
-// ===== Auth =====
-document.getElementById("btnRegister").onclick = async () => {
-  const email = document.getElementById("emailInput").value.trim();
-  const password = document.getElementById("passwordInput").value;
-  if(!email||!password) return alert("Enter email & password");
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if(error) return alert(error.message);
-  alert("Registered! Check email for verification.");
-
-  // Auto create wallet on registration
-  const user = data.user;
-  if(user){
-    const wallet = ethers.Wallet.createRandom();
-    const mnemonic = wallet.mnemonic.phrase;
-    alert("Backup wallet seed:\n\n"+mnemonic);
-    const walletPw = prompt("Enter wallet password to encrypt keystore:");
-    const encryptedJson = await wallet.encrypt(walletPw);
-    await supabase.from('wallets').upsert({ user_id:user.id, address:wallet.address, keystore:encryptedJson });
-    walletAddressEl.textContent = wallet.address;
-    generateReceiveQr(wallet.address);
-  }
-};
-
-document.getElementById("btnLogin").onclick = async () => {
-  const email = document.getElementById("emailInput").value.trim();
-  const password = document.getElementById("passwordInput").value;
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error) return alert(error.message);
-  loadUserUI();
-};
-
-document.getElementById("btnSignOut").onclick = async () => {
-  await supabase.auth.signOut();
-  location.reload();
-};
-
-// ===== Load user UI =====
-async function loadUserUI(){
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return;
-  hide(signOutView); show(signedInView); show(appDiv);
-  userEmailEl.textContent = user.email;
-  userIdInfo.textContent = "User ID: "+user.id;
-
-  // Load wallet
-  const { data:walletData } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
-  if(walletData){
-    walletAddressEl.textContent = walletData.address;
-    generateReceiveQr(walletData.address);
-    updateBalance(walletData.address);
-  }
-  loadTxHistory();
-  loadSwapHistory();
+/* ========= THEME ========= */
+function toggleTheme() {
+  document.body.dataset.theme =
+    document.body.dataset.theme === "dark" ? "light" : "dark";
 }
 
-// ===== Wallet =====
-document.getElementById("createWalletBtn").onclick = async () => {
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return alert("Sign in first");
-  const wallet = ethers.Wallet.createRandom();
-  const mnemonic = wallet.mnemonic.phrase;
-  alert("Backup wallet seed:\n\n"+mnemonic);
-  const walletPw = prompt("Enter wallet password to encrypt keystore:");
-  const encryptedJson = await wallet.encrypt(walletPw);
-  await supabase.from('wallets').upsert({ user_id:user.id, address:wallet.address, keystore:encryptedJson });
-  walletAddressEl.textContent = wallet.address;
-  generateReceiveQr(wallet.address);
-  updateBalance(wallet.address);
-};
-
-// ===== QR code =====
-function generateReceiveQr(address){
-  receiveQrEl.innerHTML="";
-  new QRCode(receiveQrEl,{text:address,width:150,height:150});
-}
-
-// ===== Copy address =====
-document.getElementById("copyAddrBtn").onclick=()=>{
-  const addr = walletAddressEl.textContent;
-  if(addr!=="Not created") navigator.clipboard.writeText(addr).then(()=>alert("Address copied"));
-};
-
-// ===== Balance =====
-async function updateBalance(address){
-  const bal = await sdcContract.balanceOf(address);
-  walletBalanceEl.textContent = ethers.utils.formatUnits(bal,SDC_DECIMALS)+" SDC";
-}
-
-// ===== Send =====
-document.getElementById("sendBtn").onclick=async()=>{
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return alert("Sign in first");
-  const { data:walletData } = await supabase.from('wallets').select('*').eq('user_id',user.id).single();
-  const walletPw = prompt("Enter wallet password to decrypt keystore:");
-  const wallet = await ethers.Wallet.fromEncryptedJson(walletData.keystore,walletPw);
-  const to=document.getElementById("sendAddress").value.trim();
-  const amount=document.getElementById("sendAmount").value;
-  if(!to||!amount) return alert("Enter recipient & amount");
-  const sdcWithSigner=sdcContract.connect(wallet);
-  const tx=await sdcWithSigner.transfer(to,ethers.utils.parseUnits(amount,SDC_DECIMALS));
-  alert("Transaction sent! Hash: "+tx.hash);
-  await supabase.from('transactions').insert([{ user_id:user.id, type:"SEND", amount, tx_hash:tx.hash, created_at:new Date() }]);
-  updateBalance(walletData.address); loadTxHistory();
-};
-
-// ===== Swap =====
-document.getElementById("swapBtn").onclick=async()=>{
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return alert("Sign in first");
-  const amount=document.getElementById("swapAmount").value;
-  const toToken=document.getElementById("swapToToken").value.trim();
-  if(!amount||!toToken) return alert("Enter amount & token address");
-  try{
-    // Example backend call; replace with your API
-    const res = await fetch('/api/swap',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id:user.id,amount,toToken}) });
-    const data = await res.json();
-    if(data.error) return alert(data.error);
-    await supabase.from('swaps').insert([{ user_id:user.id, amount, to_token:toToken, status:"SUCCESS", created_at:new Date() }]);
-    alert("Swap completed!");
-    loadSwapHistory();
-  }catch(e){ alert("Swap failed: "+e.message); }
-};
-
-// ===== Load transaction history =====
-async function loadTxHistory(){
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return;
-  const { data } = await supabase.from('transactions').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
-  txBody.innerHTML="";
-  if(data) data.forEach(tx=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(tx.created_at).toLocaleString()}</td><td>${tx.type}</td><td>${tx.amount}</td><td>${tx.tx_hash||'-'}</td>`;
-    txBody.appendChild(tr);
-  });
-}
-
-// ===== Load swap history =====
-async function loadSwapHistory(){
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return;
-  const { data } = await supabase.from('swaps').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
-  swapHistoryEl.innerHTML="";
-  if(data) data.forEach(swap=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(swap.created_at).toLocaleString()}</td><td>${swap.amount}</td><td>${swap.to_token}</td><td>${swap.status}</td>`;
-    swapHistoryEl.appendChild(tr);
-  });
-}
-
-// ===== WhatsApp buy button =====
-window.addEventListener("DOMContentLoaded", async () => {
-  const whatsappBtn = document.getElementById("whatsappBuyBtn");
-  if (!whatsappBtn) return;
-
-  whatsappBtn.onclick = async () => {
-    // Supabase v2 – async user fetch
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const email = user?.email || "guest@citizenswallet.io";
-
-    const message = encodeURIComponent(
-      `Hello, I would like to buy SadiCoin (cash or ETF option).
-Email: ${email}`
-    );
-
-    const whatsappNumber = "26377XXXXXXX"; // ← PUT REAL NUMBER (no +)
-    const whatsappLink = `https://wa.me/${whatsappNumber}?text=${message}`;
-
-    window.open(whatsappLink, "_blank");
-
-// ===== SESSION PERSISTENCE =====
-window.addEventListener('load', async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    loadUserUI();
-  }
+/* ========= PRICE DEMO ========= */
+fetch("https://api.coindesk.com/v1/bpi/currentprice/BTC.json")
+.then(r=>r.json())
+.then(d=>{
+  document.getElementById("btcPrice").innerText =
+    "R " + Math.round(d.bpi.USD.rate_float * 19);
 });
 </script>
+
 </body>
 </html>

@@ -1,258 +1,275 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PhotoChat — Social • Payments • Crypto</title>
+<meta charset="UTF-8" />
+<title>PhotoChat – AI Social Platform</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- Bootstrap -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
-<!-- Supabase v2 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- Ethers (optional wallet) -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { background:#f7f8fb; padding:1.5rem; }
-.chat-window { height:520px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
-.message { margin-bottom:10px; }
-.message.me { text-align:right; }
-.bubble { display:inline-block; padding:8px 12px; border-radius:12px; max-width:78%; }
-.message.me .bubble { background:#0d6efd; color:#fff; }
-.message.them .bubble { background:#e9ecef; }
-.panel { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
-.small-muted { font-size:.85rem; color:#6c757d; }
-.video-preview { width:100%; max-height:210px; border-radius:8px; background:#000; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: #0b0f19;
+  color: #ffffff;
+}
+header {
+  padding: 16px 24px;
+  background: #12182a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+header h1 {
+  font-size: 20px;
+  margin: 0;
+  color: #5eead4;
+}
+header span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+main {
+  padding: 24px;
+  max-width: 1100px;
+  margin: auto;
+}
+.card {
+  background: #151c34;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #022c22;
+  color: #5eead4;
+  border-radius: 8px;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.upload-box {
+  border: 2px dashed #334155;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+.upload-box input { display: none; }
+.preview img, .preview video {
+  max-width: 100%;
+  border-radius: 12px;
+  margin-top: 12px;
+}
+.presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.preset {
+  background: #1e293b;
+  padding: 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  border: 2px solid transparent;
+}
+.preset:hover { border-color: #5eead4; }
+button {
+  background: #5eead4;
+  color: #022c22;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  margin-right: 6px;
+}
+button.secondary {
+  background: #1e293b;
+  color: #ffffff;
+}
+.feed-post {
+  border-bottom: 1px solid #334155;
+  padding: 14px 0;
+}
+.actions {
+  margin-top: 8px;
+}
+.chat-box {
+  height: 200px;
+  overflow-y: auto;
+  background: #020617;
+  padding: 10px;
+  border-radius: 10px;
+}
+footer {
+  text-align: center;
+  padding: 16px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+textarea, input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+}
 </style>
 </head>
 
 <body>
-<div class="container-fluid">
 
-<!-- HEADER -->
-<div class="d-flex align-items-center mb-3">
-  <h3 class="mb-0">PhotoChat</h3>
-  <div class="ms-auto small-muted">
-    User ID: <strong id="userLabel">initializing…</strong>
-  </div>
+<header>
+  <h1>PhotoChat</h1>
+  <span>AI Backgrounds • Social • Safe</span>
+</header>
+
+<main>
+
+<!-- STEP 1 -->
+<div class="card">
+  <div class="badge">Step 1</div>
+  <h2>Upload Photo or Video</h2>
+  <label class="upload-box">
+    <input type="file" id="mediaInput" accept="image/*,video/*" />
+    <p>Tap or click to upload</p>
+    <small>(Photos or videos up to 5 seconds)</small>
+  </label>
+  <div class="preview" id="preview"></div>
 </div>
 
-<div class="row g-3">
-
-<!-- LEFT -->
-<div class="col-md-3">
-  <div class="panel mb-3">
-    <h6>Wallet (optional)</h6>
-    <div id="walletAddress">Not connected</div>
-    <div id="walletBalance" class="small-muted">—</div>
-    <button id="connectWalletBtn" class="btn btn-sm btn-outline-primary w-100 mt-2">
-      <i class="bi bi-wallet2"></i> Connect Wallet
-    </button>
+<!-- STEP 2 -->
+<div class="card">
+  <div class="badge">Step 2</div>
+  <h2>Select Background</h2>
+  <div class="presets">
+    <div class="preset" data-preset="city">🏙️ City</div>
+    <div class="preset" data-preset="space">🚀 Space</div>
+    <div class="preset" data-preset="nature">🌲 Nature</div>
+    <div class="preset" data-preset="fantasy">🧙 Fantasy</div>
+    <div class="preset" data-preset="sports">🏟️ Sports</div>
+    <div class="preset" data-preset="cartoon">🎨 Cartoon</div>
   </div>
-
-  <div class="panel">
-    <h6>Contacts</h6>
-    <div id="contactsList" class="small-muted">No contacts</div>
-    <input id="addContactInput" class="form-control form-control-sm mt-2" placeholder="Paste User ID">
-    <button id="addContactBtn" class="btn btn-sm btn-primary w-100 mt-2">Add</button>
-  </div>
+  <button id="generateBtn" disabled>Generate AI Background</button>
 </div>
 
-<!-- CENTER -->
-<div class="col-md-6">
-  <div class="panel">
-    <h6 id="chatTitle">Chat</h6>
-
-    <video id="localVideo" class="video-preview mb-2" autoplay muted></video>
-    <button id="startMeetingBtn" class="btn btn-sm btn-outline-secondary mb-2">
-      <i class="bi bi-camera-video"></i> Start Camera
-    </button>
-
-    <div id="chatWindow" class="chat-window">
-      <div class="text-center small-muted">Select a contact</div>
-    </div>
-
-    <div class="d-flex gap-2 mt-2">
-      <input id="messageInput" class="form-control" placeholder="Message">
-      <button id="sendBtn" class="btn btn-primary">Send</button>
-    </div>
-  </div>
+<!-- STEP 3 -->
+<div class="card">
+  <div class="badge">Step 3</div>
+  <h2>Result</h2>
+  <button onclick="postToFeed()">Post to PhotoChat</button>
 </div>
 
-<!-- RIGHT -->
-<div class="col-md-3">
-  <div class="panel mb-3">
-    <h6>Crypto Swap (Demo)</h6>
-    <input id="swapAmount" class="form-control form-control-sm mb-2" placeholder="Amount">
-    <button id="quoteBtn" class="btn btn-sm btn-outline-secondary w-100">Get Quote</button>
-    <button id="swapBtn" class="btn btn-sm btn-success w-100 mt-2">Swap</button>
-    <div id="swapResult" class="small-muted mt-2"></div>
-  </div>
-
-  <div class="panel">
-    <h6>Ads</h6>
-    <div id="adsArea" class="small-muted">No ads</div>
-  </div>
+<!-- FEED -->
+<div class="card">
+  <h2>Feed</h2>
+  <div id="feed"></div>
 </div>
 
+<!-- CHAT -->
+<div class="card">
+  <h2>Chat</h2>
+  <div class="chat-box" id="chatBox"></div>
+  <input id="chatInput" placeholder="Type message..." />
+  <button onclick="sendChat()">Send</button>
 </div>
-</div>
+
+</main>
+
+<footer>
+PhotoChat © 2026 • AI-generated backgrounds • Fictional content only
+</footer>
 
 <script>
-/* =======================
-   SUPABASE CONFIG
-======================= */
-const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+const mediaInput = document.getElementById("mediaInput");
+const preview = document.getElementById("preview");
+const presets = document.querySelectorAll(".preset");
+const generateBtn = document.getElementById("generateBtn");
+const feed = document.getElementById("feed");
 
-const supabase = supabasejs.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+let selectedPreset = null;
+let currentMediaURL = null;
+let currentMediaType = null;
 
-let currentUser = null;
-let activeContact = null;
+mediaInput.onchange = () => {
+  preview.innerHTML = "";
+  const file = mediaInput.files[0];
+  if (!file) return;
 
-/* =======================
-   INIT USER (NO LOGIN)
-======================= */
-async function initUser() {
-  const { data:{ session } } = await supabase.auth.getSession();
+  currentMediaURL = URL.createObjectURL(file);
+  currentMediaType = file.type.startsWith("video") ? "video" : "image";
 
-  if (!session) {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) return alert("Auth error");
-    currentUser = data.user;
+  const el = document.createElement(currentMediaType);
+  el.src = currentMediaURL;
+  el.controls = true;
+  preview.appendChild(el);
+};
+
+presets.forEach(p => {
+  p.onclick = () => {
+    presets.forEach(x => x.style.borderColor = "transparent");
+    p.style.borderColor = "#5eead4";
+    selectedPreset = p.dataset.preset;
+    generateBtn.disabled = false;
+  };
+});
+
+function postToFeed() {
+  if (!currentMediaURL) return alert("Upload media first");
+
+  const div = document.createElement("div");
+  div.className = "feed-post";
+
+  div.innerHTML = `
+    <strong>@user</strong>
+    <p>AI Background: ${selectedPreset}</p>
+    ${currentMediaType === "image"
+      ? `<img src="${currentMediaURL}">`
+      : `<video src="${currentMediaURL}" controls></video>`}
+
+    <div class="actions">
+      <a href="${currentMediaURL}" download="photochat-media">
+        <button class="secondary">⬇️ Download</button>
+      </a>
+      <button class="secondary" onclick="shareMedia('${currentMediaURL}')">📤 Share</button>
+      <a href="https://wa.me/?text=Check%20this%20out%20from%20PhotoChat!" target="_blank">
+        <button class="secondary">🟢 WhatsApp</button>
+      </a>
+      <a href="mailto:?subject=PhotoChat&body=Check out this AI media from PhotoChat">
+        <button class="secondary">✉️ Email</button>
+      </a>
+    </div>
+  `;
+  feed.prepend(div);
+}
+
+async function shareMedia(url) {
+  if (navigator.share) {
+    await navigator.share({
+      title: "PhotoChat",
+      text: "Check out my AI background!",
+      url
+    });
   } else {
-    currentUser = session.user;
+    alert("Sharing not supported on this browser.");
   }
-
-  document.getElementById("userLabel").innerText =
-    currentUser.id.slice(0,8);
-
-  loadContacts();
-}
-window.addEventListener("DOMContentLoaded", initUser);
-
-/* =======================
-   WALLET (OPTIONAL)
-======================= */
-document.getElementById("connectWalletBtn").onclick = async () => {
-  if (!window.ethereum) return alert("Wallet not installed");
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = provider.getSigner();
-  const addr = await signer.getAddress();
-  document.getElementById("walletAddress").innerText =
-    addr.slice(0,6)+"..."+addr.slice(-4);
-  const bal = await provider.getBalance(addr);
-  document.getElementById("walletBalance").innerText =
-    "ETH "+ethers.utils.formatEther(bal);
-};
-
-/* =======================
-   CONTACTS
-======================= */
-async function loadContacts() {
-  const { data } = await supabase
-    .from("contacts")
-    .select("*")
-    .eq("owner", currentUser.id);
-
-  const list = document.getElementById("contactsList");
-  list.innerHTML = "";
-
-  if (!data || !data.length) {
-    list.innerHTML = "No contacts";
-    return;
-  }
-
-  data.forEach(c => {
-    const d = document.createElement("div");
-    d.className = "border-bottom py-1";
-    d.style.cursor = "pointer";
-    d.innerText = c.contact.slice(0,8);
-    d.onclick = () => openChat(c.contact);
-    list.appendChild(d);
-  });
 }
 
-document.getElementById("addContactBtn").onclick = async () => {
-  const id = document.getElementById("addContactInput").value.trim();
-  if (!id) return;
-  await supabase.from("contacts").insert({
-    owner: currentUser.id,
-    contact: id
-  });
-  document.getElementById("addContactInput").value = "";
-  loadContacts();
-};
-
-/* =======================
-   CHAT
-======================= */
-function openChat(id) {
-  activeContact = id;
-  document.getElementById("chatTitle").innerText =
-    "Chat with " + id.slice(0,8);
-  loadMessages();
+function sendChat() {
+  const input = document.getElementById("chatInput");
+  if (!input.value) return;
+  const msg = document.createElement("div");
+  msg.textContent = "You: " + input.value;
+  document.getElementById("chatBox").appendChild(msg);
+  input.value = "";
 }
-
-async function loadMessages() {
-  const { data } = await supabase
-    .from("messages")
-    .select("*")
-    .or(`sender.eq.${currentUser.id},receiver.eq.${currentUser.id}`)
-    .order("created_at");
-
-  const win = document.getElementById("chatWindow");
-  win.innerHTML = "";
-
-  data?.forEach(m => {
-    if (![currentUser.id, activeContact].includes(m.sender) ||
-        ![currentUser.id, activeContact].includes(m.receiver)) return;
-
-    const div = document.createElement("div");
-    div.className = "message " +
-      (m.sender === currentUser.id ? "me":"them");
-    div.innerHTML = `<div class="bubble">${m.content}</div>`;
-    win.appendChild(div);
-  });
-
-  win.scrollTop = win.scrollHeight;
-}
-
-document.getElementById("sendBtn").onclick = async () => {
-  if (!activeContact) return alert("Select contact");
-  const msg = document.getElementById("messageInput").value.trim();
-  if (!msg) return;
-  document.getElementById("messageInput").value = "";
-  await supabase.from("messages").insert({
-    sender: currentUser.id,
-    receiver: activeContact,
-    content: msg
-  });
-  loadMessages();
-};
-
-/* =======================
-   CAMERA
-======================= */
-document.getElementById("startMeetingBtn").onclick = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-  document.getElementById("localVideo").srcObject = stream;
-};
-
-/* =======================
-   SWAP DEMO
-======================= */
-document.getElementById("quoteBtn").onclick = () =>
-  document.getElementById("swapResult").innerText = "Quote received (demo)";
-document.getElementById("swapBtn").onclick = () =>
-  alert("DEX swap via api.sacreserve.africa (coming soon)");
 </script>
 
 </body>

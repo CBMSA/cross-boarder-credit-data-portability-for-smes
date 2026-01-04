@@ -9,119 +9,32 @@
 
 <style>
 * { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  background: #0b0f19;
-  color: #ffffff;
-}
-header {
-  padding: 16px 24px;
-  background: #12182a;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-header h1 {
-  font-size: 20px;
-  margin: 0;
-  color: #5eead4;
-}
-header span {
-  font-size: 12px;
-  opacity: 0.7;
-}
-main {
-  padding: 24px;
-  max-width: 1100px;
-  margin: auto;
-}
-.card {
-  background: #151c34;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.badge {
-  display: inline-block;
-  padding: 4px 8px;
-  background: #022c22;
-  color: #5eead4;
-  border-radius: 8px;
-  font-size: 11px;
-  margin-bottom: 8px;
-}
-.upload-box {
-  border: 2px dashed #334155;
-  padding: 24px;
-  border-radius: 12px;
-  text-align: center;
-  cursor: pointer;
-}
-.upload-box input { display: none; }
-.preview img, .preview video {
-  max-width: 100%;
-  border-radius: 12px;
-  margin-top: 12px;
-}
-.presets {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-.preset {
-  background: #1e293b;
-  padding: 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  text-align: center;
-  border: 2px solid transparent;
-}
-.preset:hover { border-color: #5eead4; }
-button {
-  background: #5eead4;
-  color: #022c22;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 8px;
-  margin-right: 6px;
-}
-button.secondary {
-  background: #1e293b;
-  color: #ffffff;
-}
-.feed-post {
-  border-bottom: 1px solid #334155;
-  padding: 14px 0;
-}
-.actions {
-  margin-top: 8px;
-}
-.chat-box {
-  height: 200px;
-  overflow-y: auto;
-  background: #020617;
-  padding: 10px;
-  border-radius: 10px;
-}
-footer {
-  text-align: center;
-  padding: 16px;
-  font-size: 12px;
-  opacity: 0.6;
-}
-textarea, input {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  border-radius: 8px;
-  border: none;
-}
+body { margin:0; font-family: Inter, system-ui, sans-serif; background:#0b0f19; color:#fff; }
+header { padding:16px 24px; background:#12182a; display:flex; justify-content:space-between; align-items:center;}
+header h1 { font-size:20px; margin:0; color:#5eead4;}
+header span { font-size:12px; opacity:0.7;}
+main { padding:24px; max-width:1100px; margin:auto;}
+.card { background:#151c34; border-radius:14px; padding:20px; margin-bottom:20px; }
+.badge { display:inline-block; padding:4px 8px; background:#022c22; color:#5eead4; border-radius:8px; font-size:11px; margin-bottom:8px;}
+.upload-box { border:2px dashed #334155; padding:24px; border-radius:12px; text-align:center; cursor:pointer; }
+.upload-box input { display:none;}
+.preview img, .preview video, canvas { max-width:100%; border-radius:12px; margin-top:12px; }
+.presets { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-top:12px; }
+.preset { background:#1e293b; padding:14px; border-radius:12px; cursor:pointer; text-align:center; border:2px solid transparent;}
+.preset:hover { border-color:#5eead4;}
+button { background:#5eead4; color:#022c22; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer; margin-top:8px; margin-right:6px;}
+button.secondary { background:#1e293b; color:#fff;}
+.feed-post { border-bottom:1px solid #334155; padding:14px 0;}
+.actions { margin-top:8px;}
+.chat-box { height:200px; overflow-y:auto; background:#020617; padding:10px; border-radius:10px;}
+footer { text-align:center; padding:16px; font-size:12px; opacity:0.6;}
+textarea, input { width:100%; padding:10px; margin-top:8px; border-radius:8px; border:none; }
 </style>
+
+<!-- MEDIA PIPE -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
 </head>
 
 <body>
@@ -140,9 +53,12 @@ textarea, input {
   <label class="upload-box">
     <input type="file" id="mediaInput" accept="image/*,video/*" />
     <p>Tap or click to upload</p>
-    <small>(Photos or videos up to 5 seconds)</small>
+    <small>(Photos or videos up to 30 seconds)</small>
   </label>
-  <div class="preview" id="preview"></div>
+  <div class="preview" id="preview">
+    <video id="video" autoplay playsinline muted style="display:none;"></video>
+    <canvas id="canvas"></canvas>
+  </div>
 </div>
 
 <!-- STEP 2 -->
@@ -165,6 +81,7 @@ textarea, input {
   <div class="badge">Step 3</div>
   <h2>Result</h2>
   <button onclick="postToFeed()">Post to PhotoChat</button>
+  <button onclick="downloadImage()">Download</button>
 </div>
 
 <!-- FEED -->
@@ -189,86 +106,127 @@ PhotoChat © 2026 • AI-generated backgrounds • Fictional content only
 
 <script>
 const mediaInput = document.getElementById("mediaInput");
-const preview = document.getElementById("preview");
 const presets = document.querySelectorAll(".preset");
 const generateBtn = document.getElementById("generateBtn");
 const feed = document.getElementById("feed");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
 let selectedPreset = null;
 let currentMediaURL = null;
 let currentMediaType = null;
+let bgImage = new Image();
 
-mediaInput.onchange = () => {
-  preview.innerHTML = "";
-  const file = mediaInput.files[0];
-  if (!file) return;
-
-  currentMediaURL = URL.createObjectURL(file);
-  currentMediaType = file.type.startsWith("video") ? "video" : "image";
-
-  const el = document.createElement(currentMediaType);
-  el.src = currentMediaURL;
-  el.controls = true;
-  preview.appendChild(el);
+/* BACKGROUNDS */
+const backgroundImages = {
+  city: "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
+  space: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
+  nature: "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+  fantasy: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+  sports: "https://images.unsplash.com/photo-1505842465776-3d90f616310d",
+  cartoon: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"
 };
 
-presets.forEach(p => {
-  p.onclick = () => {
-    presets.forEach(x => x.style.borderColor = "transparent");
-    p.style.borderColor = "#5eead4";
-    selectedPreset = p.dataset.preset;
-    generateBtn.disabled = false;
+/* MEDIA PIPE SETUP */
+const segmentation = new SelfieSegmentation({
+  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+});
+segmentation.setOptions({ modelSelection: 1 });
+
+segmentation.onResults(results => {
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(bgImage.complete) ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+
+  ctx.globalCompositeOperation="destination-over";
+  ctx.drawImage(results.segmentationMask,0,0,canvas.width,canvas.height);
+  ctx.globalCompositeOperation="source-over";
+});
+
+/* PRESET BUTTONS */
+presets.forEach(p=>{
+  p.onclick=()=>{
+    presets.forEach(x=>x.style.borderColor="transparent");
+    p.style.borderColor="#5eead4";
+    selectedPreset=p.dataset.preset;
+    bgImage.src=backgroundImages[selectedPreset];
+    generateBtn.disabled=false;
   };
 });
 
-function postToFeed() {
-  if (!currentMediaURL) return alert("Upload media first");
+/* UPLOAD HANDLER */
+mediaInput.onchange = () => {
+  const file = mediaInput.files[0];
+  if (!file) return;
+  currentMediaURL = URL.createObjectURL(file);
+  currentMediaType = file.type.startsWith("video") ? "video" : "image";
 
-  const div = document.createElement("div");
-  div.className = "feed-post";
+  if(currentMediaType==="image"){
+    video.style.display="none";
+    const img = new Image();
+    img.src=currentMediaURL;
+    img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  }else{
+    video.style.display="block";
+    video.src=currentMediaURL;
+    video.play();
+    video.onplay = ()=>processVideoFrames(video);
+  }
+};
 
-  div.innerHTML = `
+/* PROCESS VIDEO FRAMES FOR AI BACKGROUND */
+function processVideoFrames(video){
+  const processFrame = async ()=>{
+    if(video.paused || video.ended) return;
+    await segmentation.send({ image: video });
+    requestAnimationFrame(processFrame);
+  };
+  processFrame();
+}
+
+/* CAMERA LOOP (optional live camera) */
+const camera = new Camera(video,{
+  onFrame: async ()=>{ if(currentMediaType==="webcam") await segmentation.send({image:video}); },
+  width:640,height:480
+});
+// camera.start(); // Uncomment if using live webcam
+
+/* FEED FUNCTIONS */
+function postToFeed(){
+  const div=document.createElement("div");
+  div.className="feed-post";
+  div.innerHTML=`
     <strong>@user</strong>
     <p>AI Background: ${selectedPreset}</p>
-    ${currentMediaType === "image"
-      ? `<img src="${currentMediaURL}">`
-      : `<video src="${currentMediaURL}" controls></video>`}
-
+    <canvas width="${canvas.width}" height="${canvas.height}" style="width:100%;border-radius:12px;"></canvas>
     <div class="actions">
-      <a href="${currentMediaURL}" download="photochat-media">
-        <button class="secondary">⬇️ Download</button>
-      </a>
-      <button class="secondary" onclick="shareMedia('${currentMediaURL}')">📤 Share</button>
-      <a href="https://wa.me/?text=Check%20this%20out%20from%20PhotoChat!" target="_blank">
-        <button class="secondary">🟢 WhatsApp</button>
-      </a>
-      <a href="mailto:?subject=PhotoChat&body=Check out this AI media from PhotoChat">
-        <button class="secondary">✉️ Email</button>
-      </a>
+      <button class="secondary" onclick="downloadImage()">⬇️ Download</button>
     </div>
   `;
   feed.prepend(div);
+  const postCanvas=div.querySelector("canvas");
+  postCanvas.getContext("2d").drawImage(canvas,0,0,canvas.width,canvas.height);
 }
 
-async function shareMedia(url) {
-  if (navigator.share) {
-    await navigator.share({
-      title: "PhotoChat",
-      text: "Check out my AI background!",
-      url
-    });
-  } else {
-    alert("Sharing not supported on this browser.");
-  }
+/* DOWNLOAD */
+function downloadImage(){
+  const link=document.createElement("a");
+  link.download="photochat-ai.png";
+  link.href=canvas.toDataURL("image/png");
+  link.click();
 }
 
-function sendChat() {
-  const input = document.getElementById("chatInput");
-  if (!input.value) return;
-  const msg = document.createElement("div");
-  msg.textContent = "You: " + input.value;
+/* CHAT */
+function sendChat(){
+  const input=document.getElementById("chatInput");
+  if(!input.value) return;
+  const msg=document.createElement("div");
+  msg.textContent="You: "+input.value;
   document.getElementById("chatBox").appendChild(msg);
-  input.value = "";
+  input.value="";
 }
 </script>
 

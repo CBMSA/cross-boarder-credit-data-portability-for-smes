@@ -3,7 +3,213 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SadiPay Live Chat + Video</title>
+PhotoChat Live Chat + Video</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {--bg:#f5f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--accent:#0b5cff;}
+[data-theme="dark"] {--bg:#0b0e11;--card:#1e2329;--text:#eaecef;--muted:#848e9c;--accent:#f0b90b;}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter;background:var(--bg);color:var(--text)}
+header{height:56px;background:var(--card);border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.app{display:flex;height:calc(100vh - 56px)}
+.sidebar{width:64px;background:var(--card);border-right:1px solid #e5e7eb;display:flex;flex-direction:column;align-items:center}
+.sidebar button{background:none;border:none;font-size:20px;padding:12px;cursor:pointer;color:var(--muted)}
+.sidebar button:hover{color:var(--accent)}
+main{flex:1;padding:16px;overflow:auto}
+.page{display:none}.page.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px}
+input,textarea{width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;margin-bottom:8px}
+
+/* WhatsApp chat style */
+.chat-window{display:flex;flex-direction:column;height:50vh;overflow:auto;background:#f0f2f5;padding:8px;border-radius:12px}
+.msg{max-width:70%;padding:10px;border-radius:12px;margin-bottom:6px;font-size:14px;word-break:break-word;}
+.msg.me{align-self:flex-end;background:#0b5cff;color:#fff}
+.msg.them{align-self:flex-start;background:#e5e7eb}
+
+/* Video Chat */
+.video-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+video{width:100%;border-radius:12px;background:#000}
+
+/* Buttons */
+button.primary{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+button.secondary{background:#e5e7eb;border:none;padding:8px 12px;border-radius:8px}
+</style>
+</head>
+<body data-theme="light">
+
+<header>
+  <strong>SadiPay Live Chat</strong>
+  <button onclick="toggleTheme()">🌓</button>
+</header>
+
+<div class="app">
+<aside class="sidebar">
+  <button onclick="go('chat')"><i class="bi bi-chat"></i></button>
+  <button onclick="go('photochat')"><i class="bi bi-images"></i></button>
+  <button onclick="go('video')"><i class="bi bi-camera-video"></i></button>
+</aside>
+
+<main>
+
+<!-- AUTH -->
+<section id="auth" class="page active">
+  <div class="card">
+    <h3>Sign In / Sign Up</h3>
+    <input type="tel" id="phone" placeholder="+1234567890">
+    <button class="primary" onclick="signInPhone()">Send OTP</button>
+  </div>
+</section>
+
+<!-- CHAT -->
+<section id="chat" class="page">
+  <div class="card">
+    <h3>Chat (WhatsApp Style)</h3>
+    <div class="chat-window" id="chatWindow"></div>
+    <input id="msgInput" placeholder="Type message…">
+    <button class="primary" onclick="sendMsg()">Send</button>
+  </div>
+</section>
+
+<!-- PHOTOCHAT -->
+<section id="photochat" class="page">
+  <div class="card">
+    <h3>PhotoChat</h3>
+    <input type="file" id="photoInput" accept="image/*">
+    <canvas id="photoCanvas"></canvas>
+    <button class="primary" onclick="postPhoto()">Post to Feed</button>
+  </div>
+  <div class="card">
+    <h4>Feed</h4>
+    <div id="feed"></div>
+  </div>
+</section>
+
+<!-- VIDEO CHAT -->
+<section id="video" class="page">
+  <div class="card">
+    <h3>Video Chat (P2P)</h3>
+    <div class="video-wrap" id="videos"></div>
+    <button class="primary" onclick="startVideo()">Start My Camera</button>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ----------------- SUPABASE INIT ----------------- */
+const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
+const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+
+/* ----------------- ROUTER ----------------- */
+function go(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById(p).classList.add('active');
+}
+
+/* ----------------- THEME ----------------- */
+function toggleTheme(){
+  document.body.dataset.theme = document.body.dataset.theme==="dark"?"light":"dark";
+}
+
+/* ----------------- PHONE AUTH ----------------- */
+async function signInPhone(){
+  const phone = document.getElementById("phone").value;
+  if(!phone) return alert("Enter phone number!");
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+  if(error) return alert(error.message);
+  currentUser = { phone };
+  alert("OTP sent! Check your SMS.");
+  go('chat');
+  initRealtimeChat();
+}
+
+/* ----------------- CHAT ----------------- */
+const chatWindow=document.getElementById("chatWindow");
+
+function sendMsg(){
+  const msgInput=document.getElementById("msgInput");
+  if(!msgInput.value || !currentUser) return;
+  const msg={ user: currentUser.phone, text: msgInput.value, time:new Date().toISOString() };
+  supabase.from('messages').insert(msg).then(()=>msgInput.value="");
+}
+
+async function initRealtimeChat(){
+  const { data } = await supabase.from('messages').select('*').order('time',{ascending:true});
+  if(data) data.forEach(renderMsg);
+  supabase.from('messages').on('INSERT', payload=>renderMsg(payload.new)).subscribe();
+}
+
+function renderMsg(msg){
+  const d=document.createElement("div");
+  d.className = msg.user===currentUser.phone ? "msg me":"msg them";
+  d.textContent = msg.text;
+  chatWindow.appendChild(d);
+  chatWindow.scrollTop=chatWindow.scrollHeight;
+}
+
+/* ----------------- PHOTOCHAT ----------------- */
+const photoCanvas=document.getElementById("photoCanvas");
+const ctx=photoCanvas.getContext("2d");
+document.getElementById("photoInput").onchange=e=>{
+  const img=new Image();
+  img.src=URL.createObjectURL(e.target.files[0]);
+  img.onload=()=>{
+    photoCanvas.width=img.width>400?400:img.width;
+    photoCanvas.height=img.height*(photoCanvas.width/img.width);
+    ctx.drawImage(img,0,0,photoCanvas.width,photoCanvas.height);
+  }
+}
+
+function postPhoto(){
+  const feed=document.getElementById("feed");
+  const post=document.createElement("div");
+  post.className="card";
+  const c=document.createElement("canvas");
+  c.width=photoCanvas.width; c.height=photoCanvas.height;
+  c.getContext("2d").drawImage(photoCanvas,0,0);
+  post.appendChild(c);
+  feed.prepend(post);
+}
+
+/* ----------------- VIDEO CHAT ----------------- */
+let localStream;
+const videosContainer=document.getElementById("videos");
+
+async function startVideo(){
+  localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  const localVideo=document.createElement("video");
+  localVideo.srcObject=localStream;
+  localVideo.autoplay=true;
+  localVideo.muted=true;
+  videosContainer.appendChild(localVideo);
+  // P2P signaling can be added via Supabase Realtime for connecting peers
+}
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhotoChat</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">

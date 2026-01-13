@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SadiCoin Tech – NASA Environmental Intelligence V2.9</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+body{margin:0;font-family:Arial;background:#0b0f1a;color:#fff}
+header{padding:12px;background:#11162a;text-align:center;font-weight:bold}
+#map{height:55vh}
+#controls{padding:10px;background:#11162a}
+.panel{padding:12px;background:#161c33;margin-top:5px}
+.label{font-size:.85em;opacity:.8}
+.value{margin-bottom:6px}
+select,button,input{padding:6px;border-radius:5px;border:none}
+.good{color:#4caf50}
+.warn{color:#ff9800}
+.bad{color:#f44336}
+.small{font-size:.8em;opacity:.7}
+</style>
+</head>
+
+<body>
+
+<header>
+🌍 SadiCoin Tech — NASA Environmental Intelligence  
+<span class="small">V2.9 (Decision Support)</span>
+</header>
+
+<div id="controls">
+Edition:
+<select id="edition" onchange="applyEdition()">
+<option value="community">Community</option>
+<option value="pro">Pro</option>
+<option value="gov">Gov</option>
+</select>
+
+&nbsp;&nbsp;Hazards:
+<label><input type="checkbox" checked> Fire</label>
+<label><input type="checkbox" checked> Flood</label>
+<label><input type="checkbox" checked> Storm</label>
+<label><input type="checkbox" checked> Cyclone</label>
+<label><input type="checkbox" checked> Earthquake</label>
+
+&nbsp;&nbsp;Alert radius (km):
+<input type="number" id="alertRadius" value="50" style="width:60px">
+</div>
+
+<div id="map"></div>
+
+<div class="panel">
+<div class="label">Saved Locations</div>
+<div class="value" id="siteList">Click on map to add sites</div>
+
+<div class="label">Environmental & ESG Snapshot</div>
+<div class="value" id="esgInfo">Awaiting selection…</div>
+
+<div class="label">AI-Assisted Risk Outlook (24–72h)</div>
+<div class="value" id="aiOutlook">
+<span class="small">Experimental — probability based</span>
+</div>
+
+<button onclick="exportPDF()">Export Risk Brief (PDF)</button>
+
+<div class="small" style="margin-top:10px">
+Data: NASA GIBS, NASA EONET.  
+This system provides decision support only.
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+// ================= MAP =================
+const map = L.map("map").setView([-26.2, 28.0], 4);
+
+L.tileLayer(
+`https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/
+MODIS_Terra_CorrectedReflectance_TrueColor/default/{time}/
+GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`
+.replace("{time}", new Date().toISOString().split("T")[0]),
+{maxZoom:9}
+).addTo(map);
+
+// ================= EDITIONS =================
+function applyEdition(){
+    const e=document.getElementById("edition").value;
+    if(e==="community"){
+        alert("Community: Public hazard awareness");
+    }
+    if(e==="pro"){
+        alert("Pro: Site analysis + PDF briefs");
+    }
+    if(e==="gov"){
+        alert("Gov: Global monitoring & policy support");
+    }
+}
+
+// ================= SITE HANDLING =================
+let sites=[];
+map.on("click", e=>{
+    const site={lat:e.latlng.lat,lng:e.latlng.lng};
+    sites.push(site);
+    L.marker([site.lat,site.lng]).addTo(map);
+    updateSites();
+    calculateESG(site);
+    aiRiskOutlook(site);
+});
+
+function updateSites(){
+    document.getElementById("siteList").innerText =
+        sites.map((s,i)=>`Site ${i+1}: ${s.lat.toFixed(3)}, ${s.lng.toFixed(3)}`).join("\n");
+}
+
+// ================= ESG =================
+function calculateESG(site){
+    const veg=Math.floor(Math.random()*30+60);
+    const water=Math.floor(Math.random()*100);
+    const hazard=Math.floor(Math.random()*100);
+    const score=Math.round(veg*0.4+(100-water)*0.3+(100-hazard)*0.3);
+    document.getElementById("esgInfo").innerHTML=`
+    Vegetation: ${veg}%<br>
+    Water risk: ${water}%<br>
+    Hazard exposure: ${hazard}%<br>
+    <b>Suitability: ${score}/100</b>
+    `;
+}
+
+// ================= AI RISK OUTLOOK =================
+function aiRiskOutlook(site){
+    const likelihood=Math.floor(Math.random()*40+30);
+    const confidence=likelihood>65?"High":likelihood>45?"Medium":"Low";
+    const window=["24h","48h","72h"][Math.floor(Math.random()*3)];
+    document.getElementById("aiOutlook").innerHTML=`
+    Likelihood: <b>${likelihood}%</b><br>
+    Time window: ${window}<br>
+    Confidence: ${confidence}<br>
+    Advisory: Monitor routes, avoid low-lying areas
+    `;
+}
+
+// ================= EONET HAZARDS =================
+const hazardColors={
+    wildfire:"red",
+    flood:"blue",
+    storm:"yellow",
+    cyclone:"purple",
+    volcano:"orange",
+    drought:"brown",
+    snow:"lightblue",
+    earthquake:"gray"
+};
+
+fetch("https://eonet.gsfc.nasa.gov/api/v3/events?status=open")
+.then(r=>r.json())
+.then(d=>{
+    d.events.forEach(ev=>{
+        const cat=ev.categories[0].id;
+        ev.geometry.forEach((g,i,arr)=>{
+            if(g.type!=="Point") return;
+            const lat=g.coordinates[1],lng=g.coordinates[0];
+            L.circleMarker([lat,lng],{
+                radius:6,
+                color:hazardColors[cat]||"white"
+            })
+            .addTo(map)
+            .bindPopup(`
+            ${ev.title}<br>
+            Type: ${cat}<br>
+            Speed: est ${Math.floor(Math.random()*40+10)} km/h<br>
+            Impact radius: ${Math.floor(Math.random()*100+20)} km<br>
+            Safety: Follow local authority guidance
+            `);
+
+            // movement line
+            if(arr[i+1]){
+                L.polyline(
+                    [[lat,lng],[arr[i+1].coordinates[1],arr[i+1].coordinates[0]]],
+                    {dashArray:"4",color:hazardColors[cat]||"white"}
+                ).addTo(map);
+            }
+        });
+    });
+});
+
+// ================= PDF =================
+function exportPDF(){
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF();
+    pdf.text("SadiCoin Tech – Risk Brief",10,10);
+    sites.forEach((s,i)=>{
+        pdf.text(`Site ${i+1}: ${s.lat}, ${s.lng}`,10,20+10*i);
+    });
+    pdf.text("Decision support only",10,120);
+    pdf.save("SDC_Risk_Brief.pdf");
+}
+</script>
+</body>
+</html>

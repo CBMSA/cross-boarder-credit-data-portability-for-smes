@@ -231,6 +231,235 @@
 
 
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SadiCoin Tech – Environmental & SME Risk Intelligence (V6.0)</title>
+
+<!-- Leaflet for map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Leaflet search plugin -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+<!-- jsPDF for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Chart.js for trends -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#0b0f1a;color:#fff}
+header{padding:12px;background:#11162a;text-align:center;font-weight:bold;font-size:1.1em;}
+#map{height:50vh;margin:5px 0;}
+.panel{padding:12px;background:#161c33;margin:5px}
+.label{font-size:.85em;opacity:.8}
+.value{font-size:1em;margin-bottom:6px}
+#controls{padding:10px;background:#11162a;color:#fff;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+button{padding:6px 12px;margin-top:5px;border:none;border-radius:5px;cursor:pointer}
+.good{color:#4caf50}
+.bad{color:#f44336}
+</style>
+</head>
+<body>
+
+<header>🌍 SadiCoin Tech — Environmental Intelligence & SME Risk V6.0</header>
+
+<div id="controls">
+<input type="text" id="searchBox" placeholder="Search city/state" style="padding:5px; border-radius:5px;"/>
+<button onclick="searchLocation()">Search</button>
+<label><input type="checkbox" id="fireCheck" checked> 🔥 Fire</label>
+<label><input type="checkbox" id="floodCheck" checked> 💧 Flood</label>
+<label><input type="checkbox" id="stormCheck" checked> 🌪️ Storm</label>
+<label><input type="checkbox" id="cycloneCheck" checked> 🟣 Cyclone</label>
+<label><input type="checkbox" id="volcanoCheck" checked> 🟠 Volcanic Fire</label>
+<label><input type="checkbox" id="droughtCheck" checked> 🟤 Drought</label>
+<label><input type="checkbox" id="snowCheck" checked> ❄️ Snow/Ice</label>
+<label><input type="checkbox" id="quakeCheck" checked> ⚡ Earthquake</label>
+<button onclick="toggleAlerts()">Enable Alerts</button>
+<label>Alert radius (km):</label>
+<input type="number" id="alertRadius" value="50" style="width:60px"/>
+<button onclick="saveLocation()">Save Current Site</button>
+</div>
+
+<div id="map"></div>
+
+<div class="panel">
+<div class="label">Saved Locations / Facilities</div>
+<div class="value" id="siteCoords">Click map or search to add sites</div>
+
+<div class="label">Environmental & ESG Snapshot</div>
+<div class="value" id="esgInfo">Pending analysis…</div>
+
+<div class="label">Historical Hazard Trends</div>
+<canvas id="trendChart" height="120"></canvas>
+
+<button onclick="exportPDF()">Export PDF Report</button>
+</div>
+
+<script>
+// =================== MAP INIT ===================
+const map = L.map('map').setView([-26.2041,28.0473],5);
+
+// NASA GIBS TrueColor global tiles
+const imageryDate=new Date().toISOString().split('T')[0];
+const gibsLayer = L.tileLayer(`https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${imageryDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`, {maxZoom:9, attribution:"NASA GIBS"});
+gibsLayer.addTo(map);
+
+// Layer group for hazards
+let hazardLayer = L.layerGroup().addTo(map);
+let savedSites = [];
+let alertsEnabled=false;
+
+// =================== SITE SELECTION ===================
+function calculateESG(site){
+    const vegetationScore=Math.floor(Math.random()*40+50);
+    const waterRiskScore=Math.floor(Math.random()*100);
+    const hazardScore=Math.floor(Math.random()*100);
+    const vegetation=vegetationScore>70?"High":vegetationScore>45?"Moderate":"Low";
+    const water_risk=waterRiskScore>70?"High":waterRiskScore>40?"Medium":"Low";
+    const hazard=hazardScore>70?"High":hazardScore>40?"Medium":"Low";
+    const suitability=Math.round(
+        vegetationScore*0.35+(100-waterRiskScore)*0.35+(100-hazardScore)*0.3
+    );
+    return {vegetation, water_risk, hazard, suitability, status:suitability>=60?"Suitable":"Not suitable", confidence:suitability>=75?"High":suitability>=55?"Medium":"Low", analysisTime:new Date().toISOString(), imageryDate};
+}
+
+function updateUI(){
+    let coordsText='', esgText='';
+    savedSites.forEach((s,i)=>{
+        const d=s.esg;
+        coordsText+=`Site ${i+1}: ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}\n`;
+        esgText+=`<b>Site ${i+1}</b><br>Vegetation: ${d.vegetation}<br>Water risk: ${d.water_risk}<br>Hazard: ${d.hazard}<br>Suitability: ${d.suitability}<br>Status: <span class="${d.status==="Suitable"?"good":"bad"}">${d.status}</span><br>Confidence: ${d.confidence}<br>Imagery: ${d.imageryDate}<br><br>`;
+    });
+    document.getElementById('siteCoords').innerText=coordsText;
+    document.getElementById('esgInfo').innerHTML=esgText;
+}
+
+// Click map to add site
+map.on('click', async e=>{
+    const {lat,lng}=e.latlng;
+    const marker=L.marker([lat,lng]).addTo(map);
+    const site={lat,lng,marker};
+    site.esg=calculateESG(site);
+    savedSites.push(site);
+    updateUI();
+});
+
+// =================== SEARCH ===================
+const geocoder = L.Control.Geocoder.nominatim();
+function searchLocation(){
+    const query = document.getElementById('searchBox').value;
+    if(!query) return;
+    geocoder.geocode(query,(results)=>{
+        if(results.length>0){
+            const r=results[0];
+            map.setView([r.center.lat,r.center.lng],10);
+            const marker=L.marker([r.center.lat,r.center.lng]).addTo(map);
+            const site={lat:r.center.lat,lng:r.center.lng,marker};
+            site.esg=calculateESG(site);
+            savedSites.push(site);
+            updateUI();
+        }else{
+            alert('Location not found');
+        }
+    });
+}
+
+// =================== HAZARD SIMULATION ===================
+// For demo, generate random hazards
+function generateHazards(){
+    hazardLayer.clearLayers();
+    const categories=[
+        {name:"fire",color:"red"}, {name:"flood",color:"blue"}, {name:"storm",color:"yellow"},
+        {name:"cyclone",color:"purple"}, {name:"volcano",color:"darkorange"}, {name:"drought",color:"brown"},
+        {name:"snow",color:"lightblue"}, {name:"quake",color:"gray"}
+    ];
+    categories.forEach(cat=>{
+        const checkbox=document.getElementById(cat.name+"Check");
+        if(checkbox && !checkbox.checked) return;
+        for(let i=0;i<3;i++){
+            const lat=-35+Math.random()*30;
+            const lng=15+Math.random()*30;
+            const radius=5+Math.random()*20;
+            const speed=(Math.random()*50).toFixed(1);
+            const direction=Math.floor(Math.random()*360);
+            const marker=L.circle([lat,lng],{radius*1000,color:cat.color}).addTo(hazardLayer);
+            marker.bindPopup(`${cat.name.toUpperCase()}<br>Speed: ${speed} km/h<br>Direction: ${direction}°<br>Impact radius: ${radius} km<br>Suggested escape: Move opposite direction`);
+        }
+    });
+    if(alertsEnabled) checkAlerts();
+}
+setInterval(generateHazards,5*60*1000); // refresh hazards every 5 min
+generateHazards();
+
+// =================== ALERTS ===================
+function toggleAlerts(){alertsEnabled=!alertsEnabled; alert(alertsEnabled?"Alerts enabled":"Alerts disabled");}
+function checkAlerts(){
+    const radiusKm=Number(document.getElementById('alertRadius').value);
+    savedSites.forEach(site=>{
+        hazardLayer.eachLayer(h=>{
+            const d=map.distance([site.lat,site.lng],h.getLatLng())/1000;
+            if(d<=radiusKm){
+                alert(`⚠️ Hazard nearby (${d.toFixed(1)} km)`);
+            }
+        });
+    });
+}
+
+// =================== SAVE LOCATION ===================
+function saveLocation(){
+    if(savedSites.length===0){ alert('No site selected'); return; }
+    alert('Location saved: '+savedSites[savedSites.length-1].lat.toFixed(4)+','+savedSites[savedSites.length-1].lng.toFixed(4));
+}
+
+// =================== TREND CHART ===================
+const ctx=document.getElementById('trendChart').getContext('2d');
+let trendChart;
+function drawTrends(){
+    const dataFire=[], dataFlood=[], dataStorm=[];
+    for(let i=0;i<12;i++){ dataFire.push(Math.floor(Math.random()*20)); dataFlood.push(Math.floor(Math.random()*15)); dataStorm.push(Math.floor(Math.random()*10)); }
+    if(trendChart) trendChart.destroy();
+    trendChart=new Chart(ctx,{type:'line',data:{labels:Array.from({length:12},(_,i)=>`${i+1}m`),datasets:[
+        {label:'Fire',data:dataFire,borderColor:'red',fill:false},
+        {label:'Flood',data:dataFlood,borderColor:'blue',fill:false},
+        {label:'Storm',data:dataStorm,borderColor:'yellow',fill:false}
+    ]}});
+}
+drawTrends();
+
+// =================== PDF EXPORT ===================
+function exportPDF(){
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF();
+    savedSites.forEach((s,i)=>{
+        if(i>0) pdf.addPage();
+        const d=s.esg;
+        pdf.text("SadiCoin Tech – Environmental Risk Report",10,10);
+        pdf.text(`Site ${i+1}`,10,20);
+        pdf.text(`Coordinates: ${s.lat}, ${s.lng}`,10,30);
+        pdf.text(`Vegetation: ${d.vegetation}`,10,40);
+        pdf.text(`Water risk: ${d.water_risk}`,10,50);
+        pdf.text(`Hazard exposure: ${d.hazard}`,10,60);
+        pdf.text(`Suitability score: ${d.suitability}/100`,10,70);
+        pdf.text(`Status: ${d.status}`,10,80);
+        pdf.text(`Confidence: ${d.confidence}`,10,90);
+        pdf.text(`Imagery date: ${d.imageryDate}`,10,100);
+        pdf.text(`Analysis time: ${new Date(d.analysisTime).toLocaleString()}`,10,110);
+        pdf.text("Data sources: NASA GIBS. Demo only.",10,125,{maxWidth:180});
+    });
+    pdf.save("Environmental_Risk_Report.pdf");
+}
+</script>
+
+</body>
+</html>
+
+
 
 
 <!doctype html>

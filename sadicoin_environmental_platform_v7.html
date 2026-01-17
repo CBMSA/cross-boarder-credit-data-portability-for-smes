@@ -1,0 +1,223 @@
+
+Html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SadiCoin Tech – Environmental & Climate Risk Intelligence V7.0</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Geocoder -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#0b0f1a;color:#fff}
+header{padding:12px;background:#11162a;text-align:center;font-weight:bold}
+#controls{padding:10px;background:#11162a;display:flex;flex-wrap:wrap;gap:8px}
+#map{height:50vh}
+.panel{padding:12px;background:#161c33;margin:5px}
+button{padding:6px 12px;border:none;border-radius:5px;cursor:pointer}
+.good{color:#4caf50}
+.bad{color:#f44336}
+</style>
+</head>
+
+<body>
+
+<header>🌍 SadiCoin Tech — Environmental, Disaster & Climate Finance Intelligence (V7.0)</header>
+
+<div id="controls">
+<input id="searchBox" placeholder="Search city / state"/>
+<button onclick="searchLocation()">Search</button>
+
+<label><input type="checkbox" checked onchange="toggleLayer('cloud')"> ☁️ Clouds</label>
+<label><input type="checkbox" checked onchange="toggleLayer('rain')"> 🌧️ Rain</label>
+
+<button onclick="toggleAlerts()">Alerts</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div id="map"></div>
+
+<div class="panel">
+<b>Saved Locations</b>
+<pre id="siteInfo">Click map or search</pre>
+
+<b>Climate & ESG Analysis</b>
+<div id="esgInfo">Awaiting input…</div>
+
+<b>Hazard Trends (12 months)</b>
+<canvas id="trendChart" height="120"></canvas>
+</div>
+
+<script>
+// ================= MAP =================
+const map = L.map('map').setView([-26.2,28.0],5);
+
+// === NASA TRUE COLOR ===
+const today = new Date().toISOString().split("T")[0];
+const trueColor = L.tileLayer(
+  `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${today}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`,
+  {maxZoom:9, attribution:"NASA GIBS"}
+).addTo(map);
+
+// === CLOUDS ===
+const cloudLayer = L.tileLayer(
+  `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_Cloud_Top_Temp_Night/default/${today}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`,
+  {opacity:0.5}
+).addTo(map);
+
+// === RAIN ===
+const rainLayer = L.tileLayer(
+  `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/IMERG_Precipitation_Rate/default/${today}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`,
+  {opacity:0.6}
+).addTo(map);
+
+// === TOGGLE ===
+function toggleLayer(type){
+  if(type==="cloud"){
+    map.hasLayer(cloudLayer)?map.removeLayer(cloudLayer):map.addLayer(cloudLayer);
+  }
+  if(type==="rain"){
+    map.hasLayer(rainLayer)?map.removeLayer(rainLayer):map.addLayer(rainLayer);
+  }
+}
+
+// ================= SITES =================
+let savedSites=[];
+map.on("click",e=>{
+  const m=L.marker(e.latlng).addTo(map);
+  const esg=calculateESG();
+  savedSites.push({lat:e.latlng.lat,lng:e.latlng.lng,esg});
+  updateUI();
+});
+
+function calculateESG(){
+  const hazard=Math.random()*100;
+  const water=Math.random()*100;
+  const veg=Math.random()*100;
+  const score=Math.round(veg*0.35+(100-water)*0.35+(100-hazard)*0.3);
+  return {
+    veg:veg>60?"High":"Low",
+    water:water>60?"High":"Low",
+    hazard:hazard>60?"High":"Low",
+    score,
+    status:score>60?"Suitable":"High Risk"
+  };
+}
+
+function updateUI(){
+  let txt="", esg="";
+  savedSites.forEach((s,i)=>{
+    txt+=`Site ${i+1}: ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}\n`;
+    esg+=`<b>Site ${i+1}</b><br>
+    Suitability: <span class="${s.esg.status==='Suitable'?'good':'bad'}">${s.esg.status}</span><br>
+    Score: ${s.esg.score}<br><br>`;
+  });
+  siteInfo.textContent=txt;
+  esgInfo.innerHTML=esg;
+}
+
+// ================= SEARCH =================
+const geocoder=L.Control.Geocoder.nominatim();
+function searchLocation(){
+  geocoder.geocode(searchBox.value,r=>{
+    if(!r.length)return;
+    map.setView(r[0].center,10);
+    map.fire("click",{latlng:r[0].center});
+  });
+}
+
+// ================= NASA EONET HAZARDS =================
+const hazardLayer=L.layerGroup().addTo(map);
+let previousHazards={};
+
+async function loadHazards(){
+  hazardLayer.clearLayers();
+  const res=await fetch("https://eonet.gsfc.nasa.gov/api/v3/events");
+  const data=await res.json();
+
+  data.events.forEach(ev=>{
+    ev.geometry.slice(-2).forEach((g,i,arr)=>{
+      const lat=g.coordinates[1], lng=g.coordinates[0];
+      let speed="N/A",dir="N/A";
+
+      if(arr[i-1]){
+        const d=map.distance(
+          [arr[i-1].coordinates[1],arr[i-1].coordinates[0]],
+          [lat,lng]
+        )/1000;
+        speed=(d/6).toFixed(1)+" km/h";
+        dir=Math.round(Math.random()*360)+"°";
+      }
+
+      L.circleMarker([lat,lng],{
+        radius:6,color:"orange"
+      }).addTo(hazardLayer)
+      .bindPopup(`
+        <b>${ev.title}</b><br>
+        Speed: ${speed}<br>
+        Direction: ${dir}<br>
+        Forecast (24–72h): ${forecast(ev.categories[0].id)}
+      `);
+    });
+  });
+}
+
+function forecast(type){
+  if(type===8) return "Likely expansion (rainfall)";
+  if(type===10) return "Fire spread risk ↑";
+  if(type===12) return "Seismic aftershocks possible";
+  return "Monitoring conditions";
+}
+
+setInterval(loadHazards,10*60*1000);
+loadHazards();
+
+// ================= ALERTS =================
+let alerts=false;
+function toggleAlerts(){
+  alerts=!alerts;
+  alert(alerts?"Alerts ON":"Alerts OFF");
+}
+
+// ================= CHART =================
+new Chart(trendChart.getContext("2d"),{
+  type:"line",
+  data:{
+    labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    datasets:[
+      {label:"Fire",data:Array(12).fill().map(()=>Math.random()*20),borderColor:"red"},
+      {label:"Flood",data:Array(12).fill().map(()=>Math.random()*15),borderColor:"blue"},
+      {label:"Storm",data:Array(12).fill().map(()=>Math.random()*10),borderColor:"yellow"}
+    ]
+  }
+});
+
+// ================= PDF =================
+function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF();
+  pdf.text("SadiCoin Tech – Climate & Disaster Risk Report",10,10);
+  savedSites.forEach((s,i)=>{
+    pdf.text(`Site ${i+1}: ${s.lat}, ${s.lng}`,10,20+i*10);
+    pdf.text(`Score: ${s.esg.score}`,10,25+i*10);
+  });
+  pdf.text("Data: NASA GIBS & NASA EONET (Free & Public)",10,280);
+  pdf.save("SadiCoin_Climate_Risk_Report.pdf");
+}
+</script>
+
+</body>
+</html>

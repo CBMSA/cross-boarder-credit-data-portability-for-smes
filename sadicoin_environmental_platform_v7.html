@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<title>SadiCoin Tech – Environmental + SAR + Property Intelligence (V10)</title>
+<title>SadiCoin Tech – NASA + GEE Environmental & SAR Intelligence (Production)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
 <!-- Leaflet -->
@@ -16,9 +17,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#0b0f1a;color:#fff}
+body{margin:0;font-family:Arial,sans-serif;background:#0b0f1a;color:#fff}
 header{padding:12px;background:#11162a;text-align:center;font-weight:bold;font-size:1.1em}
-#map{height:50vh;margin:5px 0}
+#nasaMap,#geeMap{height:50vh;margin:5px 0}
 .panel{padding:12px;background:#161c33;margin:6px;border-radius:6px}
 button{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;margin:2px 0}
 input,select,textarea{padding:5px;margin:2px 0}
@@ -28,86 +29,127 @@ input,select,textarea{padding:5px;margin:2px 0}
 video,img{max-width:100%;border-radius:6px;margin-top:6px}
 </style>
 </head>
-
 <body>
 
-<header>🌍 SadiCoin Tech — Environmental + SAR + Property Intelligence (V10)</header>
+<header>🌍 SadiCoin Tech – NASA + GEE Environmental + SAR + Property Intelligence (Production)</header>
 
-<div id="controls" class="panel">
-<b>Search Community/Property (EE dataset)</b><br>
-<input type="text" id="searchBox" placeholder="Search city/state"/>
-<button onclick="searchEE()">🔍 Search</button>
-<label>Confidence:</label>
-<select id="confidence">
-  <option>Low</option><option>Medium</option><option>High</option>
-</select>
-</div>
-
-<div id="map"></div>
-
+<!-- Toggle Maps -->
 <div class="panel">
-<b>📡 Satellite & Hazard Sources</b><br>
-• NASA GIBS (True Color)<br>
-• NASA EONET (Live disasters)<br>
-• Sentinel-1 SAR (Floods, terrain, landslides)<br>
-• Sentinel-2 (Fire, Drought, Vegetation)
+<button onclick="showNASA()">🌐 NASA Global View</button>
+<button onclick="showGEE()">🛰 GEE Property & Hazard View</button>
 </div>
 
-<div class="panel">
-<b>🆘 Search & Rescue – Manual Scan</b><br>
-<button onclick="startCamera()">📷 Start Camera Scan</button>
-<button onclick="stopCamera()">⏹ Stop</button><br>
-<video id="camera" autoplay playsinline></video>
-<hr>
-<label><b>Upload Thermal / SAR Image</b></label><br>
-<input type="file" accept="image/*" onchange="loadAnomaly(event)"/>
-<img id="thermalPreview"/>
-<br>
-<button onclick="markAnomaly()">⚠️ Mark Possible Human Presence (Unverified)</button>
-<p class="warn">⚠️ Markers indicate possible human presence only and require SAR review.</p>
-</div>
+<!-- NASA Map -->
+<div id="nasaMap"></div>
 
-<div class="panel">
-<b>📋 SAR Review Workflow</b><br>
-<textarea id="reviewNotes" placeholder="SAR reviewer notes…" style="width:100%;height:60px"></textarea><br>
-<button onclick="exportSAR()">📄 Export SAR Brief (PDF)</button>
-</div>
+<!-- GEE Map -->
+<div id="geeMap" style="display:none;"></div>
 
-<div class="panel">
-<b>🏠 Property Valuation + Disaster Funding Gap</b><br>
-<div id="propertyInfo">
-• Select a property to calculate valuation and estimated funding gap.
-</div>
-<label>Upload Previous Property Image:</label><br>
-<input type="file" accept="image/*" onchange="loadPreviousImage(event)"/>
-<img id="prevImage"/>
-<label>Upload Current Property Image:</label><br>
-<input type="file" accept="image/*" onchange="loadCurrentImage(event)"/>
-<img id="currImage"/>
-<br>
-<button onclick="downloadPrevImage()">⬇️ Download Previous Image</button>
-<button onclick="downloadCurrImage()">⬇️ Download Current Image</button>
-</div>
+<!-- GEE Panels -->
+<div id="geePanels" style="display:none">
+  <!-- Search & Confidence -->
+  <div class="panel">
+    <b>Search Community/Property (EE dataset)</b><br>
+    <input type="text" id="searchBox" placeholder="Search city/state"/>
+    <button onclick="searchEE()">🔍 Search</button>
+    <label>Confidence:</label>
+    <select id="confidence">
+      <option>Low</option><option>Medium</option><option>High</option>
+    </select>
+  </div>
 
-<div class="panel">
-<b>📈 Hazard Trends</b>
-<canvas id="trendChart" height="120"></canvas>
+  <!-- SAR Manual Scan -->
+  <div class="panel">
+    <b>🆘 Search & Rescue – Manual Scan</b><br>
+    <button onclick="startCamera()">📷 Start Camera Scan</button>
+    <button onclick="stopCamera()">⏹ Stop</button><br>
+    <video id="camera" autoplay playsinline></video>
+    <hr>
+    <label><b>Upload Thermal / SAR Image</b></label><br>
+    <input type="file" accept="image/*" onchange="loadAnomaly(event)"/>
+    <img id="thermalPreview"/>
+    <br>
+    <button onclick="markAnomaly()">⚠️ Mark Possible Human Presence (Unverified)</button>
+    <p class="warn">⚠️ Markers indicate possible human presence only and require SAR review.</p>
+  </div>
+
+  <!-- SAR Review -->
+  <div class="panel">
+    <b>📋 SAR Review Workflow</b><br>
+    <textarea id="reviewNotes" placeholder="SAR reviewer notes…" style="width:100%;height:60px"></textarea><br>
+    <button onclick="exportSAR()">📄 Export SAR Brief (PDF)</button>
+  </div>
+
+  <!-- Property Valuation + Funding Gap -->
+  <div class="panel">
+    <b>🏠 Property Valuation + Disaster Funding Gap</b><br>
+    <div id="propertyInfo">• Select a property to calculate valuation and estimated funding gap.</div>
+    <label>Upload Previous Property Image:</label><br>
+    <input type="file" accept="image/*" onchange="loadPreviousImage(event)"/>
+    <img id="prevImage"/>
+    <label>Upload Current Property Image:</label><br>
+    <input type="file" accept="image/*" onchange="loadCurrentImage(event)"/>
+    <img id="currImage"/>
+    <br>
+    <button onclick="downloadPrevImage()">⬇️ Download Previous Image</button>
+    <button onclick="downloadCurrImage()">⬇️ Download Current Image</button>
+  </div>
+
+  <!-- Hazard Trends -->
+  <div class="panel">
+    <b>📈 Hazard Trends</b>
+    <canvas id="trendChart" height="120"></canvas>
+  </div>
+
+  <!-- Combined PDF Report -->
+  <div class="panel">
+    <b>📄 Download Combined PDF Report</b><br>
+    <button onclick="exportCombinedPDF()">⬇️ Download Report</button>
+  </div>
 </div>
 
 <script>
-// ================= MAP =================
-const map = L.map('map').setView([0,0],2);
-
-// Base: NASA GIBS True Color
+// ================= MAPS =================
+// NASA Map
+const nasaMap = L.map('nasaMap').setView([0,0],2);
 L.tileLayer(
  "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2024-01-01/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg",
  {maxZoom:9, attribution:"NASA GIBS"}
-).addTo(map);
+).addTo(nasaMap);
 
-// Layer groups
-let geeLayer = L.layerGroup().addTo(map);
-let sarLayer = L.layerGroup().addTo(map);
-let searchLayer = L.layerGroup().addTo(map);
+// NASA EONET
+fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open')
+  .then(res=>res.json())
+  .then(data=>{
+    data.events.forEach(event=>{
+      event.geometry.forEach(geo=>{
+        if(geo.type==="Point"){
+          const [lng,lat]=geo.coordinates;
+          L.circleMarker([lat,lng],{radius:5,color:"orange"})
+            .addTo(nasaMap)
+            .bindPopup(`<b>${event.title}</b><br>${event.categories[0].title}`);
+        }
+      });
+    });
+  });
+
+// GEE Map
+const geeMap = L.map('geeMap').setView([0,0],2);
+let geeLayer = L.layerGroup().addTo(geeMap);
+let sarLayer = L.layerGroup().addTo(geeMap);
+let searchLayer = L.layerGroup().addTo(geeMap);
+
+// ================= TOGGLE =================
+function showNASA(){
+  document.getElementById('nasaMap').style.display='block';
+  document.getElementById('geeMap').style.display='none';
+  document.getElementById('geePanels').style.display='none';
+}
+function showGEE(){
+  document.getElementById('nasaMap').style.display='none';
+  document.getElementById('geeMap').style.display='block';
+  document.getElementById('geePanels').style.display='block';
+}
 
 // ================= SEARCH EE =================
 let selectedProperty = null;
@@ -129,7 +171,7 @@ async function searchEE(){
             }
         }).addTo(searchLayer);
         if(data.features.length>0){
-            map.fitBounds(L.geoJSON(data).getBounds());
+            geeMap.fitBounds(L.geoJSON(data).getBounds());
         } else alert("No results found");
     }catch(e){console.error("EE search error",e);}
 }
@@ -137,25 +179,18 @@ async function searchEE(){
 // ================= CAMERA =================
 let stream=null;
 async function startCamera(){
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({video:true});
-    document.getElementById("camera").srcObject=stream;
-  }catch(e){alert("Camera permission required");}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:true});document.getElementById("camera").srcObject=stream;}
+  catch(e){alert("Camera permission required");}
 }
 function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());document.getElementById("camera").srcObject=null;}}
 
 // ================= ANOMALY UPLOAD =================
 let uploadedImage=null;
-function loadAnomaly(e){
-  const file=e.target.files[0];
-  const reader=new FileReader();
-  reader.onload=()=>{uploadedImage=reader.result;document.getElementById("thermalPreview").src=uploadedImage;};
-  reader.readAsDataURL(file);
-}
+function loadAnomaly(e){const file=e.target.files[0];const reader=new FileReader();reader.onload=()=>{uploadedImage=reader.result;document.getElementById("thermalPreview").src=uploadedImage;};reader.readAsDataURL(file);}
 
 // ================= MARK ANOMALY =================
 function markAnomaly(){
-  map.once('click', e=>{
+  geeMap.once('click', e=>{
     const conf=document.getElementById("confidence").value;
     L.circleMarker(e.latlng,{radius:8,color: conf==="High"?"red":conf==="Medium"?"orange":"yellow"})
     .addTo(sarLayer)
@@ -177,7 +212,6 @@ function exportSAR(){
 
 // ================= PROPERTY PANEL =================
 let prevImage=null, currImage=null;
-
 function updatePropertyPanel(){
   if(!selectedProperty) return;
   const baseValue=Math.floor(Math.random()*500000 + 50000); // Example valuation
@@ -189,7 +223,6 @@ function updatePropertyPanel(){
     Estimated Damage: R${fundingGap.toLocaleString()}<br>
     Hazard Factor: ${hazardFactor}%`;
 }
-
 function loadPreviousImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{prevImage=r.result;document.getElementById("prevImage").src=prevImage;};r.readAsDataURL(f);}
 function loadCurrentImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{currImage=r.result;document.getElementById("currImage").src=currImage;};r.readAsDataURL(f);}
 function downloadPrevImage(){if(prevImage){const a=document.createElement('a');a.href=prevImage;a.download="Previous_Property_Image.png";a.click();}}
@@ -197,13 +230,10 @@ function downloadCurrImage(){if(currImage){const a=document.createElement('a');a
 
 // ================= TRENDS =================
 const ctx=document.getElementById("trendChart").getContext("2d");
-new Chart(ctx,{
-  type:"line",
-  data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[
+new Chart(ctx,{type:"line",data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[
     {label:"Floods",data:[4,6,9,7,10,12],borderColor:"blue"},
     {label:"Fires",data:[3,5,4,6,8,9],borderColor:"red"}
-  ]}
-});
+]}});
 
 // ================== GEE LIVE LAYERS ==================
 async function loadGEELayer(type){
@@ -224,6 +254,37 @@ async function loadGEELayer(type){
 loadGEELayer("floods");
 loadGEELayer("fires");
 loadGEELayer("properties");
+
+// ================== COMBINED PDF =================
+function exportCombinedPDF(){
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF();
+  pdf.setFontSize(12);
+  pdf.text("SadiCoin Tech – Combined Report",10,10);
+
+  // Property
+  if(selectedProperty){
+    pdf.text("Property Report:",10,20);
+    pdf.text(`Name: ${selectedProperty.properties.name||"Property"}`,10,27);
+    pdf.text(document.getElementById("propertyInfo").innerText,10,34);
+  }
+
+  // SAR Notes
+  pdf.text("SAR Notes:",10,50);
+  pdf.text(document.getElementById("reviewNotes").value||"None",10,57,{maxWidth:180});
+
+  // Trend Chart (converted to image)
+  const chartCanvas=document.getElementById("trendChart");
+  const chartImg=chartCanvas.toDataURL("image/png");
+  pdf.addImage(chartImg,'PNG',10,70,180,80);
+
+  // Previous + Current Property Images
+  let yPos=160;
+  if(prevImage) pdf.addImage(prevImage,'PNG',10,yPos,80,60);
+  if(currImage) pdf.addImage(currImage,'PNG',110,yPos,80,60);
+
+  pdf.save("Combined_Report.pdf");
+}
 
 </script>
 </body>

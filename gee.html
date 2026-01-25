@@ -61,8 +61,8 @@ img{max-width:100%;border-radius:6px;margin-top:6px}
 
   <!-- Hazard Trends -->
   <div class="panel">
-    <b>📈 Hazard Trends</b>
-    <canvas id="trendChart" height="120"></canvas>
+    <b>📈 Hazard Trends (Sentinel Live)</b>
+    <canvas id="trendChart" height="150"></canvas>
   </div>
 
   <!-- DAO & Transparency -->
@@ -90,10 +90,10 @@ let searchLayer = L.layerGroup().addTo(geeMap);
 // ================== SEARCH PROPERTY ==================
 let selectedProperty = null;
 async function searchEE(){
-  const query=document.getElementById("searchBox").value;
+  const query = document.getElementById("searchBox").value;
   if(!query) return;
   try{
-    const res = await fetch(`https://your-gee-app-url/search?query=${encodeURIComponent(query)}`);
+    const res = await fetch(`https://sadicoin-fa3d5.projects.earthengine.app/search?query=${encodeURIComponent(query)}`);
     const data = await res.json();
     searchLayer.clearLayers();
     L.geoJSON(data, {
@@ -109,7 +109,7 @@ async function searchEE(){
     if(data.features.length>0){
       geeMap.fitBounds(L.geoJSON(data).getBounds());
     } else alert("No results found");
-  }catch(e){console.error("GEE search error", e);}
+  } catch(e){ console.error("GEE search error", e); }
 }
 
 // ================== PROPERTY PANEL ==================
@@ -117,16 +117,15 @@ let prevImage=null, currImage=null;
 async function updatePropertyPanel(){
   if(!selectedProperty) return;
 
-  // Fetch real Sentinel metrics from GEE backend
   try{
-    const res = await fetch(`https://your-gee-app-url/metrics?propertyId=${selectedProperty.properties.id}`);
+    const res = await fetch(`https://sadicoin-fa3d5.projects.earthengine.app/metrics?propertyId=${selectedProperty.properties.id}`);
     const metrics = await res.json();
-    // Expected: metrics.floodScore, metrics.fireScore, metrics.ndviScore, metrics.baseValue
+    // metrics.floodScore, metrics.fireScore, metrics.ndviScore, metrics.baseValue
 
     const hazardFactor = ((metrics.floodScore + metrics.fireScore + metrics.ndviScore/2)).toFixed(1);
     const fundingGap = Math.round(metrics.baseValue * hazardFactor / 100);
 
-    document.getElementById("propertyInfo").innerHTML=
+    document.getElementById("propertyInfo").innerHTML =
       `<b>${selectedProperty.properties.name||"Property"}</b><br>
       Estimated Value: R${metrics.baseValue.toLocaleString()}<br>
       Flood Score: ${metrics.floodScore}<br>
@@ -134,26 +133,52 @@ async function updatePropertyPanel(){
       NDVI Score: ${metrics.ndviScore}<br>
       Estimated Damage: R${fundingGap.toLocaleString()}<br>
       Hazard Factor: ${hazardFactor}%`;
-
-  }catch(e){console.error("Error fetching GEE metrics:", e);}
+  } catch(e){ console.error("Error fetching GEE metrics:", e); }
 }
 
-function loadPreviousImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{prevImage=r.result;document.getElementById("prevImage").src=prevImage;};r.readAsDataURL(f);}
-function loadCurrentImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{currImage=r.result;document.getElementById("currImage").src=currImage;};r.readAsDataURL(f);}
+function loadPreviousImage(e){ const f=e.target.files[0]; const r=new FileReader(); r.onload=()=>{ prevImage=r.result; document.getElementById("prevImage").src=prevImage; }; r.readAsDataURL(f);}
+function loadCurrentImage(e){ const f=e.target.files[0]; const r=new FileReader(); r.onload=()=>{ currImage=r.result; document.getElementById("currImage").src=currImage; }; r.readAsDataURL(f);}
 function downloadPrevImage(){if(prevImage){const a=document.createElement('a');a.href=prevImage;a.download="Previous_Property_Image.png";a.click();}}
 function downloadCurrImage(){if(currImage){const a=document.createElement('a');a.href=currImage;a.download="Current_Property_Image.png";a.click();}}
 
 // ================== HAZARD TRENDS ==================
-const ctx=document.getElementById("trendChart").getContext("2d");
-new Chart(ctx,{type:"line",data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[
-  {label:"Floods",data:[4,6,9,7,10,12],borderColor:"blue"},
-  {label:"Fires",data:[3,5,4,6,8,9],borderColor:"red"}
-]}});
+const ctx = document.getElementById("trendChart").getContext("2d");
+async function loadLiveTrends(){
+  try{
+    const res = await fetch('https://sadicoin-fa3d5.projects.earthengine.app/trends');
+    const data = await res.json();
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.months,
+        datasets: [
+          { label: "Floods", data: data.floods, borderColor: "blue", fill: false },
+          { label: "Fires", data: data.fires, borderColor: "red", fill: false },
+          { label: "NDVI", data: data.ndvi, borderColor: "green", fill: false }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  } catch(e){
+    console.error("Error loading live trends from GEE:", e);
+    // fallback mock chart
+    new Chart(ctx,{type:"line",data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[
+      {label:"Floods",data:[4,6,9,7,10,12],borderColor:"blue",fill:false},
+      {label:"Fires",data:[3,5,4,6,8,9],borderColor:"red",fill:false},
+      {label:"NDVI",data:[50,55,60,58,62,65],borderColor:"green",fill:false}
+    ]}});
+  }
+}
+loadLiveTrends();
 
 // ================== GEE LIVE LAYERS ==================
 async function loadGEELayer(type){
   try{
-    const res = await fetch(`https://your-gee-app-url/layer?type=${type}`);
+    const res = await fetch(`https://sadicoin-fa3d5.projects.earthengine.app/layer?type=${type}`);
     const data = await res.json();
     L.geoJSON(data,{
       style:{color:type==="floods"?"blue":type==="fires"?"red":"green", fillOpacity:0.3},
@@ -161,10 +186,8 @@ async function loadGEELayer(type){
         if(type==="properties"){layer.on('click',()=>{selectedProperty=f;updatePropertyPanel();});}
       }
     }).addTo(geeLayer);
-  }catch(e){console.error("GEE layer fetch error:", e);}
+  } catch(e){ console.error("GEE layer fetch error:", e); }
 }
-
-// Load layers
 loadGEELayer("floods");
 loadGEELayer("fires");
 loadGEELayer("properties");
@@ -185,11 +208,11 @@ async function exportCombinedPDF(){
   pdf.text("DAO & Funding Notes:",10,50);
   pdf.text("Funding transparency, municipality & insurance scoring (placeholder)",10,57,{maxWidth:180});
 
-  const chartCanvas=document.getElementById("trendChart");
-  const chartImg=chartCanvas.toDataURL("image/png");
+  const chartCanvas = document.getElementById("trendChart");
+  const chartImg = chartCanvas.toDataURL("image/png");
   pdf.addImage(chartImg,'PNG',10,70,180,80);
 
-  let yPos=160;
+  let yPos = 160;
   if(prevImage) pdf.addImage(prevImage,'PNG',10,yPos,80,60);
   if(currImage) pdf.addImage(currImage,'PNG',110,yPos,80,60);
 

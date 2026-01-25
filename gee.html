@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SadiCoin Tech – GEE Property & Hazard Intelligence (Production)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#0b0f1a;color:#fff}
+header{padding:12px;background:#11162a;text-align:center;font-weight:bold;font-size:1.2em}
+#geeMap{height:60vh;margin:5px 0}
+.panel{padding:12px;background:#161c33;margin:6px;border-radius:6px}
+button{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;margin:2px 0}
+input,select,textarea{padding:5px;margin:2px 0}
+img{max-width:100%;border-radius:6px;margin-top:6px}
+</style>
+</head>
+<body>
+
+<header>🌍 SadiCoin Tech – GEE Property & Hazard Intelligence</header>
+
+<!-- GEE Map -->
+<div id="geeMap"></div>
+
+<!-- GEE Panels -->
+<div id="geePanels">
+  <!-- Search Property -->
+  <div class="panel">
+    <b>Search Community/Property</b><br>
+    <input type="text" id="searchBox" placeholder="Enter city/state"/>
+    <button onclick="searchEE()">🔍 Search</button>
+    <label>Confidence:</label>
+    <select id="confidence"><option>Low</option><option>Medium</option><option>High</option></select>
+  </div>
+
+  <!-- Property Valuation -->
+  <div class="panel">
+    <b>🏠 Property Valuation & Hazard Metrics</b><br>
+    <div id="propertyInfo">Select a property to compute satellite-driven valuation and hazard metrics.</div>
+    <label>Previous Property Image:</label><br>
+    <input type="file" accept="image/*" onchange="loadPreviousImage(event)"/>
+    <img id="prevImage"/>
+    <label>Current Property Image:</label><br>
+    <input type="file" accept="image/*" onchange="loadCurrentImage(event)"/>
+    <img id="currImage"/>
+    <br>
+    <button onclick="downloadPrevImage()">⬇️ Download Previous Image</button>
+    <button onclick="downloadCurrImage()">⬇️ Download Current Image</button>
+  </div>
+
+  <!-- Hazard Trends -->
+  <div class="panel">
+    <b>📈 Hazard Trends</b>
+    <canvas id="trendChart" height="120"></canvas>
+  </div>
+
+  <!-- DAO & Transparency -->
+  <div class="panel">
+    <b>🛡 DAO & Funding Transparency</b><br>
+    <div id="daoPanel">
+      • Municipality & Insurance scoring<br>
+      • Disaster fund allocations (placeholder)
+    </div>
+  </div>
+
+  <!-- Combined PDF Report -->
+  <div class="panel">
+    <b>📄 Download Combined PDF Report</b><br>
+    <button onclick="exportCombinedPDF()">⬇️ Download Report</button>
+  </div>
+</div>
+
+<script>
+// ================== GEE MAP ==================
+const geeMap = L.map('geeMap').setView([0,0],2);
+let geeLayer = L.layerGroup().addTo(geeMap);
+let searchLayer = L.layerGroup().addTo(geeMap);
+
+// ================== SEARCH PROPERTY ==================
+let selectedProperty = null;
+async function searchEE(){
+  const query=document.getElementById("searchBox").value;
+  if(!query) return;
+  try{
+    const res = await fetch(`https://your-gee-app-url/search?query=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    searchLayer.clearLayers();
+    L.geoJSON(data, {
+      style:{color:"green", fillOpacity:0.3},
+      onEachFeature:(f,layer)=>{
+        layer.bindPopup(f.properties.name||"Property");
+        layer.on('click', ()=>{
+          selectedProperty=f;
+          updatePropertyPanel();
+        });
+      }
+    }).addTo(searchLayer);
+    if(data.features.length>0){
+      geeMap.fitBounds(L.geoJSON(data).getBounds());
+    } else alert("No results found");
+  }catch(e){console.error("GEE search error", e);}
+}
+
+// ================== PROPERTY PANEL ==================
+let prevImage=null, currImage=null;
+async function updatePropertyPanel(){
+  if(!selectedProperty) return;
+
+  // Fetch real Sentinel metrics from GEE backend
+  try{
+    const res = await fetch(`https://your-gee-app-url/metrics?propertyId=${selectedProperty.properties.id}`);
+    const metrics = await res.json();
+    // Expected: metrics.floodScore, metrics.fireScore, metrics.ndviScore, metrics.baseValue
+
+    const hazardFactor = ((metrics.floodScore + metrics.fireScore + metrics.ndviScore/2)).toFixed(1);
+    const fundingGap = Math.round(metrics.baseValue * hazardFactor / 100);
+
+    document.getElementById("propertyInfo").innerHTML=
+      `<b>${selectedProperty.properties.name||"Property"}</b><br>
+      Estimated Value: R${metrics.baseValue.toLocaleString()}<br>
+      Flood Score: ${metrics.floodScore}<br>
+      Fire Score: ${metrics.fireScore}<br>
+      NDVI Score: ${metrics.ndviScore}<br>
+      Estimated Damage: R${fundingGap.toLocaleString()}<br>
+      Hazard Factor: ${hazardFactor}%`;
+
+  }catch(e){console.error("Error fetching GEE metrics:", e);}
+}
+
+function loadPreviousImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{prevImage=r.result;document.getElementById("prevImage").src=prevImage;};r.readAsDataURL(f);}
+function loadCurrentImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{currImage=r.result;document.getElementById("currImage").src=currImage;};r.readAsDataURL(f);}
+function downloadPrevImage(){if(prevImage){const a=document.createElement('a');a.href=prevImage;a.download="Previous_Property_Image.png";a.click();}}
+function downloadCurrImage(){if(currImage){const a=document.createElement('a');a.href=currImage;a.download="Current_Property_Image.png";a.click();}}
+
+// ================== HAZARD TRENDS ==================
+const ctx=document.getElementById("trendChart").getContext("2d");
+new Chart(ctx,{type:"line",data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[
+  {label:"Floods",data:[4,6,9,7,10,12],borderColor:"blue"},
+  {label:"Fires",data:[3,5,4,6,8,9],borderColor:"red"}
+]}});
+
+// ================== GEE LIVE LAYERS ==================
+async function loadGEELayer(type){
+  try{
+    const res = await fetch(`https://your-gee-app-url/layer?type=${type}`);
+    const data = await res.json();
+    L.geoJSON(data,{
+      style:{color:type==="floods"?"blue":type==="fires"?"red":"green", fillOpacity:0.3},
+      onEachFeature:(f,layer)=>{
+        if(type==="properties"){layer.on('click',()=>{selectedProperty=f;updatePropertyPanel();});}
+      }
+    }).addTo(geeLayer);
+  }catch(e){console.error("GEE layer fetch error:", e);}
+}
+
+// Load layers
+loadGEELayer("floods");
+loadGEELayer("fires");
+loadGEELayer("properties");
+
+// ================== COMBINED PDF ==================
+async function exportCombinedPDF(){
+  const {jsPDF} = window.jspdf;
+  const pdf = new jsPDF();
+  pdf.setFontSize(12);
+  pdf.text("SadiCoin Tech – Combined Report",10,10);
+
+  if(selectedProperty){
+    pdf.text("Property Report:",10,20);
+    pdf.text(`Name: ${selectedProperty.properties.name||"Property"}`,10,27);
+    pdf.text(document.getElementById("propertyInfo").innerText,10,34);
+  }
+
+  pdf.text("DAO & Funding Notes:",10,50);
+  pdf.text("Funding transparency, municipality & insurance scoring (placeholder)",10,57,{maxWidth:180});
+
+  const chartCanvas=document.getElementById("trendChart");
+  const chartImg=chartCanvas.toDataURL("image/png");
+  pdf.addImage(chartImg,'PNG',10,70,180,80);
+
+  let yPos=160;
+  if(prevImage) pdf.addImage(prevImage,'PNG',10,yPos,80,60);
+  if(currImage) pdf.addImage(currImage,'PNG',110,yPos,80,60);
+
+  pdf.save("Combined_Report.pdf");
+}
+</script>
+</body>
+</html>

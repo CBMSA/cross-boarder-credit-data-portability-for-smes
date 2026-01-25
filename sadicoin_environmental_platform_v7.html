@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<title>SadiCoin Tech – NASA + GEE Environmental & SAR Intelligence (Production)</title>
+<title>SadiCoin Tech – NASA + GEE Environmental & Property Intelligence (Production)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
 <!-- Leaflet -->
@@ -31,7 +30,7 @@ video,img{max-width:100%;border-radius:6px;margin-top:6px}
 </head>
 <body>
 
-<header>🌍 SadiCoin Tech – NASA + GEE Environmental + SAR + Property Intelligence (Production)</header>
+<header>🌍 SadiCoin Tech – NASA + GEE Environmental + Property Intelligence (Production)</header>
 
 <!-- Toggle Maps -->
 <div class="panel">
@@ -47,47 +46,24 @@ video,img{max-width:100%;border-radius:6px;margin-top:6px}
 
 <!-- GEE Panels -->
 <div id="geePanels" style="display:none">
-  <!-- Search & Confidence -->
+
+  <!-- SEARCH & PROPERTY -->
   <div class="panel">
     <b>Search Community/Property (EE dataset)</b><br>
     <input type="text" id="searchBox" placeholder="Search city/state"/>
     <button onclick="searchEE()">🔍 Search</button>
     <label>Confidence:</label>
-    <select id="confidence">
-      <option>Low</option><option>Medium</option><option>High</option>
-    </select>
+    <select id="confidence"><option>Low</option><option>Medium</option><option>High</option></select>
   </div>
 
-  <!-- SAR Manual Scan -->
-  <div class="panel">
-    <b>🆘 Search & Rescue – Manual Scan</b><br>
-    <button onclick="startCamera()">📷 Start Camera Scan</button>
-    <button onclick="stopCamera()">⏹ Stop</button><br>
-    <video id="camera" autoplay playsinline></video>
-    <hr>
-    <label><b>Upload Thermal / SAR Image</b></label><br>
-    <input type="file" accept="image/*" onchange="loadAnomaly(event)"/>
-    <img id="thermalPreview"/>
-    <br>
-    <button onclick="markAnomaly()">⚠️ Mark Possible Human Presence (Unverified)</button>
-    <p class="warn">⚠️ Markers indicate possible human presence only and require SAR review.</p>
-  </div>
-
-  <!-- SAR Review -->
-  <div class="panel">
-    <b>📋 SAR Review Workflow</b><br>
-    <textarea id="reviewNotes" placeholder="SAR reviewer notes…" style="width:100%;height:60px"></textarea><br>
-    <button onclick="exportSAR()">📄 Export SAR Brief (PDF)</button>
-  </div>
-
-  <!-- Property Valuation + Funding Gap -->
+  <!-- PROPERTY VALUATION + FUNDING -->
   <div class="panel">
     <b>🏠 Property Valuation + Disaster Funding Gap</b><br>
-    <div id="propertyInfo">• Select a property to calculate valuation and estimated funding gap.</div>
-    <label>Upload Previous Property Image:</label><br>
+    <div id="propertyInfo">• Select a property to calculate valuation based on Sentinel-1 / Sentinel-2 metrics.</div>
+    <label>Previous Property Image:</label><br>
     <input type="file" accept="image/*" onchange="loadPreviousImage(event)"/>
     <img id="prevImage"/>
-    <label>Upload Current Property Image:</label><br>
+    <label>Current Property Image:</label><br>
     <input type="file" accept="image/*" onchange="loadCurrentImage(event)"/>
     <img id="currImage"/>
     <br>
@@ -95,21 +71,31 @@ video,img{max-width:100%;border-radius:6px;margin-top:6px}
     <button onclick="downloadCurrImage()">⬇️ Download Current Image</button>
   </div>
 
-  <!-- Hazard Trends -->
+  <!-- HAZARD TRENDS -->
   <div class="panel">
     <b>📈 Hazard Trends</b>
     <canvas id="trendChart" height="120"></canvas>
   </div>
 
-  <!-- Combined PDF Report -->
+  <!-- DAO / TRANSPARENCY -->
+  <div class="panel">
+    <b>🛡 DAO & Funding Transparency</b><br>
+    <div id="daoPanel">
+      • Municipality & Insurance scoring<br>
+      • Disaster fund allocations (placeholder)
+    </div>
+  </div>
+
+  <!-- COMBINED PDF REPORT -->
   <div class="panel">
     <b>📄 Download Combined PDF Report</b><br>
     <button onclick="exportCombinedPDF()">⬇️ Download Report</button>
   </div>
+
 </div>
 
 <script>
-// ================= MAPS =================
+// ================== MAPS ==================
 // NASA Map
 const nasaMap = L.map('nasaMap').setView([0,0],2);
 L.tileLayer(
@@ -117,7 +103,7 @@ L.tileLayer(
  {maxZoom:9, attribution:"NASA GIBS"}
 ).addTo(nasaMap);
 
-// NASA EONET
+// NASA EONET Events
 fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open')
   .then(res=>res.json())
   .then(data=>{
@@ -136,10 +122,9 @@ fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open')
 // GEE Map
 const geeMap = L.map('geeMap').setView([0,0],2);
 let geeLayer = L.layerGroup().addTo(geeMap);
-let sarLayer = L.layerGroup().addTo(geeMap);
 let searchLayer = L.layerGroup().addTo(geeMap);
 
-// ================= TOGGLE =================
+// ================== TOGGLE ==================
 function showNASA(){
   document.getElementById('nasaMap').style.display='block';
   document.getElementById('geeMap').style.display='none';
@@ -151,141 +136,99 @@ function showGEE(){
   document.getElementById('geePanels').style.display='block';
 }
 
-// ================= SEARCH EE =================
-let selectedProperty = null;
+// ================== SEARCH EE ==================
+let selectedProperty=null;
 async function searchEE(){
-    const query=document.getElementById("searchBox").value;
-    if(!query) return;
-    try{
-        const res=await fetch(`https://sadicoin-fa3d5.projects.earthengine.app/searchGeoJSON?query=${encodeURIComponent(query)}`);
-        const data=await res.json();
-        searchLayer.clearLayers();
-        L.geoJSON(data,{
-            style:{color:"green", fillOpacity:0.3},
-            onEachFeature:(f,layer)=>{
-                layer.bindPopup(f.properties.name||"Property");
-                layer.on('click',()=>{
-                    selectedProperty=f;
-                    updatePropertyPanel();
-                });
-            }
-        }).addTo(searchLayer);
-        if(data.features.length>0){
-            geeMap.fitBounds(L.geoJSON(data).getBounds());
-        } else alert("No results found");
-    }catch(e){console.error("EE search error",e);}
+  const query=document.getElementById("searchBox").value;
+  if(!query) return;
+  try{
+    const res=await fetch(`https://sadicoin-fa3d5.projects.earthengine.app/searchGeoJSON?query=${encodeURIComponent(query)}`);
+    const data=await res.json();
+    searchLayer.clearLayers();
+    L.geoJSON(data,{
+      style:{color:"green", fillOpacity:0.3},
+      onEachFeature:(f,layer)=>{
+        layer.bindPopup(f.properties.name||"Property");
+        layer.on('click',()=>{selectedProperty=f;updatePropertyPanel();});
+      }
+    }).addTo(searchLayer);
+    if(data.features.length>0){
+      geeMap.fitBounds(L.geoJSON(data).getBounds());
+    } else alert("No results found");
+  }catch(e){console.error("EE search error",e);}
 }
 
-// ================= CAMERA =================
-let stream=null;
-async function startCamera(){
-  try{stream=await navigator.mediaDevices.getUserMedia({video:true});document.getElementById("camera").srcObject=stream;}
-  catch(e){alert("Camera permission required");}
-}
-function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());document.getElementById("camera").srcObject=null;}}
-
-// ================= ANOMALY UPLOAD =================
-let uploadedImage=null;
-function loadAnomaly(e){const file=e.target.files[0];const reader=new FileReader();reader.onload=()=>{uploadedImage=reader.result;document.getElementById("thermalPreview").src=uploadedImage;};reader.readAsDataURL(file);}
-
-// ================= MARK ANOMALY =================
-function markAnomaly(){
-  geeMap.once('click', e=>{
-    const conf=document.getElementById("confidence").value;
-    L.circleMarker(e.latlng,{radius:8,color: conf==="High"?"red":conf==="Medium"?"orange":"yellow"})
-    .addTo(sarLayer)
-    .bindPopup(`<b>Possible Human Presence (Unverified)</b><br>Confidence: ${conf}<br>Requires SAR confirmation`);
-  });
-  alert("Click on map to place unverified marker");
-}
-
-// ================= PDF EXPORT =================
-function exportSAR(){
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF();
-  pdf.text("SadiCoin Tech – SAR Review Brief",10,10);
-  pdf.text("This report contains unverified anomaly markers.",10,20);
-  pdf.text("Reviewer Notes:",10,35);
-  pdf.text(document.getElementById("reviewNotes").value||"None",10,45,{maxWidth:180});
-  pdf.save("SAR_Brief.pdf");
-}
-
-// ================= PROPERTY PANEL =================
+// ================== PROPERTY PANEL ==================
 let prevImage=null, currImage=null;
-function updatePropertyPanel(){
+async function updatePropertyPanel(){
   if(!selectedProperty) return;
-  const baseValue=Math.floor(Math.random()*500000 + 50000); // Example valuation
-  const hazardFactor=Math.floor(Math.random()*50); // Simulated hazard effect %
-  const fundingGap=Math.round(baseValue*hazardFactor/100);
-  document.getElementById("propertyInfo").innerHTML=
-    `<b>${selectedProperty.properties.name||"Property"}</b><br>
-    Estimated Value: R${baseValue.toLocaleString()}<br>
-    Estimated Damage: R${fundingGap.toLocaleString()}<br>
-    Hazard Factor: ${hazardFactor}%`;
+  try {
+    const geom = JSON.stringify(selectedProperty.geometry);
+    // Replace this URL with your deployed GEE App endpoint
+    const url = `https://sadicoin-fa3d5.projects.earthengine.app/getPropertyMetrics?geom=${encodeURIComponent(geom)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const baseValue = 1000000;
+    const floodPixels = data.floodScore || 0;
+    const firePixels = data.fireScore || 0;
+    const ndviScore = data.ndviScore || 0;
+    const hazardFactor = (floodPixels + firePixels + ndviScore/2).toFixed(1);
+    const fundingGap = Math.round(baseValue * hazardFactor / 100);
+
+    document.getElementById("propertyInfo").innerHTML=
+      `<b>${selectedProperty.properties.name||"Property"}</b><br>
+      Estimated Value: R${baseValue.toLocaleString()}<br>
+      Flood Score: ${floodPixels.toFixed(2)}<br>
+      Fire Score: ${firePixels.toFixed(2)}<br>
+      NDVI Score: ${ndviScore.toFixed(2)}<br>
+      Estimated Damage: R${fundingGap.toLocaleString()}<br>
+      Hazard Factor: ${hazardFactor}%`;
+
+  } catch(e){
+    console.error("GEE metrics fetch error:", e);
+    alert("Failed to fetch live satellite metrics.");
+  }
 }
+
 function loadPreviousImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{prevImage=r.result;document.getElementById("prevImage").src=prevImage;};r.readAsDataURL(f);}
 function loadCurrentImage(e){const f=e.target.files[0];const r=new FileReader();r.onload=()=>{currImage=r.result;document.getElementById("currImage").src=currImage;};r.readAsDataURL(f);}
 function downloadPrevImage(){if(prevImage){const a=document.createElement('a');a.href=prevImage;a.download="Previous_Property_Image.png";a.click();}}
 function downloadCurrImage(){if(currImage){const a=document.createElement('a');a.href=currImage;a.download="Current_Property_Image.png";a.click();}}
 
-// ================= TRENDS =================
+// ================== HAZARD TRENDS ==================
 const ctx=document.getElementById("trendChart").getContext("2d");
 new Chart(ctx,{type:"line",data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[
-    {label:"Floods",data:[4,6,9,7,10,12],borderColor:"blue"},
-    {label:"Fires",data:[3,5,4,6,8,9],borderColor:"red"}
+  {label:"Floods",data:[4,6,9,7,10,12],borderColor:"blue"},
+  {label:"Fires",data:[3,5,4,6,8,9],borderColor:"red"}
 ]}});
 
-// ================== GEE LIVE LAYERS ==================
-async function loadGEELayer(type){
-    try{
-        const url=`https://sadicoin-fa3d5.projects.earthengine.app/getGeoJSON?type=${type}`;
-        const res=await fetch(url);
-        const data=await res.json();
-        L.geoJSON(data,{
-            style:{color:type==="floods"?"blue":type==="fires"?"red":"green",fillOpacity:0.3},
-            onEachFeature:(f,layer)=>{
-                if(type==="properties"){layer.on('click',()=>{selectedProperty=f;updatePropertyPanel();});}
-            }
-        }).addTo(geeLayer);
-    }catch(e){console.error("GEE fetch error:",e);}
-}
-
-// Load layers on startup
-loadGEELayer("floods");
-loadGEELayer("fires");
-loadGEELayer("properties");
-
-// ================== COMBINED PDF =================
+// ================== COMBINED PDF ==================
 function exportCombinedPDF(){
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF();
   pdf.setFontSize(12);
   pdf.text("SadiCoin Tech – Combined Report",10,10);
 
-  // Property
   if(selectedProperty){
     pdf.text("Property Report:",10,20);
     pdf.text(`Name: ${selectedProperty.properties.name||"Property"}`,10,27);
     pdf.text(document.getElementById("propertyInfo").innerText,10,34);
   }
 
-  // SAR Notes
-  pdf.text("SAR Notes:",10,50);
-  pdf.text(document.getElementById("reviewNotes").value||"None",10,57,{maxWidth:180});
+  pdf.text("DAO & SAR Notes:",10,50);
+  pdf.text("Funding Transparency & Anomaly Markers (placeholder)",10,57,{maxWidth:180});
 
-  // Trend Chart (converted to image)
   const chartCanvas=document.getElementById("trendChart");
   const chartImg=chartCanvas.toDataURL("image/png");
   pdf.addImage(chartImg,'PNG',10,70,180,80);
 
-  // Previous + Current Property Images
   let yPos=160;
   if(prevImage) pdf.addImage(prevImage,'PNG',10,yPos,80,60);
   if(currImage) pdf.addImage(currImage,'PNG',110,yPos,80,60);
 
   pdf.save("Combined_Report.pdf");
 }
-
 </script>
 </body>
 </html>

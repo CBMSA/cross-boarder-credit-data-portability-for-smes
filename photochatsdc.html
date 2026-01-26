@@ -7,6 +7,8 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body {
   margin: 0;
@@ -43,24 +45,6 @@ header .icons {
   padding-bottom: 90px;
 }
 
-/* STORY BAR */
-.stories {
-  display: flex;
-  gap: 12px;
-  padding: 12px;
-  overflow-x: auto;
-}
-.story {
-  width: 64px;
-  text-align: center;
-}
-.story img {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px solid #ff3d00;
-}
-
 /* POST */
 .post {
   background: #fff;
@@ -87,6 +71,7 @@ header .icons {
   gap: 16px;
   padding: 10px;
   font-size: 1.4rem;
+  cursor: pointer;
 }
 .post-caption {
   padding: 0 10px 10px;
@@ -132,58 +117,120 @@ nav {
   <div class="icons">
     <i class="bi bi-heart"></i>
     <i class="bi bi-chat"></i>
-    <i class="bi bi-person-circle"></i>
+    <i class="bi bi-person-circle" onclick="login()"></i>
   </div>
 </header>
 
-<div class="feed">
+<div class="feed" id="feed"></div>
 
-  <!-- STORIES -->
-  <div class="stories">
-    <div class="story"><img src="https://i.pravatar.cc/64?1"><small>You</small></div>
-    <div class="story"><img src="https://i.pravatar.cc/64?2"><small>Ada</small></div>
-    <div class="story"><img src="https://i.pravatar.cc/64?3"><small>Sam</small></div>
-  </div>
+<input type="file" id="fileInput" hidden />
 
-  <!-- POST -->
-  <div class="post">
-    <div class="post-header">
-      <img src="https://i.pravatar.cc/36?4">
-      <strong>anonymous_23</strong>
-    </div>
-    <img src="https://picsum.photos/600/500?1" class="post-img">
-    <div class="post-actions">
-      ❤️ 💬 💰
-    </div>
-    <div class="post-caption">
-      <strong>anonymous_23</strong> Supporting wildlife 📸  
-      <br><small>💰 12.4 SDC donated</small>
-    </div>
-  </div>
-
-  <!-- POST -->
-  <div class="post">
-    <div class="post-header">
-      <img src="https://i.pravatar.cc/36?5">
-      <strong>creator_88</strong>
-    </div>
-    <img src="https://picsum.photos/600/500?2" class="post-img">
-    <div class="post-actions">
-      ❤️ 💬 💰
-    </div>
-    <div class="post-caption">
-      <strong>creator_88</strong> City vibes 🌃  
-      <br><small>💰 4.8 SDC donated</small>
-    </div>
-  </div>
-
-</div>
-
-<div class="fab">+</div>
+<div class="fab" onclick="addPost()">+</div>
 
 <nav>
   🏠 🔍 ➕ 💬 👤
 </nav>
+
+<script>
+/* =========================
+   SUPABASE (Vercel ENV)
+========================= */
+
+// ⚠️ These get replaced by Vercel at build time
+const SUPABASE_URL = "NEXT_PUBLIC_SUPABASE_URL";
+const SUPABASE_KEY = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+
+const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* =========================
+   AUTH
+========================= */
+async function login() {
+  const email = prompt("Enter your email");
+  if (!email) return;
+
+  await supabase.auth.signInWithOtp({ email });
+  alert("Magic link sent to your email");
+}
+
+async function getUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+}
+
+/* =========================
+   LOAD POSTS
+========================= */
+async function loadPosts() {
+  const { data } = await supabase
+    .from("posts")
+    .select("*, donations(amount)")
+    .order("created_at", { ascending: false });
+
+  const feed = document.getElementById("feed");
+  feed.innerHTML = "";
+
+  (data || []).forEach(post => {
+    const total = post.donations?.reduce((a,b)=>a+b.amount,0) || 0;
+
+    feed.innerHTML += `
+      <div class="post">
+        <div class="post-header">
+          <img src="https://i.pravatar.cc/36?u=${post.user_id}">
+          <strong>user</strong>
+        </div>
+        <img src="${post.image_url}" class="post-img">
+        <div class="post-actions">
+          ❤️ 💬 💰
+        </div>
+        <div class="post-caption">
+          <strong>${post.caption || ""}</strong><br>
+          <small>💰 ${total} SDC donated</small>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* =========================
+   ADD POST
+========================= */
+function addPost() {
+  document.getElementById("fileInput").click();
+}
+
+document.getElementById("fileInput").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const user = await getUser();
+  if (!user) {
+    alert("Please login first");
+    return;
+  }
+
+  const caption = prompt("Caption");
+
+  const path = `${user.id}/${Date.now()}-${file.name}`;
+
+  await supabase.storage.from("photos").upload(path, file);
+
+  const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${path}`;
+
+  await supabase.from("posts").insert({
+    user_id: user.id,
+    caption,
+    image_url: imageUrl
+  });
+
+  loadPosts();
+});
+
+/* =========================
+   INIT
+========================= */
+loadPosts();
+</script>
 
 </body>
 </html>

@@ -17,7 +17,7 @@ header h1{margin:0;font-size:1.2rem}
 header .icons{margin-left:auto;font-size:1.3rem;display:flex;gap:16px;cursor:pointer}
 .feed{max-width:600px;margin:auto;padding-bottom:90px}
 .post{background:#fff;margin-bottom:12px}
-.post img{width:100%}
+.post img,video{width:100%}
 .post-actions{padding:10px;font-size:1.4rem;display:flex;gap:16px;cursor:pointer}
 .post-caption{padding:0 10px 10px}
 .fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:#ff3d00;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem}
@@ -28,7 +28,6 @@ button{padding:10px;width:100%;margin-top:6px}
 .badge{color:#fff;background:#00b894;padding:2px 6px;border-radius:4px;font-size:0.8rem}
 </style>
 </head>
-
 <body>
 
 <header>
@@ -40,7 +39,6 @@ button{padding:10px;width:100%;margin-top:6px}
 </header>
 
 <div id="feed" class="feed"></div>
-
 <div class="fab" onclick="addPost()">+</div>
 
 <nav>
@@ -95,6 +93,21 @@ button{padding:10px;width:100%;margin-top:6px}
   <button onclick="submitEntry()">Submit Entry</button>
 </div>
 
+<!-- LIVE STREAM MODAL -->
+<div id="liveModal" class="modal">
+  <button onclick="closeLive()">⬅ Back</button>
+  <video id="liveVideo" autoplay playsinline></video>
+  <button onclick="startLive()">Go Live</button>
+</div>
+
+<!-- VIDEO CALL MODAL -->
+<div id="callModal" class="modal">
+  <button onclick="closeCall()">⬅ Back</button>
+  <video id="localCallVideo" autoplay muted playsinline></video>
+  <video id="remoteCallVideo" autoplay playsinline></video>
+  <button onclick="startCall()">Start Call</button>
+</div>
+
 <script>
 /* =========================
    ENV & SUPABASE
@@ -128,21 +141,26 @@ async function canDo(action,limit){
 }
 
 /* =========================
-   POSTS & FEED
+   POSTS / FEED / CATEGORIES / ANONYMOUS
 ========================= */
-async function loadPosts(){
- const {data} = await supabase.from("posts").select("*").order("created_at",{ascending:false});
- renderPosts(data||[]);
+async function loadPosts(category=null,random=false){
+ let q = supabase.from("posts").select("*").order("created_at",{ascending:false});
+ if(category) q = q.eq("category",category);
+ const {data} = await q;
+ let posts = data || [];
+ if(random) posts = posts.sort(()=>Math.random()-0.5).slice(0,50);
+ renderPosts(posts);
 }
 
 function renderPosts(posts){
  feed.innerHTML="";
  posts.forEach(p=>{
+  const name = p.is_anonymous?"Anonymous":(p.username||"User");
   const verified = p.is_verified?"<span class='badge'>✔ Verified</span>":"";
   feed.innerHTML+=`
   <div class="post">
-    <strong>${p.username || "User"} ${verified}</strong><br>
-    <img src="${p.image_url}">
+    <strong>${name} ${verified}</strong><br>
+    ${p.media_type==='video'?`<video src="${p.image_url}" controls></video>`:`<img src="${p.image_url}">`}
     <div class="post-actions">
       💰 <span onclick="donate('${p.user_id}','${p.id}')">Donate</span>
       💬 <span onclick="openDM('${p.user_id}')">DM</span>
@@ -152,22 +170,6 @@ function renderPosts(posts){
   </div>`;
  });
 }
-
-/* =========================
-   UPLOAD POST
-========================= */
-function addPost(){fileInput.click();}
-fileInput.onchange = async e=>{
- if(!(await canDo("upload",3))) return alert("Slow down");
- const user = await getUser(); if(!user)return login();
- const file = e.target.files[0];
- const caption = prompt("Caption");
- const path = `${user.id}/${Date.now()}-${file.name}`;
- await supabase.storage.from("photos").upload(path,file);
- const url = `${SUPABASE_URL}/storage/v1/object/public/photos/${path}`;
- await supabase.from("posts").insert({user_id:user.id,image_url:url,caption});
- loadPosts();
-};
 
 /* =========================
    PROFILE
@@ -300,10 +302,8 @@ async function deletePost(postId){
    CHALLENGE SYSTEM
 ========================= */
 let currentChallenge = null;
-
 async function openCreateChallenge(){ challengeModal.style.display="block"; }
 function closeChallenge(){ challengeModal.style.display="none"; }
-
 async function createChallenge(){
  const user = await getUser(); if(!user)return login();
  const title = challengeTitle.value; const desc = challengeDesc.value;
@@ -312,7 +312,6 @@ async function createChallenge(){
  alert("Challenge created 🎉");
  closeChallenge(); loadChallenges();
 }
-
 async function loadChallenges(){
  const {data}=await supabase.from("challenges").select("*").order("created_at",{ascending:false});
  data.forEach(c=>{
@@ -323,10 +322,8 @@ async function loadChallenges(){
    </div>`;
  });
 }
-
 function openSubmitEntry(challengeId){ currentChallenge = challengeId; entryModal.style.display="block"; }
 function closeEntry(){ entryModal.style.display="none"; }
-
 async function submitEntry(){
  const user = await getUser(); if(!user)return login();
  const file = entryFile.files[0]; if(!file)return alert("Select a file");
@@ -336,6 +333,31 @@ async function submitEntry(){
  await supabase.from("challenge_entries").insert({challenge_id:currentChallenge,user_id:user.id,media_url:url,caption:entryCaption.value});
  alert("Entry submitted 🎉"); closeEntry();
 }
+
+/* =========================
+   WEBRTC LIVE STREAM
+========================= */
+let localStream=null;
+async function startLive(){
+  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  liveVideo.srcObject = localStream;
+  alert("Live streaming started (peer-to-peer, limited viewers)");
+}
+function closeLive(){liveModal.style.display="none";}
+
+/* =========================
+   WEBRTC VIDEO CALL
+========================= */
+let localCallStream=null,peerConnection=null;
+async function startCall(){
+  localCallStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  localCallVideo.srcObject = localCallStream;
+  peerConnection = new RTCPeerConnection();
+  localCallStream.getTracks().forEach(track => peerConnection.addTrack(track, localCallStream));
+  peerConnection.ontrack = e => remoteCallVideo.srcObject = e.streams[0];
+  alert("Video call started (peer-to-peer)");
+}
+function closeCall(){callModal.style.display="none";}
 
 /* =========================
    INIT

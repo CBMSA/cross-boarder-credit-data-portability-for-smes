@@ -1,112 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PhotoChat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoChat Web3</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.8.1/dist/ethers.umd.min.js"></script>
 
 <style>
-body {
-  margin: 0;
-  background: #fafafa;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-}
-
-/* HEADER */
-header {
-  position: sticky;
-  top: 0;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  z-index: 10;
-}
-header h1 {
-  font-size: 1.2rem;
-  margin: 0;
-}
-header .icons {
-  margin-left: auto;
-  display: flex;
-  gap: 16px;
-  font-size: 1.3rem;
-}
-
-/* FEED */
-.feed {
-  max-width: 600px;
-  margin: auto;
-  padding-bottom: 90px;
-}
-
-/* POST */
-.post {
-  background: #fff;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 12px;
-}
-.post-header {
-  display: flex;
-  align-items: center;
-  padding: 10px;
-}
-.post-header img {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  margin-right: 10px;
-}
-.post img.post-img {
-  width: 100%;
-  display: block;
-}
-.post-actions {
-  display: flex;
-  gap: 16px;
-  padding: 10px;
-  font-size: 1.4rem;
-  cursor: pointer;
-}
-.post-caption {
-  padding: 0 10px 10px;
-  font-size: 0.9rem;
-}
-
-/* FLOAT BUTTON */
-.fab {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  background: #ff3d00;
-  color: white;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  cursor: pointer;
-}
-
-/* BOTTOM NAV */
-nav {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  background: #fff;
-  border-top: 1px solid #ddd;
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0;
-  font-size: 1.4rem;
-}
+body{margin:0;font-family:-apple-system;background:#fafafa}
+header,nav{background:#fff;border-bottom:1px solid #ddd}
+header{position:sticky;top:0;padding:12px;display:flex;align-items:center;z-index:10}
+header h1{margin:0;font-size:1.2rem}
+header .icons{margin-left:auto;font-size:1.3rem;display:flex;gap:16px;cursor:pointer}
+.feed{max-width:600px;margin:auto;padding-bottom:90px}
+.post{background:#fff;margin-bottom:12px}
+.post img{width:100%}
+.post-actions{padding:10px;font-size:1.4rem;display:flex;gap:16px;cursor:pointer}
+.post-caption{padding:0 10px 10px}
+.fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:#ff3d00;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem}
+nav{position:fixed;bottom:0;width:100%;display:flex;justify-content:space-around;padding:10px 0;font-size:1.4rem}
+.modal{display:none;position:fixed;inset:0;background:#fff;z-index:30;padding:10px;overflow:auto}
+input,textarea{width:100%;padding:10px;margin:6px 0}
+button{padding:10px;width:100%;margin-top:6px}
+.badge{color:#fff;background:#00b894;padding:2px 6px;border-radius:4px;font-size:0.8rem}
 </style>
 </head>
 
@@ -115,116 +34,308 @@ nav {
 <header>
   <h1>PhotoChat</h1>
   <div class="icons">
-    <i class="bi bi-heart"></i>
-    <i class="bi bi-chat"></i>
-    <i class="bi bi-person-circle" onclick="login()"></i>
+    <i class="bi bi-bell" onclick="loadNotifications()"></i>
+    <i class="bi bi-person-circle" onclick="openProfile()"></i>
   </div>
 </header>
 
-<div class="feed" id="feed"></div>
-
-<input type="file" id="fileInput" hidden />
+<div id="feed" class="feed"></div>
 
 <div class="fab" onclick="addPost()">+</div>
 
 <nav>
-  🏠 🔍 ➕ 💬 👤
+  <span onclick="loadPosts()">🏠</span>
+  <span onclick="toggleSearch()">🔍</span>
+  <span onclick="addPost()">➕</span>
+  <span onclick="openDM()">💬</span>
+  <span onclick="openProfile()">👤</span>
 </nav>
+
+<input id="fileInput" type="file" hidden>
+<input id="searchBox" placeholder="Search..." style="display:none">
+
+<!-- PROFILE MODAL -->
+<div id="profileModal" class="modal">
+  <button onclick="closeProfile()">⬅ Back</button>
+  <h3>Profile</h3>
+  <input id="username" placeholder="Username">
+  <input id="wallet" placeholder="Polygon Wallet">
+  <textarea id="bio" placeholder="Bio"></textarea>
+  <button onclick="saveProfile()">Save Profile</button>
+</div>
+
+<!-- DM MODAL -->
+<div id="dmModal" class="modal">
+  <button onclick="closeDM()">⬅ Back</button>
+  <div id="dmList"></div>
+  <input id="dmInput" placeholder="Type message and press Enter">
+</div>
+
+<!-- ANALYTICS MODAL -->
+<div id="analyticsModal" class="modal">
+  <button onclick="closeAnalytics()">⬅ Back</button>
+  <h3>Analytics Dashboard</h3>
+  <div id="analyticsContent"></div>
+</div>
+
+<!-- CHALLENGE MODAL -->
+<div id="challengeModal" class="modal">
+  <button onclick="closeChallenge()">⬅ Back</button>
+  <h3>Create Challenge</h3>
+  <input id="challengeTitle" placeholder="Challenge Title">
+  <textarea id="challengeDesc" placeholder="Description"></textarea>
+  <button onclick="createChallenge()">Create Challenge</button>
+</div>
+
+<!-- SUBMIT ENTRY MODAL -->
+<div id="entryModal" class="modal">
+  <button onclick="closeEntry()">⬅ Back</button>
+  <input type="file" id="entryFile">
+  <input id="entryCaption" placeholder="Caption">
+  <button onclick="submitEntry()">Submit Entry</button>
+</div>
 
 <script>
 /* =========================
-   SUPABASE (Vercel ENV)
+   ENV & SUPABASE
 ========================= */
-
-// ⚠️ These get replaced by Vercel at build time
-const SUPABASE_URL = "NEXT_PUBLIC_SUPABASE_URL";
-const SUPABASE_KEY = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-
-const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL="NEXT_PUBLIC_SUPABASE_URL";
+const SUPABASE_KEY="NEXT_PUBLIC_SUPABASE_ANON_KEY";
+const SDC_CONTRACT="NEXT_PUBLIC_SDC_CONTRACT";
+const supabase = supabaseJs.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 /* =========================
    AUTH
 ========================= */
-async function login() {
-  const email = prompt("Enter your email");
-  if (!email) return;
-
-  await supabase.auth.signInWithOtp({ email });
-  alert("Magic link sent to your email");
-}
-
-async function getUser() {
-  const { data } = await supabase.auth.getUser();
-  return data.user;
+async function getUser(){return (await supabase.auth.getUser()).data.user;}
+async function login(){ 
+  const email = prompt("Enter your email"); if(!email)return;
+  await supabase.auth.signInWithOtp({email});
+  alert("Check your email for magic link");
 }
 
 /* =========================
-   LOAD POSTS
+   RATE LIMIT
 ========================= */
-async function loadPosts() {
-  const { data } = await supabase
-    .from("posts")
-    .select("*, donations(amount)")
-    .order("created_at", { ascending: false });
-
-  const feed = document.getElementById("feed");
-  feed.innerHTML = "";
-
-  (data || []).forEach(post => {
-    const total = post.donations?.reduce((a,b)=>a+b.amount,0) || 0;
-
-    feed.innerHTML += `
-      <div class="post">
-        <div class="post-header">
-          <img src="https://i.pravatar.cc/36?u=${post.user_id}">
-          <strong>user</strong>
-        </div>
-        <img src="${post.image_url}" class="post-img">
-        <div class="post-actions">
-          ❤️ 💬 💰
-        </div>
-        <div class="post-caption">
-          <strong>${post.caption || ""}</strong><br>
-          <small>💰 ${total} SDC donated</small>
-        </div>
-      </div>
-    `;
-  });
+async function canDo(action,limit){
+ const user=await getUser(); if(!user)return false;
+ const since = new Date(Date.now()-60000).toISOString();
+ const {data} = await supabase.from("rate_limits")
+   .select("*").eq("user_id",user.id).eq("action",action).gte("created_at",since);
+ if(data.length>=limit) return false;
+ await supabase.from("rate_limits").insert({user_id:user.id,action});
+ return true;
 }
 
 /* =========================
-   ADD POST
+   POSTS & FEED
 ========================= */
-function addPost() {
-  document.getElementById("fileInput").click();
+async function loadPosts(){
+ const {data} = await supabase.from("posts").select("*").order("created_at",{ascending:false});
+ renderPosts(data||[]);
 }
 
-document.getElementById("fileInput").addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
+function renderPosts(posts){
+ feed.innerHTML="";
+ posts.forEach(p=>{
+  const verified = p.is_verified?"<span class='badge'>✔ Verified</span>":"";
+  feed.innerHTML+=`
+  <div class="post">
+    <strong>${p.username || "User"} ${verified}</strong><br>
+    <img src="${p.image_url}">
+    <div class="post-actions">
+      💰 <span onclick="donate('${p.user_id}','${p.id}')">Donate</span>
+      💬 <span onclick="openDM('${p.user_id}')">DM</span>
+      🗑 <span onclick="deletePost('${p.id}')">Delete</span>
+    </div>
+    <div class="post-caption">${p.caption||""}</div>
+  </div>`;
+ });
+}
 
-  const user = await getUser();
-  if (!user) {
-    alert("Please login first");
-    return;
-  }
+/* =========================
+   UPLOAD POST
+========================= */
+function addPost(){fileInput.click();}
+fileInput.onchange = async e=>{
+ if(!(await canDo("upload",3))) return alert("Slow down");
+ const user = await getUser(); if(!user)return login();
+ const file = e.target.files[0];
+ const caption = prompt("Caption");
+ const path = `${user.id}/${Date.now()}-${file.name}`;
+ await supabase.storage.from("photos").upload(path,file);
+ const url = `${SUPABASE_URL}/storage/v1/object/public/photos/${path}`;
+ await supabase.from("posts").insert({user_id:user.id,image_url:url,caption});
+ loadPosts();
+};
 
-  const caption = prompt("Caption");
+/* =========================
+   PROFILE
+========================= */
+async function openProfile(){
+ const user = await getUser(); if(!user)return login();
+ const {data} = await supabase.from("profiles").select("*").eq("id",user.id).single();
+ username.value = data?.username || "";
+ wallet.value = data?.wallet_address || "";
+ bio.value = data?.bio || "";
+ profileModal.style.display="block";
+}
+function closeProfile(){profileModal.style.display="none";}
+async function saveProfile(){
+ const user = await getUser();
+ await supabase.from("profiles").upsert({
+  id:user.id,username:username.value,wallet_address:wallet.value,bio:bio.value,is_creator:true
+ });
+ alert("Profile saved");
+ closeProfile();
+ loadPosts();
+}
 
-  const path = `${user.id}/${Date.now()}-${file.name}`;
+/* =========================
+   DONATE SDC
+========================= */
+async function donate(userId,postId){
+ const {data} = await supabase.from("profiles").select("wallet_address").eq("id",userId).single();
+ if(!window.ethereum)return alert("Install MetaMask");
+ const amount = prompt("Enter SDC amount"); if(!amount)return;
+ await ethereum.request({ method:"eth_requestAccounts" });
+ const provider = new ethers.BrowserProvider(window.ethereum);
+ const signer = await provider.getSigner();
+ const abi = ["function transfer(address,uint)"];
+ const c = new ethers.Contract(SDC_CONTRACT,abi,signer);
+ const tx = await c.transfer(data.wallet_address,ethers.parseUnits(amount,18));
+ await supabase.from("donations").insert({post_id:postId,amount,tx_hash:tx.hash});
+ alert("Donation sent");
+}
 
-  await supabase.storage.from("photos").upload(path, file);
+/* =========================
+   DM SYSTEM
+========================= */
+let dmUser=null;
+function openDM(uid){dmUser=uid;dmModal.style.display="block";loadDMs();}
+function closeDM(){dmModal.style.display="none";}
+async function loadDMs(){
+ const user = await getUser();
+ const {data} = await supabase.from("messages").select("*")
+   .or(`sender.eq.${user.id},receiver.eq.${user.id}`).order("created_at");
+ dmList.innerHTML = data.map(m=>`<p>${m.content}</p>`).join("");
+}
+dmInput.onkeypress=async e=>{
+ if(e.key==="Enter"){
+  if(!(await canDo("dm",10))) return alert("Slow down");
+  const user=await getUser();
+  await supabase.from("messages").insert({sender:user.id,receiver:dmUser,content:e.target.value});
+  e.target.value=""; loadDMs();
+ }
+};
 
-  const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${path}`;
+/* =========================
+   NOTIFICATIONS
+========================= */
+async function loadNotifications(){
+ const user = await getUser();
+ const {data} = await supabase.from("notifications").select("*").eq("user_id",user.id).eq("is_read",false);
+ alert(`🔔 ${data.length} new notifications`);
+}
 
-  await supabase.from("posts").insert({
-    user_id: user.id,
-    caption,
-    image_url: imageUrl
-  });
+/* =========================
+   SEARCH
+========================= */
+function toggleSearch(){
+ searchBox.style.display=searchBox.style.display==="none"?"block":"none";
+ searchBox.oninput=async()=>{
+  const {data} = await supabase.from("posts").select("*").ilike("caption",`%${searchBox.value}%`);
+  renderPosts(data||[]);
+ };
+}
 
-  loadPosts();
-});
+/* =========================
+   DAO VOTING
+========================= */
+async function createProposal(){
+ const user=await getUser(); if(!user)return login();
+ const title = prompt("Proposal title"); const desc=prompt("Proposal description");
+ if(!title || !desc)return;
+ await supabase.from("proposals").insert({title,description:desc,creator_id:user.id});
+ loadProposals();
+}
+async function loadProposals(){
+ const {data}=await supabase.from("proposals").select("*").order("created_at",{ascending:false});
+ data.forEach(p=>{
+  feed.innerHTML += `<div class="post"><strong>DAO Proposal:</strong> ${p.title}<br>${p.description}<br>
+  <button onclick="vote('${p.id}')">Vote</button></div>`;
+ });
+}
+async function vote(proposalId){
+ const user=await getUser(); if(!user)return login();
+ const provider = new ethers.BrowserProvider(window.ethereum);
+ const balance = await provider.getBalance(user.address);
+ await supabase.from("votes").upsert({proposal_id:proposalId,voter_id:user.id,weight:parseFloat(balance)});
+ alert("Vote counted 🎉"); loadProposals();
+}
+
+/* =========================
+   ANALYTICS
+========================= */
+async function openAnalytics(){
+ const posts = (await supabase.from("posts").select("*")).data.length;
+ const donations = (await supabase.from("donations").select("*")).data.reduce((a,b)=>a+b.amount,0);
+ analyticsContent.innerHTML = `<p>Total posts: ${posts}</p><p>Total donations: ${donations}</p>`;
+ analyticsModal.style.display="block";
+}
+function closeAnalytics(){analyticsModal.style.display="none";}
+
+/* =========================
+   ADMIN MODERATION
+========================= */
+async function deletePost(postId){
+ const user = await getUser(); if(!user)return login();
+ const {data}=await supabase.from("profiles").select("is_admin").eq("id",user.id).single();
+ if(!data?.is_admin) return alert("Not authorized");
+ await supabase.from("posts").delete().eq("id",postId);
+ loadPosts();
+}
+
+/* =========================
+   CHALLENGE SYSTEM
+========================= */
+let currentChallenge = null;
+
+async function openCreateChallenge(){ challengeModal.style.display="block"; }
+function closeChallenge(){ challengeModal.style.display="none"; }
+
+async function createChallenge(){
+ const user = await getUser(); if(!user)return login();
+ const title = challengeTitle.value; const desc = challengeDesc.value;
+ if(!title || !desc)return alert("Fill all fields");
+ await supabase.from("challenges").insert({title,description:desc,creator_id:user.id});
+ alert("Challenge created 🎉");
+ closeChallenge(); loadChallenges();
+}
+
+async function loadChallenges(){
+ const {data}=await supabase.from("challenges").select("*").order("created_at",{ascending:false});
+ data.forEach(c=>{
+   feed.innerHTML += `<div class="post">
+   <strong>${c.title}</strong><br>${c.description}<br>
+   <button onclick="openSubmitEntry('${c.id}')">Submit Entry</button>
+   <button onclick="viewEntries('${c.id}')">View Entries</button>
+   </div>`;
+ });
+}
+
+function openSubmitEntry(challengeId){ currentChallenge = challengeId; entryModal.style.display="block"; }
+function closeEntry(){ entryModal.style.display="none"; }
+
+async function submitEntry(){
+ const user = await getUser(); if(!user)return login();
+ const file = entryFile.files[0]; if(!file)return alert("Select a file");
+ const path = `${user.id}/${Date.now()}-${file.name}`;
+ await supabase.storage.from("challenge_entries").upload(path,file);
+ const url = `${SUPABASE_URL}/storage/v1/object/public/challenge_entries/${path}`;
+ await supabase.from("challenge_entries").insert({challenge_id:currentChallenge,user_id:user.id,media_url:url,caption:entryCaption.value});
+ alert("Entry submitted 🎉"); closeEntry();
+}
 
 /* =========================
    INIT

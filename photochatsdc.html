@@ -1,76 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PhotoChat</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.8.1/dist/ethers.umd.min.js"></script>
 
 <style>
 :root{
-  --bg:#0b0f14;
-  --card:#111827;
-  --accent:#00f6ff;
-  --accent2:#22c55e;
-  --text:#e5e7eb;
+--bg:#0b0f14;--card:#111827;--accent:#00f6ff;--text:#e5e7eb;
 }
-*{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:var(--bg);color:var(--text);}
-header{position:sticky;top:0;z-index:10;background:#020617;border-bottom:1px solid #1f2937;padding:10px 14px;display:flex;align-items:center;}
-header img{height:32px;margin-right:10px}
-header h1{font-size:1.1rem;margin:0}
-header .icons{margin-left:auto;display:flex;gap:16px;font-size:1.3rem}
-
-.tabs{display:flex;overflow-x:auto;background:#020617;border-bottom:1px solid #1f2937;}
-.tabs button{flex:1;padding:10px;background:none;border:none;color:#9ca3af;font-size:.9rem;}
+body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text);}
+header,nav{background:#020617;border-color:#1f2937}
+header{display:flex;align-items:center;padding:10px}
+header img{height:32px;margin-right:8px}
+.tabs{display:flex;overflow-x:auto;border-bottom:1px solid #1f2937}
+.tabs button{flex:1;background:none;border:none;color:#9ca3af;padding:10px}
 .tabs button.active{color:var(--accent)}
-
 .feed{max-width:640px;margin:auto;padding-bottom:120px}
-.post{background:var(--card);margin:12px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #1f2937;}
+.post{background:var(--card);margin:12px;border-radius:14px;overflow:hidden}
 .post-header{padding:10px;font-weight:600}
-.post img,video{width:100%;display:block}
-.post-actions{padding:10px;display:flex;gap:14px;font-size:1.3rem;}
-.post-actions span{cursor:pointer}
-.post-caption{padding:0 10px 12px;font-size:.9rem}
-.badge{background:var(--accent2);color:#000;font-size:.7rem;padding:2px 6px;border-radius:6px;margin-left:6px;}
-
-.property-card{border:1px solid #00f6ff44;background:var(--card);border-radius:14px;box-shadow:0 0 6px #00f6ff33;}
-.property-card .badge{background:#22c55e;color:#000;font-size:.7rem;}
-.property-card .post-actions span{color:#00f6ff;cursor:pointer;}
-
-.fab{position:fixed;bottom:90px;right:20px;background:linear-gradient(135deg,#00f6ff,#22c55e);width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#000;}
-
-nav{position:fixed;bottom:0;width:100%;background:#020617;border-top:1px solid #1f2937;display:flex;justify-content:space-around;padding:10px 0;font-size:1.4rem;}
-.modal{display:none;position:fixed;inset:0;background:#020617;z-index:50;padding:14px;overflow:auto;}
-input,textarea,button{width:100%;padding:10px;margin-top:8px;background:#020617;color:var(--text);border:1px solid #1f2937;border-radius:10px;}
-button{background:var(--accent);color:#000;font-weight:600}
-footer{text-align:center;font-size:.75rem;color:#6b7280;padding:20px 0;}
+.post img,video{width:100%}
+.post-caption{padding:10px;font-size:.9rem}
+.fab{position:fixed;bottom:90px;right:20px;background:var(--accent);width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#000;font-size:2rem}
+nav{position:fixed;bottom:0;width:100%;display:flex;justify-content:space-around;padding:10px}
+.modal{display:none;position:fixed;inset:0;background:#020617;padding:14px;z-index:50}
+button,input,textarea{width:100%;padding:10px;margin-top:8px;background:#020617;color:#fff;border:1px solid #1f2937;border-radius:10px}
+footer{text-align:center;font-size:.75rem;color:#6b7280;padding:20px}
 </style>
 </head>
 
 <body>
 
 <header>
-  <img src="file_00000000edd071f590a2740f51337467.png" alt="PhotoChat Logo">
-  <h1>PhotoChat</h1>
-  <div class="icons">
-    <i class="bi bi-bell" onclick="alert('Notifications')"></i>
-    <i class="bi bi-chat" onclick="openDM()"></i>
-    <i class="bi bi-person-circle" onclick="openProfile()"></i>
+  <img src="file_00000000edd071f590a2740f51337467.png">
+  <b>PhotoChat</b>
+  <div style="margin-left:auto">
+    <i class="bi bi-google" onclick="loginGoogle()"></i>
   </div>
 </header>
 
 <div class="tabs">
-  <button onclick="setTab('home')" class="active">🏠 Home</button>
-  <button onclick="setTab('trending')">🔥 Trending</button>
-  <button onclick="setTab('random')">🎲 Random</button>
-  <button onclick="setTab('sports')">⚽ Sports</button>
-  <button onclick="setTab('news')">📰 News</button>
-  <button onclick="setTab('realestate')">🏘 Real Estate</button>
-  <button onclick="openLive()">📡 Live</button>
+  <button class="active" onclick="setTab(this,'home')">Home</button>
+  <button onclick="setTab(this,'trending')">Trending</button>
+  <button onclick="setTab(this,'random')">Random</button>
+  <button onclick="setTab(this,'sports')">Sports</button>
+  <button onclick="setTab(this,'news')">News</button>
+  <button onclick="setTab(this,'realestate')">Real Estate</button>
+  <button onclick="openLive()">Live</button>
 </div>
 
 <div id="feed" class="feed"></div>
@@ -79,140 +58,80 @@ footer{text-align:center;font-size:.75rem;color:#6b7280;padding:20px 0;}
 <nav>🏠 🔍 ➕ 💬 👤</nav>
 <footer>© SadiCoin Tech 2026 · PhotoChat</footer>
 
-<!-- PROFILE -->
-<div id="profileModal" class="modal">
-  <button onclick="closeProfile()">⬅ Back</button>
-  <h3>Profile</h3>
-  <input placeholder="Username">
-  <input placeholder="Polygon Wallet">
-  <textarea placeholder="Bio"></textarea>
-  <button>Save</button>
-</div>
-
-<!-- DM -->
-<div id="dmModal" class="modal">
-  <button onclick="closeDM()">⬅ Back</button>
-  <h3>Direct Messages</h3>
-  <textarea placeholder="Message"></textarea>
-</div>
-
-<!-- LIVE -->
 <div id="liveModal" class="modal">
-  <button onclick="closeLive()">⬅ Back</button>
-  <h3>🔴 Live Stream</h3>
-  <video id="liveVideo" autoplay muted playsinline></video>
-  <button onclick="startLive()">Go Live</button>
+<button onclick="closeLive()">⬅ Back</button>
+<video id="liveVideo" autoplay muted playsinline></video>
+<button onclick="startLive()">Go Live</button>
 </div>
 
-<!-- CREATE / POST OR PROPERTY -->
 <div id="createModal" class="modal">
-  <button onclick="closeCreate()">⬅ Back</button>
-  <h3>Create Post / Property</h3>
-  <input id="createTitle" placeholder="Title">
-  <input id="createPrice" placeholder="Price / Rent">
-  <textarea id="createDescription" placeholder="Description"></textarea>
-  <input type="file" id="createMedia">
-  <button onclick="payListingFee()">Pay Listing Fee & Publish</button>
+<button onclick="closeCreate()">⬅ Back</button>
+<textarea placeholder="What’s happening?"></textarea>
+<button onclick="closeCreate()">Post</button>
 </div>
 
 <script>
-const SUPABASE_URL = "https://jbhhfzbhcvzxtthhmfhz.supabase.co";
-const SUPABASE_KEY ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiaGhmemJoY3Z6eHR0aGhtZmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzUxMDAsImV4cCI6MjA4MTA1MTEwMH0.86HR8bkhiNK4JjpDsIyAtu9l9x83UjlMG-mYGc_adJc" "NEXT_PUBLIC_SUPABASE_ANON_KEY";
-const SDC_CONTRACT = "0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96";
-const PLATFORM_WALLET = "0x83f96982a307f37da34d67a7bc946208cd419214"; // replace with your platform wallet
-const supabase = supabaseJs.createClient(SUPABASE_URL,SUPABASE_KEY);
-const feed = document.getElementById("feed");
+const supabase = supabaseJs.createClient(
+  "https://jbhhfzbhcvzxtthhmfhz.supabase.co",
+  "YOUR_SUPABASE_ANON_KEY_HERE"
+);
 
-/* FEED LOGIC */
-async function setTab(type){
-  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
-  event.target.classList.add("active");
+const demoPosts={
+home:[
+{u:"Anonymous",t:"Welcome to PhotoChat",img:"https://picsum.photos/600/400?1"},
+{u:"Marketing",t:"Promoted post",img:"https://picsum.photos/600/400?2"}
+],
+trending:[
+{u:"🔥 Viral",t:"Trending now",img:"https://picsum.photos/600/400?3"}
+],
+random:[
+{u:"Random",t:"Just vibes",img:"https://picsum.photos/600/400?4"}
+],
+sports:[
+{u:"Sports Live",t:"Match highlights",img:"https://picsum.photos/600/400?5"}
+],
+news:[
+{u:"News",t:"Breaking update",img:"https://picsum.photos/600/400?6"}
+],
+realestate:[
+{u:"Agent",t:"2 Bed Apartment – R6,500",img:"https://picsum.photos/600/400?7"}
+]
+};
 
-  let postsQuery = supabase.from("posts").select("*").order("created_at",{ascending:false});
-  let propertiesQuery = supabase.from("properties").select("*").eq("status","active");
-
-  if(type==="trending") postsQuery = supabase.rpc("trending_posts");
-  if(type==="random") postsQuery = postsQuery.limit(50);
-  if(type==="sports") postsQuery = supabase.from("posts").select("*").eq("category","sports");
-  if(type==="news") postsQuery = supabase.from("posts").select("*").eq("category","news");
-  if(type==="realestate") postsQuery = supabase.from("properties").select("*").eq("status","active");
-
-  const [posts,properties] = await Promise.all([postsQuery,propertiesQuery]);
-  const combined = [...(posts.data||[]), ...(properties.data||[])].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  renderFeed(combined);
+function setTab(btn,type){
+document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+render(demoPosts[type]);
 }
 
-function renderFeed(items){
-  feed.innerHTML="";
-  items.forEach(p=>{
-    if(p.type && p.type==="property"){
-      feed.innerHTML+=`
-        <div class="post property-card">
-          <div class="post-header">🏘 ${p.title||"Property"} ${p.agent_verified?'<span class="badge">👮 Verified Agent</span>':''}</div>
-          ${p.media_type==="video"?`<video src="${p.image_url}" controls></video>`:`<img src="${p.image_url||p.thumbnail_url}">`}
-          <div class="post-caption">💰 ${p.price||"N/A"} <br>📍 ${p.location||"Unknown"}</div>
-          <div class="post-actions">
-            <span onclick="viewProperty('${p.id}')">View Details</span>
-            <span onclick="contactAgent('${p.agent_id}')">Contact Agent</span>
-            <span onclick="payAcquireFee('${p.id}','${p.agent_wallet}')">💰 Pay SDC to unlock</span>
-          </div>
-        </div>`;
-    } else {
-      feed.innerHTML+=`
-        <div class="post">
-          <div class="post-header">${p.is_anonymous?"Anonymous":p.username} ${p.is_verified?'<span class="badge">✔</span>':''}</div>
-          ${p.media_type==="video"?`<video src="${p.image_url}" controls></video>`:`<img src="${p.image_url}">`}
-          <div class="post-actions">💰 ❤️ 💬</div>
-          <div class="post-caption">${p.caption||""}</div>
-        </div>`;
-    }
-  });
+function render(list){
+feed.innerHTML="";
+list.forEach(p=>{
+feed.innerHTML+=`
+<div class="post">
+<div class="post-header">${p.u}</div>
+<img src="${p.img}">
+<div class="post-caption">${p.t}</div>
+</div>`;
+});
 }
 
-/* MODALS */
-function openProfile(){profileModal.style.display="block"}
-function closeProfile(){profileModal.style.display="none"}
-function openDM(){dmModal.style.display="block"}
-function closeDM(){dmModal.style.display="none"}
+async function loginGoogle(){
+await supabase.auth.signInWithOAuth({provider:"google"});
+}
+
+async function startLive(){
+const s=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+liveVideo.srcObject=s;
+}
+
 function openLive(){liveModal.style.display="block"}
 function closeLive(){liveModal.style.display="none"}
 function openCreate(){createModal.style.display="block"}
 function closeCreate(){createModal.style.display="none"}
 
-/* WEBRTC */
-async function startLive(){
-  const stream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  liveVideo.srcObject = stream;
-  alert("Live started (WebRTC peer-to-peer)");
-}
-
-/* SDC PAYMENT FUNCTIONS */
-async function payListingFee(){
-  const title = document.getElementById('createTitle').value;
-  const price = document.getElementById('createPrice').value;
-  const description = document.getElementById('createDescription').value;
-  if(!window.ethereum) return alert("MetaMask required");
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  const sdc = new ethers.Contract(SDC_CONTRACT, SDC_ABI, signer);
-  const tx = await sdc.transfer(PLATFORM_WALLET, ethers.parseUnits("10",18));
-  await tx.wait();
-  alert("Listing fee paid, property live!");
-  closeCreate();
-  setTab('realestate');
-}
-
-async function payAcquireFee(propertyId, agentWallet){
-  if(!window.ethereum) return alert("MetaMask required");
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  const sdc = new ethers.Contract(SDC_CONTRACT, SDC_ABI, signer);
-  const tx = await sdc.transfer(agentWallet, ethers.parseUnits("5",18));
-  await tx.wait();
-  alert("Property unlocked! You can now view full details & contact agent.");
-}
-
-setTab("home");
+setTab(document.querySelector(".tabs button"),"home");
 </script>
+
 </body>
 </html>

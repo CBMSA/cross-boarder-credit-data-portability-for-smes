@@ -1,369 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PhotoChat Web3</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PhotoChat</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.8.1/dist/ethers.umd.min.js"></script>
 
 <style>
-body{margin:0;font-family:-apple-system;background:#fafafa}
-header,nav{background:#fff;border-bottom:1px solid #ddd}
-header{position:sticky;top:0;padding:12px;display:flex;align-items:center;z-index:10}
-header h1{margin:0;font-size:1.2rem}
-header .icons{margin-left:auto;font-size:1.3rem;display:flex;gap:16px;cursor:pointer}
-.feed{max-width:600px;margin:auto;padding-bottom:90px}
-.post{background:#fff;margin-bottom:12px}
-.post img,video{width:100%}
-.post-actions{padding:10px;font-size:1.4rem;display:flex;gap:16px;cursor:pointer}
-.post-caption{padding:0 10px 10px}
-.fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:#ff3d00;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem}
-nav{position:fixed;bottom:0;width:100%;display:flex;justify-content:space-around;padding:10px 0;font-size:1.4rem}
-.modal{display:none;position:fixed;inset:0;background:#fff;z-index:30;padding:10px;overflow:auto}
-input,textarea{width:100%;padding:10px;margin:6px 0}
-button{padding:10px;width:100%;margin-top:6px}
-.badge{color:#fff;background:#00b894;padding:2px 6px;border-radius:4px;font-size:0.8rem}
+:root{
+  --bg:#0b0f14;
+  --card:#111827;
+  --accent:#00f6ff;
+  --accent2:#22c55e;
+  --text:#e5e7eb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:var(--bg);color:var(--text);}
+header{position:sticky;top:0;z-index:10;background:#020617;border-bottom:1px solid #1f2937;padding:10px 14px;display:flex;align-items:center;}
+header img{height:32px;margin-right:10px}
+header h1{font-size:1.1rem;margin:0}
+header .icons{margin-left:auto;display:flex;gap:16px;font-size:1.3rem}
+
+.tabs{display:flex;overflow-x:auto;background:#020617;border-bottom:1px solid #1f2937;}
+.tabs button{flex:1;padding:10px;background:none;border:none;color:#9ca3af;font-size:.9rem;}
+.tabs button.active{color:var(--accent)}
+
+.feed{max-width:640px;margin:auto;padding-bottom:120px}
+.post{background:var(--card);margin:12px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #1f2937;}
+.post-header{padding:10px;font-weight:600}
+.post img,video{width:100%;display:block}
+.post-actions{padding:10px;display:flex;gap:14px;font-size:1.3rem;}
+.post-actions span{cursor:pointer}
+.post-caption{padding:0 10px 12px;font-size:.9rem}
+.badge{background:var(--accent2);color:#000;font-size:.7rem;padding:2px 6px;border-radius:6px;margin-left:6px;}
+
+.property-card{border:1px solid #00f6ff44;background:var(--card);border-radius:14px;box-shadow:0 0 6px #00f6ff33;}
+.property-card .badge{background:#22c55e;color:#000;font-size:.7rem;}
+.property-card .post-actions span{color:#00f6ff;cursor:pointer;}
+
+.fab{position:fixed;bottom:90px;right:20px;background:linear-gradient(135deg,#00f6ff,#22c55e);width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#000;}
+
+nav{position:fixed;bottom:0;width:100%;background:#020617;border-top:1px solid #1f2937;display:flex;justify-content:space-around;padding:10px 0;font-size:1.4rem;}
+.modal{display:none;position:fixed;inset:0;background:#020617;z-index:50;padding:14px;overflow:auto;}
+input,textarea,button{width:100%;padding:10px;margin-top:8px;background:#020617;color:var(--text);border:1px solid #1f2937;border-radius:10px;}
+button{background:var(--accent);color:#000;font-weight:600}
+footer{text-align:center;font-size:.75rem;color:#6b7280;padding:20px 0;}
 </style>
 </head>
+
 <body>
 
 <header>
+  <img src="LOGO_URL" alt="PhotoChat Logo">
   <h1>PhotoChat</h1>
   <div class="icons">
-    <i class="bi bi-bell" onclick="loadNotifications()"></i>
+    <i class="bi bi-bell" onclick="alert('Notifications')"></i>
+    <i class="bi bi-chat" onclick="openDM()"></i>
     <i class="bi bi-person-circle" onclick="openProfile()"></i>
   </div>
 </header>
 
+<div class="tabs">
+  <button onclick="setTab('home')" class="active">🏠 Home</button>
+  <button onclick="setTab('trending')">🔥 Trending</button>
+  <button onclick="setTab('random')">🎲 Random</button>
+  <button onclick="setTab('sports')">⚽ Sports</button>
+  <button onclick="setTab('news')">📰 News</button>
+  <button onclick="setTab('realestate')">🏘 Real Estate</button>
+  <button onclick="openLive()">📡 Live</button>
+</div>
+
 <div id="feed" class="feed"></div>
-<div class="fab" onclick="addPost()">+</div>
+<div class="fab" onclick="openCreate()">+</div>
 
-<nav>
-  <span onclick="loadPosts()">🏠</span>
-  <span onclick="toggleSearch()">🔍</span>
-  <span onclick="addPost()">➕</span>
-  <span onclick="openDM()">💬</span>
-  <span onclick="openProfile()">👤</span>
-</nav>
+<nav>🏠 🔍 ➕ 💬 👤</nav>
+<footer>© SadiCoin Tech 2026 · PhotoChat</footer>
 
-<input id="fileInput" type="file" hidden>
-<input id="searchBox" placeholder="Search..." style="display:none">
-
-<!-- PROFILE MODAL -->
+<!-- PROFILE -->
 <div id="profileModal" class="modal">
   <button onclick="closeProfile()">⬅ Back</button>
   <h3>Profile</h3>
-  <input id="username" placeholder="Username">
-  <input id="wallet" placeholder="Polygon Wallet">
-  <textarea id="bio" placeholder="Bio"></textarea>
-  <button onclick="saveProfile()">Save Profile</button>
+  <input placeholder="Username">
+  <input placeholder="Polygon Wallet">
+  <textarea placeholder="Bio"></textarea>
+  <button>Save</button>
 </div>
 
-<!-- DM MODAL -->
+<!-- DM -->
 <div id="dmModal" class="modal">
   <button onclick="closeDM()">⬅ Back</button>
-  <div id="dmList"></div>
-  <input id="dmInput" placeholder="Type message and press Enter">
+  <h3>Direct Messages</h3>
+  <textarea placeholder="Message"></textarea>
 </div>
 
-<!-- ANALYTICS MODAL -->
-<div id="analyticsModal" class="modal">
-  <button onclick="closeAnalytics()">⬅ Back</button>
-  <h3>Analytics Dashboard</h3>
-  <div id="analyticsContent"></div>
-</div>
-
-<!-- CHALLENGE MODAL -->
-<div id="challengeModal" class="modal">
-  <button onclick="closeChallenge()">⬅ Back</button>
-  <h3>Create Challenge</h3>
-  <input id="challengeTitle" placeholder="Challenge Title">
-  <textarea id="challengeDesc" placeholder="Description"></textarea>
-  <button onclick="createChallenge()">Create Challenge</button>
-</div>
-
-<!-- SUBMIT ENTRY MODAL -->
-<div id="entryModal" class="modal">
-  <button onclick="closeEntry()">⬅ Back</button>
-  <input type="file" id="entryFile">
-  <input id="entryCaption" placeholder="Caption">
-  <button onclick="submitEntry()">Submit Entry</button>
-</div>
-
-<!-- LIVE STREAM MODAL -->
+<!-- LIVE -->
 <div id="liveModal" class="modal">
   <button onclick="closeLive()">⬅ Back</button>
-  <video id="liveVideo" autoplay playsinline></video>
+  <h3>🔴 Live Stream</h3>
+  <video id="liveVideo" autoplay muted playsinline></video>
   <button onclick="startLive()">Go Live</button>
 </div>
 
-<!-- VIDEO CALL MODAL -->
-<div id="callModal" class="modal">
-  <button onclick="closeCall()">⬅ Back</button>
-  <video id="localCallVideo" autoplay muted playsinline></video>
-  <video id="remoteCallVideo" autoplay playsinline></video>
-  <button onclick="startCall()">Start Call</button>
+<!-- CREATE / POST OR PROPERTY -->
+<div id="createModal" class="modal">
+  <button onclick="closeCreate()">⬅ Back</button>
+  <h3>Create Post / Property</h3>
+  <input id="createTitle" placeholder="Title">
+  <input id="createPrice" placeholder="Price / Rent">
+  <textarea id="createDescription" placeholder="Description"></textarea>
+  <input type="file" id="createMedia">
+  <button onclick="payListingFee()">Pay Listing Fee & Publish</button>
 </div>
 
 <script>
-/* =========================
-   ENV & SUPABASE
-========================= */
-const SUPABASE_URL="NEXT_PUBLIC_SUPABASE_URL";
-const SUPABASE_KEY="NEXT_PUBLIC_SUPABASE_ANON_KEY";
-const SDC_CONTRACT="NEXT_PUBLIC_SDC_CONTRACT";
+const SUPABASE_URL = "NEXT_PUBLIC_SUPABASE_URL";
+const SUPABASE_KEY = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+const SDC_CONTRACT = "NEXT_PUBLIC_SDC_CONTRACT";
+const PLATFORM_WALLET = "0xPlatformWalletAddress"; // replace with your platform wallet
 const supabase = supabaseJs.createClient(SUPABASE_URL,SUPABASE_KEY);
+const feed = document.getElementById("feed");
 
-/* =========================
-   AUTH
-========================= */
-async function getUser(){return (await supabase.auth.getUser()).data.user;}
-async function login(){ 
-  const email = prompt("Enter your email"); if(!email)return;
-  await supabase.auth.signInWithOtp({email});
-  alert("Check your email for magic link");
-}
+/* FEED LOGIC */
+async function setTab(type){
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
 
-/* =========================
-   RATE LIMIT
-========================= */
-async function canDo(action,limit){
- const user=await getUser(); if(!user)return false;
- const since = new Date(Date.now()-60000).toISOString();
- const {data} = await supabase.from("rate_limits")
-   .select("*").eq("user_id",user.id).eq("action",action).gte("created_at",since);
- if(data.length>=limit) return false;
- await supabase.from("rate_limits").insert({user_id:user.id,action});
- return true;
+  let postsQuery = supabase.from("posts").select("*").order("created_at",{ascending:false});
+  let propertiesQuery = supabase.from("properties").select("*").eq("status","active");
+
+  if(type==="trending") postsQuery = supabase.rpc("trending_posts");
+  if(type==="random") postsQuery = postsQuery.limit(50);
+  if(type==="sports") postsQuery = supabase.from("posts").select("*").eq("category","sports");
+  if(type==="news") postsQuery = supabase.from("posts").select("*").eq("category","news");
+  if(type==="realestate") postsQuery = supabase.from("properties").select("*").eq("status","active");
+
+  const [posts,properties] = await Promise.all([postsQuery,propertiesQuery]);
+  const combined = [...(posts.data||[]), ...(properties.data||[])].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  renderFeed(combined);
 }
 
-/* =========================
-   POSTS / FEED / CATEGORIES / ANONYMOUS
-========================= */
-async function loadPosts(category=null,random=false){
- let q = supabase.from("posts").select("*").order("created_at",{ascending:false});
- if(category) q = q.eq("category",category);
- const {data} = await q;
- let posts = data || [];
- if(random) posts = posts.sort(()=>Math.random()-0.5).slice(0,50);
- renderPosts(posts);
+function renderFeed(items){
+  feed.innerHTML="";
+  items.forEach(p=>{
+    if(p.type && p.type==="property"){
+      feed.innerHTML+=`
+        <div class="post property-card">
+          <div class="post-header">🏘 ${p.title||"Property"} ${p.agent_verified?'<span class="badge">👮 Verified Agent</span>':''}</div>
+          ${p.media_type==="video"?`<video src="${p.image_url}" controls></video>`:`<img src="${p.image_url||p.thumbnail_url}">`}
+          <div class="post-caption">💰 ${p.price||"N/A"} <br>📍 ${p.location||"Unknown"}</div>
+          <div class="post-actions">
+            <span onclick="viewProperty('${p.id}')">View Details</span>
+            <span onclick="contactAgent('${p.agent_id}')">Contact Agent</span>
+            <span onclick="payAcquireFee('${p.id}','${p.agent_wallet}')">💰 Pay SDC to unlock</span>
+          </div>
+        </div>`;
+    } else {
+      feed.innerHTML+=`
+        <div class="post">
+          <div class="post-header">${p.is_anonymous?"Anonymous":p.username} ${p.is_verified?'<span class="badge">✔</span>':''}</div>
+          ${p.media_type==="video"?`<video src="${p.image_url}" controls></video>`:`<img src="${p.image_url}">`}
+          <div class="post-actions">💰 ❤️ 💬</div>
+          <div class="post-caption">${p.caption||""}</div>
+        </div>`;
+    }
+  });
 }
 
-function renderPosts(posts){
- feed.innerHTML="";
- posts.forEach(p=>{
-  const name = p.is_anonymous?"Anonymous":(p.username||"User");
-  const verified = p.is_verified?"<span class='badge'>✔ Verified</span>":"";
-  feed.innerHTML+=`
-  <div class="post">
-    <strong>${name} ${verified}</strong><br>
-    ${p.media_type==='video'?`<video src="${p.image_url}" controls></video>`:`<img src="${p.image_url}">`}
-    <div class="post-actions">
-      💰 <span onclick="donate('${p.user_id}','${p.id}')">Donate</span>
-      💬 <span onclick="openDM('${p.user_id}')">DM</span>
-      🗑 <span onclick="deletePost('${p.id}')">Delete</span>
-    </div>
-    <div class="post-caption">${p.caption||""}</div>
-  </div>`;
- });
-}
+/* MODALS */
+function openProfile(){profileModal.style.display="block"}
+function closeProfile(){profileModal.style.display="none"}
+function openDM(){dmModal.style.display="block"}
+function closeDM(){dmModal.style.display="none"}
+function openLive(){liveModal.style.display="block"}
+function closeLive(){liveModal.style.display="none"}
+function openCreate(){createModal.style.display="block"}
+function closeCreate(){createModal.style.display="none"}
 
-/* =========================
-   PROFILE
-========================= */
-async function openProfile(){
- const user = await getUser(); if(!user)return login();
- const {data} = await supabase.from("profiles").select("*").eq("id",user.id).single();
- username.value = data?.username || "";
- wallet.value = data?.wallet_address || "";
- bio.value = data?.bio || "";
- profileModal.style.display="block";
-}
-function closeProfile(){profileModal.style.display="none";}
-async function saveProfile(){
- const user = await getUser();
- await supabase.from("profiles").upsert({
-  id:user.id,username:username.value,wallet_address:wallet.value,bio:bio.value,is_creator:true
- });
- alert("Profile saved");
- closeProfile();
- loadPosts();
-}
-
-/* =========================
-   DONATE SDC
-========================= */
-async function donate(userId,postId){
- const {data} = await supabase.from("profiles").select("wallet_address").eq("id",userId).single();
- if(!window.ethereum)return alert("Install MetaMask");
- const amount = prompt("Enter SDC amount"); if(!amount)return;
- await ethereum.request({ method:"eth_requestAccounts" });
- const provider = new ethers.BrowserProvider(window.ethereum);
- const signer = await provider.getSigner();
- const abi = ["function transfer(address,uint)"];
- const c = new ethers.Contract(SDC_CONTRACT,abi,signer);
- const tx = await c.transfer(data.wallet_address,ethers.parseUnits(amount,18));
- await supabase.from("donations").insert({post_id:postId,amount,tx_hash:tx.hash});
- alert("Donation sent");
-}
-
-/* =========================
-   DM SYSTEM
-========================= */
-let dmUser=null;
-function openDM(uid){dmUser=uid;dmModal.style.display="block";loadDMs();}
-function closeDM(){dmModal.style.display="none";}
-async function loadDMs(){
- const user = await getUser();
- const {data} = await supabase.from("messages").select("*")
-   .or(`sender.eq.${user.id},receiver.eq.${user.id}`).order("created_at");
- dmList.innerHTML = data.map(m=>`<p>${m.content}</p>`).join("");
-}
-dmInput.onkeypress=async e=>{
- if(e.key==="Enter"){
-  if(!(await canDo("dm",10))) return alert("Slow down");
-  const user=await getUser();
-  await supabase.from("messages").insert({sender:user.id,receiver:dmUser,content:e.target.value});
-  e.target.value=""; loadDMs();
- }
-};
-
-/* =========================
-   NOTIFICATIONS
-========================= */
-async function loadNotifications(){
- const user = await getUser();
- const {data} = await supabase.from("notifications").select("*").eq("user_id",user.id).eq("is_read",false);
- alert(`🔔 ${data.length} new notifications`);
-}
-
-/* =========================
-   SEARCH
-========================= */
-function toggleSearch(){
- searchBox.style.display=searchBox.style.display==="none"?"block":"none";
- searchBox.oninput=async()=>{
-  const {data} = await supabase.from("posts").select("*").ilike("caption",`%${searchBox.value}%`);
-  renderPosts(data||[]);
- };
-}
-
-/* =========================
-   DAO VOTING
-========================= */
-async function createProposal(){
- const user=await getUser(); if(!user)return login();
- const title = prompt("Proposal title"); const desc=prompt("Proposal description");
- if(!title || !desc)return;
- await supabase.from("proposals").insert({title,description:desc,creator_id:user.id});
- loadProposals();
-}
-async function loadProposals(){
- const {data}=await supabase.from("proposals").select("*").order("created_at",{ascending:false});
- data.forEach(p=>{
-  feed.innerHTML += `<div class="post"><strong>DAO Proposal:</strong> ${p.title}<br>${p.description}<br>
-  <button onclick="vote('${p.id}')">Vote</button></div>`;
- });
-}
-async function vote(proposalId){
- const user=await getUser(); if(!user)return login();
- const provider = new ethers.BrowserProvider(window.ethereum);
- const balance = await provider.getBalance(user.address);
- await supabase.from("votes").upsert({proposal_id:proposalId,voter_id:user.id,weight:parseFloat(balance)});
- alert("Vote counted 🎉"); loadProposals();
-}
-
-/* =========================
-   ANALYTICS
-========================= */
-async function openAnalytics(){
- const posts = (await supabase.from("posts").select("*")).data.length;
- const donations = (await supabase.from("donations").select("*")).data.reduce((a,b)=>a+b.amount,0);
- analyticsContent.innerHTML = `<p>Total posts: ${posts}</p><p>Total donations: ${donations}</p>`;
- analyticsModal.style.display="block";
-}
-function closeAnalytics(){analyticsModal.style.display="none";}
-
-/* =========================
-   ADMIN MODERATION
-========================= */
-async function deletePost(postId){
- const user = await getUser(); if(!user)return login();
- const {data}=await supabase.from("profiles").select("is_admin").eq("id",user.id).single();
- if(!data?.is_admin) return alert("Not authorized");
- await supabase.from("posts").delete().eq("id",postId);
- loadPosts();
-}
-
-/* =========================
-   CHALLENGE SYSTEM
-========================= */
-let currentChallenge = null;
-async function openCreateChallenge(){ challengeModal.style.display="block"; }
-function closeChallenge(){ challengeModal.style.display="none"; }
-async function createChallenge(){
- const user = await getUser(); if(!user)return login();
- const title = challengeTitle.value; const desc = challengeDesc.value;
- if(!title || !desc)return alert("Fill all fields");
- await supabase.from("challenges").insert({title,description:desc,creator_id:user.id});
- alert("Challenge created 🎉");
- closeChallenge(); loadChallenges();
-}
-async function loadChallenges(){
- const {data}=await supabase.from("challenges").select("*").order("created_at",{ascending:false});
- data.forEach(c=>{
-   feed.innerHTML += `<div class="post">
-   <strong>${c.title}</strong><br>${c.description}<br>
-   <button onclick="openSubmitEntry('${c.id}')">Submit Entry</button>
-   <button onclick="viewEntries('${c.id}')">View Entries</button>
-   </div>`;
- });
-}
-function openSubmitEntry(challengeId){ currentChallenge = challengeId; entryModal.style.display="block"; }
-function closeEntry(){ entryModal.style.display="none"; }
-async function submitEntry(){
- const user = await getUser(); if(!user)return login();
- const file = entryFile.files[0]; if(!file)return alert("Select a file");
- const path = `${user.id}/${Date.now()}-${file.name}`;
- await supabase.storage.from("challenge_entries").upload(path,file);
- const url = `${SUPABASE_URL}/storage/v1/object/public/challenge_entries/${path}`;
- await supabase.from("challenge_entries").insert({challenge_id:currentChallenge,user_id:user.id,media_url:url,caption:entryCaption.value});
- alert("Entry submitted 🎉"); closeEntry();
-}
-
-/* =========================
-   WEBRTC LIVE STREAM
-========================= */
-let localStream=null;
+/* WEBRTC */
 async function startLive(){
-  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  liveVideo.srcObject = localStream;
-  alert("Live streaming started (peer-to-peer, limited viewers)");
+  const stream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  liveVideo.srcObject = stream;
+  alert("Live started (WebRTC peer-to-peer)");
 }
-function closeLive(){liveModal.style.display="none";}
 
-/* =========================
-   WEBRTC VIDEO CALL
-========================= */
-let localCallStream=null,peerConnection=null;
-async function startCall(){
-  localCallStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  localCallVideo.srcObject = localCallStream;
-  peerConnection = new RTCPeerConnection();
-  localCallStream.getTracks().forEach(track => peerConnection.addTrack(track, localCallStream));
-  peerConnection.ontrack = e => remoteCallVideo.srcObject = e.streams[0];
-  alert("Video call started (peer-to-peer)");
+/* SDC PAYMENT FUNCTIONS */
+async function payListingFee(){
+  const title = document.getElementById('createTitle').value;
+  const price = document.getElementById('createPrice').value;
+  const description = document.getElementById('createDescription').value;
+  if(!window.ethereum) return alert("MetaMask required");
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  const sdc = new ethers.Contract(SDC_CONTRACT, SDC_ABI, signer);
+  const tx = await sdc.transfer(PLATFORM_WALLET, ethers.parseUnits("10",18));
+  await tx.wait();
+  alert("Listing fee paid, property live!");
+  closeCreate();
+  setTab('realestate');
 }
-function closeCall(){callModal.style.display="none";}
 
-/* =========================
-   INIT
-========================= */
-loadPosts();
+async function payAcquireFee(propertyId, agentWallet){
+  if(!window.ethereum) return alert("MetaMask required");
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  const sdc = new ethers.Contract(SDC_CONTRACT, SDC_ABI, signer);
+  const tx = await sdc.transfer(agentWallet, ethers.parseUnits("5",18));
+  await tx.wait();
+  alert("Property unlocked! You can now view full details & contact agent.");
+}
+
+setTab("home");
 </script>
-
 </body>
 </html>

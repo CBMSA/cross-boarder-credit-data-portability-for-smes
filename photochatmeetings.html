@@ -1,10 +1,9 @@
-Copy code
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PhotoChat – Anonymous Social</title>
+  <title>PhotoChat – Business Dashboard</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -55,8 +54,7 @@ Copy code
       flex-direction: column;
       align-items: center;
     }
-    .sidebar a,
-    .sidebar button {
+    .sidebar a, .sidebar button {
       background: none;
       border: none;
       font-size: 20px;
@@ -65,8 +63,7 @@ Copy code
       color: var(--muted);
       text-decoration: none;
     }
-    .sidebar a:hover,
-    .sidebar button:hover {
+    .sidebar a:hover, .sidebar button:hover {
       color: var(--accent);
     }
     main {
@@ -93,7 +90,7 @@ Copy code
       border: 1px solid #ccc;
       margin-bottom: 8px;
     }
-    .chat-window {
+    .rates-window {
       display: flex;
       flex-direction: column;
       height: 50vh;
@@ -102,21 +99,12 @@ Copy code
       padding: 8px;
       border-radius: 12px;
     }
-    .msg {
-      max-width: 70%;
+    .rate {
       padding: 10px;
       border-radius: 12px;
       margin-bottom: 6px;
       font-size: 14px;
-    }
-    .msg.me {
-      align-self: flex-end;
-      background: #0b5cff;
-      color: #fff;
-    }
-    .msg.them {
-      align-self: flex-start;
-      background: #e5e7eb;
+      background-color: #e5e7eb;
     }
     button.primary {
       background: var(--accent);
@@ -126,72 +114,73 @@ Copy code
       border-radius: 8px;
       cursor: pointer;
     }
+    .form-container {
+      margin-top: 20px;
+    }
+    .form-container input,
+    .form-container button {
+      margin-top: 10px;
+      width: 100%;
+    }
   </style>
 </head>
 
 <body data-theme="light">
 
   <header>
-    <strong>PhotoChat</strong>
+    <strong>PhotoChat – Business Dashboard</strong>
     <button onclick="toggleTheme()">🌓</button>
   </header>
 
   <div class="app">
 
     <aside class="sidebar">
-      <button onclick="go('chat')"><i class="bi bi-chat"></i></button>
-      <a href="photochatsdc.html"><i class="bi bi-images"></i></a>
-      <a href="sdc.html"><i class="bi bi-lightning-charge"></i></a>
+      <button onclick="go('rates')"><i class="bi bi-chat"></i> Rates</button>
+      <button onclick="go('signin')"><i class="bi bi-person-circle"></i> Sign In</button>
+      <button onclick="go('signup')"><i class="bi bi-person-add"></i> Sign Up</button>
     </aside>
 
     <main>
-      <!-- Personal User Content -->
-      <section id="chat" class="page active">
+
+      <!-- Live Rates Section -->
+      <section id="rates" class="page active">
         <div class="card">
-          <h3>Anonymous Chat</h3>
-          <div class="chat-window" id="chatWindow"></div>
-          <input id="msgInput" placeholder="Type anonymously…">
-          <button class="primary" onclick="sendMsg()">Send</button>
+          <h3>Live Crypto & FX Rates</h3>
+          <div class="rates-window" id="ratesWindow"></div>
+          <button class="primary" onclick="fetchRates()">Fetch Live Rates</button>
         </div>
       </section>
 
-      <!-- Business User Content -->
-      <section id="business-dashboard" class="page">
+      <!-- Sign In Section -->
+      <section id="signin" class="page">
         <div class="card">
-          <h3>Business Dashboard</h3>
-          <div id="analytics">
-            <h4>Analytics</h4>
-            <p>View your business performance here.</p>
-            <!-- Display Analytics Data Here -->
-          </div>
-          <div id="product-management">
-            <h4>Manage Products</h4>
-            <p>Add, update, or remove products.</p>
-            <!-- Product management form -->
-            <button class="primary">Add New Product</button>
-          </div>
-          <div id="payment-options">
-            <h4>Payment Options</h4>
-            <p>Integrate payment systems like EcoCash, VodaPay, etc.</p>
-            <!-- Payment API Integration -->
-            <button class="primary">Configure Payments</button>
+          <h3>Sign In</h3>
+          <div class="form-container">
+            <input id="signinEmail" placeholder="Email" type="email">
+            <input id="signinPassword" placeholder="Password" type="password">
+            <button class="primary" onclick="signIn()">Sign In</button>
           </div>
         </div>
       </section>
 
-      <!-- Marketplace (Business Listings) -->
-      <section id="marketplace" class="page">
+      <!-- Sign Up Section -->
+      <section id="signup" class="page">
         <div class="card">
-          <h3>Marketplace</h3>
-          <p>Browse products from local businesses.</p>
-          <div id="product-list">
-            <!-- List local businesses and their products -->
-            <div class="product-item">
-              <h4>Business Name</h4>
-              <p>Product description goes here.</p>
-              <button class="primary">View Product</button>
-            </div>
+          <h3>Sign Up</h3>
+          <div class="form-container">
+            <input id="signupEmail" placeholder="Email" type="email">
+            <input id="signupPassword" placeholder="Password" type="password">
+            <input id="accountType" placeholder="Account Type (business/personal)" type="text">
+            <button class="primary" onclick="signUp()">Sign Up</button>
           </div>
+        </div>
+      </section>
+
+      <!-- Dashboard or Profile Section -->
+      <section id="profile" class="page">
+        <div class="card">
+          <h3>Welcome, <span id="userName"></span></h3>
+          <div id="userDetails"></div>
         </div>
       </section>
 
@@ -199,88 +188,120 @@ Copy code
   </div>
 
   <script>
-    // Supabase configuration
+    // Supabase Configuration
     const supabase = supabase.createClient(
       "https://your.supabase.url",
       "YOUR_PUBLIC_ANON_KEY"
     );
 
-    // Function to get the logged-in user's account type
-    async function fetchUserAccountType() {
-      const user = supabase.auth.user();
-      const { data, error } = await supabase
-        .from('users')
-        .select('account_type')
-        .eq('id', user.id)
-        .single();
+    // Sign-up functionality
+    async function signUp() {
+      const email = document.getElementById("signupEmail").value;
+      const password = document.getElementById("signupPassword").value;
+      const accountType = document.getElementById("accountType").value;
+
+      const { user, error } = await supabase.auth.signUp({
+        email: email,
+        password: password
+      });
 
       if (error) {
-        console.error("Error fetching account type", error.message);
+        alert("Error signing up: " + error.message);
       } else {
-        if (data.account_type === 'business') {
-          // Show business-related content
-          document.getElementById("business-dashboard").style.display = "block";
-          document.getElementById("chat").style.display = "none";
-          document.getElementById("marketplace").style.display = "none";
-        } else {
-          // Show personal account-related content
-          document.getElementById("chat").style.display = "block";
-          document.getElementById("business-dashboard").style.display = "none";
-          document.getElementById("marketplace").style.display = "block";
-        }
+        // Store user account type (business/personal)
+        await supabase.from("users").insert([{ email, account_type: accountType }]);
+        alert("Account created successfully!");
+        go('profile');
+        document.getElementById("userName").textContent = user.email;
+        displayUserInfo(user.email);
       }
     }
 
-    // Run the fetchUserAccountType function when the page loads
-    window.onload = fetchUserAccountType;
+    // Sign-in functionality
+    async function signIn() {
+      const email = document.getElementById("signinEmail").value;
+      const password = document.getElementById("signinPassword").value;
 
-    // Routing logic
-    function go(p){
+      const { user, error } = await supabase.auth.signIn({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        alert("Error signing in: " + error.message);
+      } else {
+        alert("Sign-in successful!");
+        go('profile');
+        document.getElementById("userName").textContent = user.email;
+        displayUserInfo(user.email);
+      }
+    }
+
+    // Display User Info based on Email (Example: Show profile info)
+    async function displayUserInfo(email) {
+      const { data, error } = await supabase.from("users").select("*").eq("email", email);
+      if (data && data.length > 0) {
+        const userInfo = data[0];
+        document.getElementById("userDetails").innerHTML = `
+          <p>Account Type: ${userInfo.account_type}</p>
+        `;
+      }
+    }
+
+    // Function to fetch Live Crypto and FX Rates
+    async function fetchRates() {
+      // Fetch Crypto Data (Example: Bitcoin)
+      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd');
+      const cryptoData = await cryptoRes.json();
+      
+      // Fetch FX Data from Edhoh API
+      const fxRes = await fetch('https://edhohapi.com/fx?base=USD');
+      const fxData = await fxRes.json();
+      
+      displayRates(cryptoData, fxData);
+    }
+
+    function displayRates(cryptoData, fxData) {
+      const ratesWindow = document.getElementById('ratesWindow');
+      
+      // Clear previous content
+      ratesWindow.innerHTML = '';
+
+      // Display Crypto Rates
+      const bitcoinRate = document.createElement('div');
+      bitcoinRate.className = 'rate';
+      bitcoinRate.textContent = `Bitcoin (BTC) Price: $${cryptoData.bitcoin.usd}`;
+      ratesWindow.appendChild(bitcoinRate);
+
+      const ethereumRate = document.createElement('div');
+      ethereumRate.className = 'rate';
+      ethereumRate.textContent = `Ethereum (ETH) Price: $${cryptoData.ethereum.usd}`;
+      ratesWindow.appendChild(ethereumRate);
+      
+      // Display FX Rates from Edhoh API
+      Object.keys(fxData.rates).forEach((currency) => {
+        const fxRate = document.createElement('div');
+        fxRate.className = 'rate';
+        fxRate.textContent = `1 USD = ${fxData.rates[currency]} ${currency}`;
+        ratesWindow.appendChild(fxRate);
+      });
+    }
+
+    // Routing logic for content switching
+    function go(p) {
       document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
       document.getElementById(p).classList.add('active');
     }
 
     // Theme toggle function
-    function toggleTheme(){
+    function toggleTheme() {
       document.body.dataset.theme =
         document.body.dataset.theme === "dark" ? "light" : "dark";
     }
 
-    // Chat functionality
-    const chatWindow = document.getElementById("chatWindow");
+    // Set initial rates on page load
+    window.onload = fetchRates;
 
-    async function sendMsg(){
-      const input = document.getElementById("msgInput");
-      if(!input.value) return;
-
-      await supabase.from("messages").insert({
-        user: anonUser,
-        text: input.value,
-        time: new Date().toISOString()
-      });
-
-      input.value="";
-    }
-
-    async function initChat(){
-      const { data } = await supabase.from("messages").select("*").order("time");
-      data?.forEach(renderMsg);
-
-      supabase.channel("chat")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
-          payload => renderMsg(payload.new)
-        ).subscribe();
-    }
-
-    function renderMsg(msg){
-      const d = document.createElement("div");
-      d.className = msg.user === anonUser ? "msg me" : "msg them";
-      d.textContent = msg.text;
-      chatWindow.appendChild(d);
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
-
-    initChat();
   </script>
 
 </body>

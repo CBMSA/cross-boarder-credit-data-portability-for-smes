@@ -7,32 +7,27 @@
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places"></script>
-
 <style>
-  :root {--bg:#f5f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--accent:#0b5cff;}
-  [data-theme="dark"] {--bg:#0b0e11;--card:#1e2329;--text:#eaecef;--muted:#848e9c;--accent:#f0b90b;}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter;background:var(--bg);color:var(--text)}
-  header{height:56px;background:var(--card);border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
-  .app{display:flex;height:calc(100vh - 56px)}
-  .sidebar{width:64px;background:var(--card);border-right:1px solid #e5e7eb;display:flex;flex-direction:column;align-items:center}
-  .sidebar a, .sidebar button{background:none;border:none;font-size:20px;padding:12px;cursor:pointer;color:var(--muted);text-decoration:none}
-  .sidebar a:hover, .sidebar button:hover{color:var(--accent)}
-  main{flex:1;padding:16px;overflow:auto}
-  .page{display:none}.page.active{display:block}
-  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px}
-  input{width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;margin-bottom:8px}
-  .chat-window{display:flex;flex-direction:column;height:50vh;overflow:auto;background:#f0f2f5;padding:8px;border-radius:12px}
-  .msg{max-width:70%;padding:10px;border-radius:12px;margin-bottom:6px;font-size:14px}
-  .msg.me{align-self:flex-end;background:#0b5cff;color:#fff}
-  .msg.them{align-self:flex-start;background:#e5e7eb}
-  button.primary{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
-  .product-card{border:1px solid #ccc;padding:16px;border-radius:8px;margin-bottom:16px;width: 45%;}
-  #map {height: 400px; width: 100%; margin-bottom: 16px;}
+:root {--bg:#f5f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--accent:#0b5cff;}
+[data-theme="dark"] {--bg:#0b0e11;--card:#1e2329;--text:#eaecef;--muted:#848e9c;--accent:#f0b90b;}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter;background:var(--bg);color:var(--text)}
+header{height:56px;background:var(--card);border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.app{display:flex;height:calc(100vh - 56px)}
+.sidebar{width:64px;background:var(--card);border-right:1px solid #e5e7eb;display:flex;flex-direction:column;align-items:center}
+.sidebar a, .sidebar button{background:none;border:none;font-size:20px;padding:12px;cursor:pointer;color:var(--muted);text-decoration:none}
+.sidebar a:hover, .sidebar button:hover{color:var(--accent)}
+main{flex:1;padding:16px;overflow:auto}
+.page{display:none}.page.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px}
+input{width:100%;padding:8px;border-radius:6px;border:1px solid #ccc;margin-bottom:8px}
+.chat-window{display:flex;flex-direction:column;height:50vh;overflow:auto;background:#f0f2f5;padding:8px;border-radius:12px}
+.msg{max-width:70%;padding:10px;border-radius:12px;margin-bottom:6px;font-size:14px}
+.msg.me{align-self:flex-end;background:#0b5cff;color:#fff}
+.msg.them{align-self:flex-start;background:#e5e7eb}
+button.primary{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
 </style>
 </head>
 
@@ -45,162 +40,152 @@
 
 <div class="app">
 
-  <aside class="sidebar">
-    <button onclick="go('chat')"><i class="bi bi-chat"></i></button>
-    <a href="photochatsdc.html"><i class="bi bi-images"></i></a>
-    <a href="sdc.html"><i class="bi bi-lightning-charge"></i></a>
-  </aside>
+<aside class="sidebar">
+  <button onclick="go('chat')"><i class="bi bi-chat"></i></button>
 
-  <main>
+  <!-- Marketplace Link for Personal Users -->
+  <a href="marketplace.html"><i class="bi bi-shop"></i> Marketplace</a>
 
-    <!-- Marketplace Section -->
-    <section id="marketplace" class="page">
-      <div class="card">
-        <h3>Marketplace</h3>
-        <div id="productList"></div>
-        <button class="primary" onclick="checkout()">Checkout</button>
+  <!-- Business Dashboard Link for Business Users -->
+  <a href="business-dashboard.html"><i class="bi bi-building"></i> Business Dashboard</a>
+</aside>
+
+<main>
+
+<!-- Personal User Content -->
+<section id="chat" class="page active">
+  <div class="card">
+    <h3>Anonymous Chat</h3>
+    <div class="chat-window" id="chatWindow"></div>
+    <input id="msgInput" placeholder="Type anonymously…">
+    <button class="primary" onclick="sendMsg()">Send</button>
+  </div>
+</section>
+
+<!-- Business User Content -->
+<section id="business-dashboard" class="page">
+  <div class="card">
+    <h3>Business Dashboard</h3>
+    <div id="analytics">
+      <h4>Analytics</h4>
+      <p>View your business performance here.</p>
+      <!-- Display Analytics Data Here -->
+    </div>
+    <div id="product-management">
+      <h4>Manage Products</h4>
+      <p>Add, update, or remove products.</p>
+      <!-- Product management form -->
+      <button class="primary">Add New Product</button>
+    </div>
+    <div id="payment-options">
+      <h4>Payment Options</h4>
+      <p>Integrate payment systems like EcoCash, VodaPay, etc.</p>
+      <!-- Payment API Integration -->
+      <button class="primary">Configure Payments</button>
+    </div>
+  </div>
+</section>
+
+<!-- Marketplace (Business Listings) -->
+<section id="marketplace" class="page">
+  <div class="card">
+    <h3>Marketplace</h3>
+    <p>Browse products from local businesses.</p>
+    <div id="product-list">
+      <!-- List local businesses and their products -->
+      <div class="product-item">
+        <h4>Business Name</h4>
+        <p>Product description goes here.</p>
+        <button class="primary">View Product</button>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
-    <!-- Chat Section -->
-    <section id="chat" class="page active">
-      <div class="card">
-        <h3>Anonymous Chat</h3>
-        <div class="chat-window" id="chatWindow"></div>
-        <input id="msgInput" placeholder="Type anonymously…">
-        <button class="primary" onclick="sendMsg()">Send</button>
-      </div>
-    </section>
-
-    <!-- Location Section -->
-    <section id="location" class="page">
-      <div class="card">
-        <h3>Select Location</h3>
-        <input id="location-input" type="text" placeholder="Enter your location">
-        <div id="map"></div>
-      </div>
-    </section>
-
-  </main>
+</main>
 </div>
 
 <script>
-  /* ----------------- SUPABASE ----------------- */
-  const supabase = supabase.createClient(
-    "https://jbhhfzbhcvzxtthhmfhz.supabase.co",
-    "YOUR_PUBLIC_ANON_KEY"
-  );
+// Supabase configuration
+const supabase = supabase.createClient(
+  "https://your.supabase.url",
+  "YOUR_PUBLIC_ANON_KEY"
+);
 
-  /* ----------------- ANONYMOUS USER ----------------- */
-  function getAnonId(){
-    let id = localStorage.getItem("anon_id");
-    if(!id){
-      id = crypto.randomUUID();
-      localStorage.setItem("anon_id", id);
+// Function to get the logged-in user's account type
+async function fetchUserAccountType() {
+  const user = supabase.auth.user();
+  const { data, error } = await supabase
+    .from('users')
+    .select('account_type')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching account type", error.message);
+  } else {
+    if (data.account_type === 'business') {
+      // Show business-related content
+      document.getElementById("business-dashboard").style.display = "block";
+      document.getElementById("chat").style.display = "none";
+      document.getElementById("marketplace").style.display = "none";
+    } else {
+      // Show personal account-related content
+      document.getElementById("chat").style.display = "block";
+      document.getElementById("business-dashboard").style.display = "none";
+      document.getElementById("marketplace").style.display = "block";
     }
-    return id;
   }
-  const anonUser = getAnonId();
+}
 
-  /* ----------------- ROUTER ----------------- */
-  function go(p){
-    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-    document.getElementById(p).classList.add('active');
-  }
+// Run the fetchUserAccountType function when the page loads
+window.onload = fetchUserAccountType;
 
-  /* ----------------- THEME ----------------- */
-  function toggleTheme(){
-    document.body.dataset.theme =
-      document.body.dataset.theme === "dark" ? "light" : "dark";
-  }
+function go(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById(p).classList.add('active');
+}
 
-  /* ----------------- CHAT ----------------- */
-  const chatWindow = document.getElementById("chatWindow");
+function toggleTheme(){
+  document.body.dataset.theme = 
+    document.body.dataset.theme === "dark" ? "light" : "dark";
+}
 
-  async function sendMsg(){
-    const input = document.getElementById("msgInput");
-    if (!input.value) return;
+// Chat functionality (as previously defined)
+const chatWindow = document.getElementById("chatWindow");
 
-    await supabase.from("messages").insert({
-      user: anonUser,
-      text: input.value,
-      time: new Date().toISOString()
-    });
+async function sendMsg(){
+  const input = document.getElementById("msgInput");
+  if(!input.value) return;
 
-    input.value = "";
-  }
+  await supabase.from("messages").insert({
+    user: anonUser,
+    text: input.value,
+    time: new Date().toISOString()
+  });
 
-  async function initChat(){
-    const { data } = await supabase.from("messages").select("*").order("time");
-    data?.forEach(renderMsg);
+  input.value="";
+}
 
-    supabase.channel("chat")
-      .on("postgres_changes", {event: "INSERT", schema: "public", table: "messages"},
-        payload => renderMsg(payload.new)
-      ).subscribe();
-  }
+async function initChat(){
+  const { data } = await supabase.from("messages").select("*").order("time");
+  data?.forEach(renderMsg);
 
-  function renderMsg(msg){
-    const d = document.createElement("div");
-    d.className = msg.user === anonUser ? "msg me" : "msg them";
-    d.textContent = msg.text;
-    chatWindow.appendChild(d);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-  }
+  supabase.channel("chat")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
+      payload => renderMsg(payload.new)
+    ).subscribe();
+}
 
-  initChat();
+function renderMsg(msg){
+  const d = document.createElement("div");
+  d.className = msg.user === anonUser ? "msg me" : "msg them";
+  d.textContent = msg.text;
+  chatWindow.appendChild(d);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
 
-  /* ----------------- MARKETPLACE ----------------- */
-  async function fetchProducts() {
-    const { data } = await supabase.from("products").select("*");
-    data.forEach(renderProduct);
-  }
-
-  function renderProduct(product) {
-    const productDiv = document.createElement("div");
-    productDiv.className = "product-card";
-    productDiv.innerHTML = `
-      <img src="${product.image}" alt="${product.name}" />
-      <h4>${product.name}</h4>
-      <p>${product.description}</p>
-      <span>${product.price} USD</span>
-      <button class="primary" onclick="addToCart('${product.id}')">Add to Cart</button>
-    `;
-    document.getElementById("productList").appendChild(productDiv);
-  }
-
-  fetchProducts();
-
-  function addToCart(productId) {
-    alert(`Added product ${productId} to cart`);
-  }
-
-  function checkout() {
-    alert("Proceeding to checkout");
-  }
-
-  /* ----------------- LOCATION ----------------- */
-  let map, autocomplete;
-
-  function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: -34.397, lng: 150.644 },
-      zoom: 8,
-    });
-
-    autocomplete = new google.maps.places.Autocomplete(document.getElementById("location-input"));
-    autocomplete.addListener("place_changed", onPlaceChanged);
-  }
-
-  function onPlaceChanged() {
-    const place = autocomplete.getPlace();
-    if (!place.geometry) return;
-
-    map.setCenter(place.geometry.location);
-    map.setZoom(15);
-  }
-
-  initMap();
+initChat();
 </script>
 
 </body>

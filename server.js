@@ -1,4 +1,142 @@
 
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const { createClient } = require("@supabase/supabase-js");
+const axios = require("axios");
+require("dotenv").config();
+
+// Initialize the app and middlewares
+const app = express();
+const port = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
+
+// OpenAI API configuration
+const openAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// Route to handle user sign-up
+app.post("/signup", async (req, res) => {
+  const { email, password, account_type } = req.body;
+
+  try {
+    // Sign up the user
+    const { user, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Store account type in the database
+    await supabase.from("users").insert([
+      {
+        email,
+        account_type,
+      },
+    ]);
+
+    res.status(201).json({ message: "User created successfully!", user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route to handle user sign-in
+app.post("/signin", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Sign in the user
+    const { user, error } = await supabase.auth.signIn({
+      email,
+      password,
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.status(200).json({ message: "Sign-in successful!", user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route to fetch live crypto and FX rates
+app.get("/rates", async (req, res) => {
+  try {
+    // Fetch crypto rates (example: Bitcoin and Ethereum)
+    const cryptoRes = await axios.get(
+      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+    );
+    const cryptoData = cryptoRes.data;
+
+    // Fetch FX rates using Edhoh API
+    const fxRes = await axios.get("https://edhohapi.com/fx?base=USD");
+    const fxData = fxRes.data;
+
+    res.status(200).json({
+      crypto: {
+        bitcoin: cryptoData.bitcoin.usd,
+        ethereum: cryptoData.ethereum.usd,
+      },
+      fxRates: fxData.rates,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route to handle chat with OpenAI
+app.post("/chat", async (req, res) => {
+  const { message } = req.body;
+
+  try {
+    // Call OpenAI API to get a response
+    const response = await axios.post(
+      "https://api.openai.com/v1/completions",
+      {
+        model: "text-davinci-003",
+        prompt: message,
+        max_tokens: 100,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${openAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const chatResponse = response.data.choices[0].text.trim();
+    res.status(200).json({ reply: chatResponse });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+
+
+
+
+
+
+
+
 
 // server.js
 require('dotenv').config();

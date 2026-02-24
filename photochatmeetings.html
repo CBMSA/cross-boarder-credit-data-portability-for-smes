@@ -122,6 +122,31 @@
       margin-top: 10px;
       width: 100%;
     }
+    .chat-window {
+      display: flex;
+      flex-direction: column;
+      height: 50vh;
+      overflow: auto;
+      background: #f0f2f5;
+      padding: 8px;
+      border-radius: 12px;
+    }
+    .msg {
+      max-width: 70%;
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .msg.me {
+      align-self: flex-end;
+      background: #0b5cff;
+      color: #fff;
+    }
+    .msg.them {
+      align-self: flex-start;
+      background: #e5e7eb;
+    }
   </style>
 </head>
 
@@ -135,7 +160,8 @@
   <div class="app">
 
     <aside class="sidebar">
-      <button onclick="go('rates')"><i class="bi bi-chat"></i> Rates</button>
+      <button onclick="go('rates')"><i class="bi bi-currency-exchange"></i> Rates</button>
+      <button onclick="go('chat')"><i class="bi bi-chat"></i> Chat</button>
       <button onclick="go('signin')"><i class="bi bi-person-circle"></i> Sign In</button>
       <button onclick="go('signup')"><i class="bi bi-person-add"></i> Sign Up</button>
     </aside>
@@ -148,6 +174,16 @@
           <h3>Live Crypto & FX Rates</h3>
           <div class="rates-window" id="ratesWindow"></div>
           <button class="primary" onclick="fetchRates()">Fetch Live Rates</button>
+        </div>
+      </section>
+
+      <!-- OpenAI Chat Section -->
+      <section id="chat" class="page">
+        <div class="card">
+          <h3>Chat with OpenAI</h3>
+          <div class="chat-window" id="chatWindow"></div>
+          <input id="msgInput" placeholder="Ask something…">
+          <button class="primary" onclick="sendMsg()">Send</button>
         </div>
       </section>
 
@@ -237,7 +273,7 @@
       }
     }
 
-    // Display User Info based on Email (Example: Show profile info)
+    // Display User Info based on Email
     async function displayUserInfo(email) {
       const { data, error } = await supabase.from("users").select("*").eq("email", email);
       if (data && data.length > 0) {
@@ -253,17 +289,17 @@
       // Fetch Crypto Data (Example: Bitcoin)
       const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd');
       const cryptoData = await cryptoRes.json();
-      
+
       // Fetch FX Data from Edhoh API
       const fxRes = await fetch('https://edhohapi.com/fx?base=USD');
       const fxData = await fxRes.json();
-      
+
       displayRates(cryptoData, fxData);
     }
 
     function displayRates(cryptoData, fxData) {
       const ratesWindow = document.getElementById('ratesWindow');
-      
+
       // Clear previous content
       ratesWindow.innerHTML = '';
 
@@ -277,7 +313,7 @@
       ethereumRate.className = 'rate';
       ethereumRate.textContent = `Ethereum (ETH) Price: $${cryptoData.ethereum.usd}`;
       ratesWindow.appendChild(ethereumRate);
-      
+
       // Display FX Rates from Edhoh API
       Object.keys(fxData.rates).forEach((currency) => {
         const fxRate = document.createElement('div');
@@ -285,6 +321,41 @@
         fxRate.textContent = `1 USD = ${fxData.rates[currency]} ${currency}`;
         ratesWindow.appendChild(fxRate);
       });
+    }
+
+    // Function to interact with OpenAI API
+    async function sendMsg() {
+      const input = document.getElementById("msgInput");
+      if (!input.value) return;
+
+      // Call OpenAI API
+      const response = await fetch("https://api.openai.com/v1/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer YOUR_OPENAI_API_KEY`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "text-davinci-003",
+          prompt: input.value,
+          max_tokens: 100
+        })
+      });
+
+      const data = await response.json();
+      const chatWindow = document.getElementById("chatWindow");
+
+      const msg = document.createElement("div");
+      msg.className = "msg me";
+      msg.textContent = input.value;
+      chatWindow.appendChild(msg);
+
+      const reply = document.createElement("div");
+      reply.className = "msg them";
+      reply.textContent = data.choices[0].text.trim();
+      chatWindow.appendChild(reply);
+
+      input.value = "";
     }
 
     // Routing logic for content switching
@@ -299,9 +370,8 @@
         document.body.dataset.theme === "dark" ? "light" : "dark";
     }
 
-    // Set initial rates on page load
+    // Initialize when page loads
     window.onload = fetchRates;
-
   </script>
 
 </body>

@@ -95,6 +95,38 @@
         </div>
     </section>
 
+    <!-- Product Upload for Businesses -->
+    <section class="container my-5">
+        <h3>Business Product Upload</h3>
+        <form id="product-upload-form">
+            <div class="form-group">
+                <label for="product-name">Product Name</label>
+                <input type="text" id="product-name" class="form-control" placeholder="Enter product name" required>
+            </div>
+            <div class="form-group">
+                <label for="product-description">Product Description</label>
+                <textarea id="product-description" class="form-control" placeholder="Enter product description" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="product-price">Price</label>
+                <input type="number" id="product-price" class="form-control" placeholder="Enter product price" required>
+            </div>
+            <div class="form-group">
+                <label for="product-image">Product Image</label>
+                <input type="file" id="product-image" class="form-control" accept="image/*" required>
+            </div>
+            <button type="submit" class="payment-button">Upload Product</button>
+        </form>
+    </section>
+
+    <!-- Product Listings Section -->
+    <section class="container my-5">
+        <h3>Product Listings</h3>
+        <div id="product-listings" class="row">
+            <!-- Dynamically loaded products will go here -->
+        </div>
+    </section>
+
     <!-- Cart Section -->
     <section class="container cart">
         <h3>Your Cart</h3>
@@ -144,14 +176,15 @@
         let total = 0;
         const serviceFeePercentage = 2; // Service fee (2% in this case)
 
+        // Function to add products to the cart
         function addToCart(productName, productPrice) {
             cart.push({ name: productName, price: productPrice });
             total += productPrice;
             updateCart();
         }
 
+        // Update the cart display
         function updateCart() {
-            // Update cart list
             const cartItems = document.getElementById('cart-items');
             cartItems.innerHTML = ''; // Clear current items
             cart.forEach(item => {
@@ -164,6 +197,50 @@
             document.getElementById('cart-total').textContent = total;
         }
 
+        // Handle product upload form
+        document.getElementById('product-upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('product-name').value;
+            const description = document.getElementById('product-description').value;
+            const price = parseFloat(document.getElementById('product-price').value);
+            const image = document.getElementById('product-image').files[0];
+
+            if (name && description && price > 0 && image) {
+                // Simulate a product upload to backend
+                const productId = Date.now(); // Unique ID for the product
+
+                const product = {
+                    id: productId,
+                    name: name,
+                    description: description,
+                    price: price,
+                    image: URL.createObjectURL(image),
+                };
+
+                // Display the new product in the marketplace
+                const productContainer = document.getElementById('product-listings');
+                const productCard = document.createElement('div');
+                productCard.classList.add('col-md-4', 'product-card');
+
+                productCard.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}" class="product-img">
+                    <h4>${product.name}</h4>
+                    <p>${product.description}</p>
+                    <p>$${product.price}</p>
+                    <button class="payment-button" onclick="addToCart('${product.name}', ${product.price})">Add to Cart</button>
+                `;
+
+                productContainer.appendChild(productCard);
+
+                // Reset the form
+                document.getElementById('product-upload-form').reset();
+            } else {
+                alert('Please fill out all fields.');
+            }
+        });
+
+        // Simulate payment process (Google Pay, VodaPay, etc.)
         function startPaymentProcess() {
             const paymentChoice = prompt("Choose payment method: \n1. Google Pay\n2. VodaPay\n3. EcoCash");
 

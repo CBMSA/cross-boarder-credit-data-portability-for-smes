@@ -1,473 +1,67 @@
 
 const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const { createClient } = require("@supabase/supabase-js");
 const axios = require("axios");
+const cors = require("cors");
 require("dotenv").config();
 
-// Initialize the app and middlewares
 const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+const USD_ZAR_API = 'https://open.er-api.com/v6/latest/USD'; // FX rates for USD/ZAR
+const COINGECKO_API = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,matic-network&vs_currencies=usd';
+const DEXSCREENER_API = 'https://api.dexscreener.com/latest/dex/tokens/0x3e6dB8977261B30Ea3Cc0408867912E8B6CeDC96';
+const EODHD_API_KEY = process.env.EODHD_API_KEY;  // API Key for EODHD
+const EODHD_API = 'https://eodhd.com/api/real-time/';
 
-// OpenAI API configuration
-const openAI_API_KEY = process.env.OPENAI_API_KEY;
+// ---- Fetch Live Rates for FX, Crypto, SDC, ETFs ----
 
-// Route to handle user sign-up
-app.post("/signup", async (req, res) => {
-  const { email, password, account_type } = req.body;
-
-  try {
-    // Sign up the user
-    const { user, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    // Store account type in the database
-    await supabase.from("users").insert([
-      {
-        email,
-        account_type,
-      },
-    ]);
-
-    res.status(201).json({ message: "User created successfully!", user });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Route to handle user sign-in
-app.post("/signin", async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    // Sign in the user
-    const { user, error } = await supabase.auth.signIn({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    res.status(200).json({ message: "Sign-in successful!", user });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Route to fetch live crypto and FX rates
 app.get("/rates", async (req, res) => {
   try {
-    // Fetch crypto rates (example: Bitcoin and Ethereum)
-    const cryptoRes = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
-    );
+    // Fetch FX rates from the Open API (USD/ZAR, BWP/ZAR, MZN/ZAR)
+    const forexRes = await axios.get(USD_ZAR_API);
+    const fxData = forexRes.data;
+
+    // Fetch Crypto Rates from CoinGecko API
+    const cryptoRes = await axios.get(COINGECKO_API);
     const cryptoData = cryptoRes.data;
 
-    // Fetch FX rates using Edhoh API
-    const fxRes = await axios.get("https://edhohapi.com/fx?base=USD");
-    const fxData = fxRes.data;
+    // Fetch SDC Rates from DexScreener API
+    const sdcRes = await axios.get(DEXSCREENER_API);
+    const sdcData = sdcRes.data;
+
+    // Fetch ETFs data from EODHD API
+    const etfs = [
+      { name: "SPY", symbol: "SPY.US" },
+      { name: "QQQ", symbol: "QQQ.US" },
+      { name: "GLD", symbol: "GLD.US" },
+      { name: "IWM", symbol: "IWM.US" },
+    ];
+
+    const etfRates = [];
+    for (let etf of etfs) {
+      const etfRes = await axios.get(`${EODHD_API}${etf.symbol}?api_token=${EODHD_API_KEY}&fmt=json`);
+      etfRates.push(etfRes.data);
+    }
 
     res.status(200).json({
-      crypto: {
+      fxRates: fxData.rates,
+      cryptoRates: {
         bitcoin: cryptoData.bitcoin.usd,
         ethereum: cryptoData.ethereum.usd,
+        matic: cryptoData['matic-network'].usd,
       },
-      fxRates: fxData.rates,
+      sdcRates: sdcData.pairs ? sdcData.pairs[0] : null,
+      etfRates: etfRates,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Route to handle chat with OpenAI
-app.post("/chat", async (req, res) => {
-  const { message } = req.body;
-
-  try {
-    // Call OpenAI API to get a response
-    const response = await axios.post(
-      "https://api.openai.com/v1/completions",
-      {
-        model: "text-davinci-003",
-        prompt: message,
-        max_tokens: 100,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${openAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const chatResponse = response.data.choices[0].text.trim();
-    res.status(200).json({ reply: chatResponse });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Start the server
+// Start server
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
-
-
-
-
-
-
-
-
-
-// server.js
-require('dotenv').config();
-const express = require('express');
-const fetch = require('node-fetch');
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-app.use(express.static('public')); // serve the front-end index.html from /public
-
-// -> GET /api/cmc-price
-// returns { priceZAR: number }
-app.get('/api/cmc-price', async (req, res) => {
-  try {
-    const cmcKey = process.env.CMC_PRO_API_KEY || process.env.cmcKey || 'REPLACE';
-    // Use CoinMarketCap price conversion endpoint (server-side)
-    const q = `https://pro-api.coinmarketcap.com/v1/tools/price-conversion?amount=1&symbol=SADI&convert=ZAR`;
-    const r = await fetch(q, {
-      headers: { 'X-CMC_PRO_API_KEY': cmcKey }
-    });
-    const js = await r.json();
-    if (js?.data?.quote?.ZAR) {
-      const price = js.data.quote.ZAR.price;
-      return res.json({ priceZAR: Number(price).toFixed(2) });
-    }
-    console.error('cmc response', js);
-    return res.status(500).json({ error: 'CoinMarketCap failed' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// -> GET /api/rates
-// Use eodhd (or other) via your APIX_TOKEN or EODHD token
-app.get('/api/rates', async (req, res) => {
-  try {
-    const eodKey = process.env.EODHD_API_KEY || process.env.apiKey || process.env.APIX_TOKEN || '';
-    // Example: fetch USDZAR and others. Adjust provider as needed.
-    // If you use eodhd (the one in your front-end) the server should build each request.
-    const symbols = ["USDZAR","ZARUSD","USDEUR","USDGBP","USDJPY","USDCNY"];
-    const results = {};
-    for (const s of symbols) {
-      const url = `https://eodhd.com/api/real-time/${s}.FOREX?api_token=${eodKey}&fmt=json`;
-      const r = await fetch(url);
-      const j = await r.json();
-      results[s] = j?.close ?? null;
-    }
-    res.json({ rates: results });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed fetching rates' });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`API server listening on ${PORT}`);
-});
-
-
-
-
-
-// --- File: server.js (CBDC backend with Azure SQL + USSD + Biometric + QR + Offline Ready) ---
-const express = require('express');
-const bodyParser = require('body-parser');
-const { generateKeyPairSync } = require('crypto');
-const sql = require('mssql');
-const cors = require('cors');
-
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-const config = {
-  user: 'your_sql_username',
-  password: 'your_sql_password',
-  server: 'your_server.database.windows.net',
-  database: 'SADC_CBDC_DB',
-  options: {
-    encrypt: true,
-    enableArithAbort: true
-  }
-};
-
-sql.connect(config).then(pool => {
-  if (pool.connected) console.log("Connected to Azure SQL");
-}).catch(err => console.error("Azure SQL connection error:", err));
-
-app.post('/register', async (req, res) => {
-  const { name, nationalId, biometricHash } = req.body;
-  const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-  const walletId = 'wallet_' + Math.random().toString(36).substring(2, 9);
-  try {
-    await sql.query`
-      INSERT INTO Wallets (WalletId, Name, NationalId, PublicKey, BiometricHash, Balance)
-      VALUES (${walletId}, ${name}, ${nationalId}, ${publicKey.export({ type: 'pkcs1', format: 'pem' })}, ${biometricHash}, 0)`;
-    res.json({ walletId, privateKey: privateKey.export({ type: 'pkcs1', format: 'pem' }) });
-  } catch (err) {
-    res.status(500).json({ error: 'Registration Error', details: err.message });
-  }
-});
-
-app.post('/auth/biometric', async (req, res) => {
-  const { nationalId, biometricHash } = req.body;
-  try {
-    const result = await sql.query`SELECT WalletId FROM Wallets WHERE NationalId = ${nationalId} AND BiometricHash = ${biometricHash}`;
-    if (result.recordset.length === 0) return res.status(401).json({ error: 'Authentication failed' });
-    res.json({ walletId: result.recordset[0].WalletId });
-  } catch (err) {
-    res.status(500).json({ error: 'Auth error', details: err.message });
-  }
-});
-
-app.post('/transfer', async (req, res) => {
-  const { fromWallet, toWallet, amount } = req.body;
-  try {
-    const result = await sql.query`SELECT Balance FROM Wallets WHERE WalletId = ${fromWallet}`;
-    if (result.recordset.length === 0) return res.status(404).json({ error: 'Wallet not found' });
-    if (result.recordset[0].Balance < amount) return res.status(400).json({ error: 'Insufficient balance' });
-    await sql.query`BEGIN TRANSACTION;
-      UPDATE Wallets SET Balance = Balance - ${amount} WHERE WalletId = ${fromWallet};
-      UPDATE Wallets SET Balance = Balance + ${amount} WHERE WalletId = ${toWallet};
-      INSERT INTO Ledger (FromWallet, ToWallet, Amount, Timestamp) VALUES (${fromWallet}, ${toWallet}, ${amount}, ${new Date().toISOString()});
-    COMMIT;`;
-    res.json({ message: 'Transfer successful' });
-  } catch (err) {
-    res.status(500).json({ error: 'Transfer failed', details: err.message });
-  }
-});
-
-app.get('/balance/:walletId', async (req, res) => {
-  try {
-    const result = await sql.query`SELECT Balance FROM Wallets WHERE WalletId = ${req.params.walletId}`;
-    if (result.recordset.length === 0) return res.status(404).json({ error: 'Wallet not found' });
-    res.json({ balance: result.recordset[0].Balance });
-  } catch (err) {
-    res.status(500).json({ error: 'Balance fetch error', details: err.message });
-  }
-});
-
-app.post('/ussd', async (req, res) => {
-  const { text, phoneNumber } = req.body;
-  const input = text.split("*");
-  let response = "";
-  if (text === "") {
-    response = `CON Welcome to SADC CBDC\n1. Check Balance\n2. Register`;
-  } else if (text === "1") {
-    try {
-      const result = await sql.query`SELECT Balance FROM Wallets WHERE NationalId = ${phoneNumber}`;
-      response = result.recordset.length > 0
-        ? `END Your balance is ZAR ${result.recordset[0].Balance}`
-        : "END Wallet not found. Please register.";
-    } catch {
-      response = "END Error fetching balance.";
-    }
-  } else if (text === "2") {
-    response = "END Visit nearest agent to register.";
-  } else {
-    response = "END Invalid option";
-  }
-  res.set("Content-Type", "text/plain");
-  res.send(response);
-});
-
-app.listen(3000, () => console.log('CBDC Server running on port 3000'));
-
-
-// --- File: azure_sql_schema.sql ---
-CREATE TABLE Wallets (
-  WalletId VARCHAR(50) PRIMARY KEY,
-  Name NVARCHAR(100),
-  NationalId VARCHAR(50) UNIQUE,
-  PublicKey TEXT,
-  BiometricHash TEXT,
-  Balance DECIMAL(18,2)
-);
-
-CREATE TABLE Ledger (
-  TransactionId INT IDENTITY(1,1) PRIMARY KEY,
-  FromWallet VARCHAR(50),
-  ToWallet VARCHAR(50),
-  Amount DECIMAL(18,2),
-  Timestamp DATETIME DEFAULT GETDATE()
-);
-
-
-// --- File: mobile_wallet.js (React Native App with QR and Offline Mode) ---
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert } from 'react-native';
-import * as LocalAuthentication from 'expo-local-authentication';
-import axios from 'axios';
-import * as Print from 'expo-print';
-import QRCode from 'react-native-qrcode-svg';
-
-export default function WalletApp() {
-  const [nationalId, setNationalId] = useState('');
-  const [walletId, setWalletId] = useState(null);
-  const [balance, setBalance] = useState(null);
-
-  const authenticate = async () => {
-    const result = await LocalAuthentication.authenticateAsync();
-    if (!result.success) {
-      Alert.alert("Authentication failed");
-      return;
-    }
-    const hash = "demoBiometricHash"; // Replace with real hash
-    const res = await axios.post('http://localhost:3000/auth/biometric', {
-      nationalId,
-      biometricHash: hash
-    });
-    setWalletId(res.data.walletId);
-  };
-
-  const fetchBalance = async () => {
-    const res = await axios.get(`http://localhost:3000/balance/${walletId}`);
-    setBalance(res.data.balance);
-  };
-
-  return (
-    <View style={{ padding: 20 }}>
-      <Text style={{ fontSize: 18 }}>SADC CBDC Wallet</Text>
-      <TextInput placeholder="National ID" value={nationalId} onChangeText={setNationalId} style={{ borderBottomWidth: 1, marginBottom: 12 }} />
-      <Button title="Login with Biometrics" onPress={authenticate} />
-      {walletId && (
-        <>
-          <Button title="Check Balance" onPress={fetchBalance} />
-          {balance !== null && <Text>Balance: ZAR {balance}</Text>}
-          <QRCode value={walletId} size={200} />
-        </>
-      )}
-    </View>
-  );
-}
-
-const express = require('express');
-const multer = require('multer');
-const csv = require('csv-parser');
-const fs = require('fs');
-const cors = require('cors');
-const path = require('path');
-
-const app = express();
-const upload = multer({ dest: 'uploads/' });
-
-app.use(cors());
-app.use(express.static('public'));
-app.use(express.json());
-
-function analyzeCSV(filePath, callback) {
-  const results = [];
-
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on('data', (row) => {
-      const region = row.region || row.Region || row["Region Name"];
-      const allocated = parseFloat(row.allocated || row.Allocated || 0);
-      const spent = parseFloat(row.spent || row.Spent || 0);
-      const gap = allocated - spent;
-      const gapInflection = (gap / allocated) * 100;
-
-      results.push({
-        region,
-        allocated,
-        spent,
-        gap,
-        gapInflection: gapInflection.toFixed(2),
-      });
-    })
-    .on('end', () => {
-      callback(results);
-    });
-}
-
-app.post('/upload', upload.single('csvFile'), (req, res) => {
-  const filePath = req.file.path;
-
-  analyzeCSV(filePath, (data) => {
-    fs.unlinkSync(filePath); // Clean up uploaded file
-    res.json(data);
-  });
-});
-
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`📊 Financial Analyzer running at http://localhost:${PORT}`);
-});
-
-
-
-const express = require('express');
-const http = require('http');
-const socketIO = require('socket.io');
-
-const app = express();
-const server = http.createServer(app);
-const io = socketIO(server);
-
-app.use(express.static(__dirname));
-
-let clients = [];
-
-io.on('connection', socket => {
-  console.log('User connected:', socket.id);
-  clients.push(socket);
-
-  if (clients.length === 2) {
-    clients.forEach(s => s.emit('ready'));
-  }
-
-  socket.on('offer', offer => {
-    socket.broadcast.emit('offer', offer);
-  });
-
-  socket.on('answer', answer => {
-    socket.broadcast.emit('answer', answer);
-  });
-
-  socket.on('candidate', candidate => {
-    socket.broadcast.emit('candidate', candidate);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    clients = clients.filter(s => s !== socket);
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${port}`);
 });

@@ -186,4 +186,43 @@
             doc.text(`Expenses: ZAR ${document.getElementById('expenses').value}`, 20, 40);
             doc.text(`Net Profit: ZAR ${document.getElementById('net-profit').value}`, 20, 50);
             doc.text(`Audit Fee: ZAR ${auditFee.toFixed(2)}`, 20, 60);
-            doc
+            doc.text(`Final Amount After Audit Fee: ZAR ${finalAmountAfterFee.toFixed(2)}`, 20, 70);
+
+            // Save the generated PDF
+            doc.save(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${new Date().toISOString()}.pdf`);
+
+            // If you want to support XML generation instead of PDF, here's an example for XML using XML format
+            if (reportType === 'audit') {
+                const xmlData = `
+                    <AuditReport>
+                        <Income>${document.getElementById('income').value}</Income>
+                        <Expenses>${document.getElementById('expenses').value}</Expenses>
+                        <NetProfit>${document.getElementById('net-profit').value}</NetProfit>
+                        <AuditFee>${auditFee.toFixed(2)}</AuditFee>
+                        <FinalAmountAfterFee>${finalAmountAfterFee.toFixed(2)}</FinalAmountAfterFee>
+                    </AuditReport>
+                `;
+                const blob = new Blob([xmlData], { type: 'application/xml' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_Report_${new Date().toISOString()}.xml`;
+                link.click();
+            }
+        });
+
+        // Sample Transaction History
+        function addTransaction(date, transactionId, amount, status) {
+            const historyTable = document.getElementById('transaction-history');
+            const row = historyTable.insertRow();
+            row.insertCell(0).textContent = date;
+            row.insertCell(1).textContent = transactionId;
+            row.insertCell(2).textContent = amount.toFixed(2);
+            row.insertCell(3).textContent = status;
+        }
+
+        // Example of adding a new transaction
+        addTransaction('2026-02-25', 'TXN002', 1000.00, 'Completed');
+        addTransaction('2026-02-24', 'TXN003', 200.00, 'Pending');
+    </script>
+</body>
+</html>

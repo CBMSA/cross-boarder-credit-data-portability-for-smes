@@ -1,12 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SadiCoin Tech Marketplace</title>
+    <title>SadiCoin Tech Marketplace & Business Financial Management</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>  <!-- jsPDF for PDF generation -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -36,15 +36,12 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .cart, .transfer-section, .fx-section {
+        .cart, .transfer-section, .fx-section, .product-section, .financial-section {
             background-color: #f9f9f9;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin-top: 30px;
-        }
-        .cart ul {
-            list-style-type: none;
         }
         .receipt-section {
             margin-top: 30px;
@@ -52,6 +49,9 @@
             border: 1px solid #ddd;
             border-radius: 10px;
             background-color: #e7f5e7;
+        }
+        .form-group {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -74,39 +74,67 @@
         <div class="container">
             <h2>Welcome to SadiCoin Tech</h2>
             <p>Browse products, make payments securely, explore digital services, and trade foreign currencies!</p>
-            <p>NB :THIS PLATFORM IS STILL UNDER DEVELOPMENT ,PRODUCT LAUNCH COMING SOON,,,⏳</p>
+            <p>NB: THIS PLATFORM IS STILL UNDER DEVELOPMENT, PRODUCT LAUNCH COMING SOON...⏳</p>
         </div>
     </section>
 
-    <!-- FX Trading Section -->
-    <section class="container fx-section">
-        <h3>FX Trading</h3>
-        <form id="fx-trade-form">
+    <!-- Financial Statements Section -->
+    <section class="container financial-section">
+        <h3>Business Financial Statements</h3>
+        <form id="financial-statement-form">
             <div class="form-group">
-                <label for="currency-pair">Currency Pair</label>
-                <select id="currency-pair" class="form-control" required>
-                    <option value="ZAR-USD">ZAR to USD</option>
-                    <option value="ZAR-EUR">ZAR to EUR</option>
-                    <option value="USD-ZAR">USD to ZAR</option>
-                    <option value="EUR-ZAR">EUR to ZAR</option>
-                </select>
+                <label for="income">Business Income (ZAR)</label>
+                <input type="number" id="income" class="form-control" placeholder="Enter business income" required>
             </div>
             <div class="form-group">
-                <label for="amount">Amount (in ZAR)</label>
-                <input type="number" id="amount" class="form-control" placeholder="Enter amount in ZAR" required>
+                <label for="expenses">Business Expenses (ZAR)</label>
+                <input type="number" id="expenses" class="form-control" placeholder="Enter business expenses" required>
             </div>
-            <button type="submit" class="payment-button">Make Trade</button>
+            <div class="form-group">
+                <label for="net-profit">Net Profit (ZAR)</label>
+                <input type="number" id="net-profit" class="form-control" placeholder="Calculated from Income - Expenses" disabled>
+            </div>
+            <button type="submit" class="payment-button">Generate Financial Statement</button>
         </form>
     </section>
 
-    <!-- Final Transaction Report -->
-    <section id="transaction-report" class="container receipt-section" style="display:none;">
-        <h4>Transaction Report</h4>
-        <p><strong>Initial Amount (ZAR):</strong> <span id="initial-amount"></span></p>
-        <p><strong>Converted Amount (USD):</strong> <span id="converted-amount"></span></p>
-        <p><strong>Transaction Fee (2%):</strong> $<span id="transaction-fee"></span></p>
-        <p><strong>Bank Charge (Capitec):</strong> $<span id="bank-charge"></span></p>
-        <p><strong>Final Amount (USD):</strong> $<span id="final-amount"></span></p>
+    <!-- Transaction History Section -->
+    <section class="container financial-section">
+        <h3>Transaction History</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Transaction ID</th>
+                    <th>Amount (ZAR)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="transaction-history">
+                <!-- Example transaction data -->
+                <tr>
+                    <td>2026-02-25</td>
+                    <td>TXN001</td>
+                    <td>500.00</td>
+                    <td>Completed</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Financial Report Section -->
+    <section class="container financial-section">
+        <h3>Generate Financial Reports</h3>
+        <form id="financial-report-form">
+            <div class="form-group">
+                <label for="report-type">Report Type</label>
+                <select id="report-type" class="form-control" required>
+                    <option value="audit">Audit Report</option>
+                    <option value="tax">Tax Return Report</option>
+                </select>
+            </div>
+            <button type="submit" class="payment-button">Generate Report</button>
+        </form>
     </section>
 
     <!-- Footer Section -->
@@ -118,50 +146,44 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const exchangeRates = {
-            'ZAR-USD': 0.065, // Example exchange rate for ZAR to USD
-            'ZAR-EUR': 0.059, // Example exchange rate for ZAR to EUR
-            'USD-ZAR': 15.3,  // Example exchange rate for USD to ZAR
-            'EUR-ZAR': 17.0   // Example exchange rate for EUR to ZAR
-        };
+        const transactionFeePercentage = 2;  // Example transaction fee (2%)
+        const bankCharge = 0.10;  // Example bank charge (0.10 ZAR)
 
-        const transactionFeePercentage = 2;  // Transaction fee (2%)
-        const bankCharge = 0.10;  // Bank charge (0.10 ZAR)
-
-        // Handle FX trade form submission
-        document.getElementById('fx-trade-form').addEventListener('submit', function(event) {
+        // Handle Financial Statement Form Submission
+        document.getElementById('financial-statement-form').addEventListener('submit', function(event) {
             event.preventDefault();
 
-            const amountInZAR = parseFloat(document.getElementById('amount').value);
-            const selectedCurrencyPair = document.getElementById('currency-pair').value;
+            const income = parseFloat(document.getElementById('income').value);
+            const expenses = parseFloat(document.getElementById('expenses').value);
 
-            if (!amountInZAR || amountInZAR <= 0) {
-                alert('Please enter a valid amount.');
+            if (!income || !expenses) {
+                alert('Please enter valid income and expenses.');
                 return;
             }
 
-            // Get the exchange rate for the selected currency pair
-            const exchangeRate = exchangeRates[selectedCurrencyPair];
-
-            // Calculate the converted amount
-            const convertedAmount = amountInZAR * exchangeRate;
-
-            // Calculate the transaction fee
-            const transactionFee = (convertedAmount * transactionFeePercentage) / 100;
-
-            // Calculate the final amount after the transaction fee
-            const finalAmount = convertedAmount - transactionFee - bankCharge;
-
-            // Display the transaction report
-            document.getElementById('initial-amount').textContent = amountInZAR.toFixed(2) + ' ZAR';
-            document.getElementById('converted-amount').textContent = convertedAmount.toFixed(2) + ' USD';
-            document.getElementById('transaction-fee').textContent = transactionFee.toFixed(2);
-            document.getElementById('bank-charge').textContent = bankCharge.toFixed(2);
-            document.getElementById('final-amount').textContent = finalAmount.toFixed(2);
-
-            // Show the report section
-            document.getElementById('transaction-report').style.display = 'block';
+            const netProfit = income - expenses;
+            document.getElementById('net-profit').value = netProfit.toFixed(2);
         });
-    </script>
-</body>
-</htmt>
+
+        // Handle Financial Report Form Submission (Audit/Tax Report)
+        document.getElementById('financial-report-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const reportType = document.getElementById('report-type').value;
+
+            // Auto deduct audit fee
+            const auditFee = 0.05 * parseFloat(document.getElementById('net-profit').value); // Example fee
+            const finalAmountAfterFee = parseFloat(document.getElementById('net-profit').value) - auditFee;
+
+            alert(`Audit Fee Deducted: ${auditFee.toFixed(2)} ZAR. Final Amount: ${finalAmountAfterFee.toFixed(2)} ZAR`);
+
+            // Generate PDF Report (using jsPDF)
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.text(`SadiCoin Tech ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`, 20, 20);
+            doc.text(`Income: ZAR ${document.getElementById('income').value}`, 20, 30);
+            doc.text(`Expenses: ZAR ${document.getElementById('expenses').value}`, 20, 40);
+            doc.text(`Net Profit: ZAR ${document.getElementById('net-profit').value}`, 20, 50);
+            doc.text(`Audit Fee: ZAR ${auditFee.toFixed(2)}`, 20, 60);
+            doc

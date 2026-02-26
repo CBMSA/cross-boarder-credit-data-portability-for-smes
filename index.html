@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,18 +27,6 @@
             padding: 100px 0;
             text-align: center;
         }
-        .product-card {
-            border: 1px solid #ddd;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .product-img {
-            max-height: 200px;
-            object-fit: cover;
-            width: 100%;
-        }
         .payment-button {
             background-color: #4caf50;
             color: white;
@@ -47,21 +36,15 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .cart {
+        .cart, .transfer-section, .fx-section {
             background-color: #f9f9f9;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
         }
-        .transfer-section {
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-top: 50px;
-        }
-        .transfer-section input {
-            margin-bottom: 15px;
+        .cart ul {
+            list-style-type: none;
         }
         .receipt-section {
             margin-top: 30px;
@@ -80,8 +63,7 @@
             <div class="row">
                 <div class="col-12 text-center">
                     <h1>SadiCoin Tech Marketplace</h1>
-                    <p>Your go-to platform for secure payments, digital wallets, and more.</p>
-                    <p>NB :THIS SITE IS STILL OUR DEVELOPMENT, PRODUCT LAUNCH COMING SOON,,,⏳</p>
+                    <p>Your go-to platform for secure payments, digital wallets, FX trading, and more.</p>
                 </div>
             </div>
         </div>
@@ -91,77 +73,40 @@
     <section class="hero-section">
         <div class="container">
             <h2>Welcome to SadiCoin Tech</h2>
-            <p>Browse products, make payments securely, explore digital services, and send money!</p>
-            <button class="payment-button" onclick="startPaymentProcess()">Start Shopping</button>
+            <p>Browse products, make payments securely, explore digital services, and trade foreign currencies!</p>
+            <p>NB :THIS PLATFORM IS STILL UNDER DEVELOPMENT ,PRODUCT LAUNCH COMING SOON,,,⏳</p>
         </div>
     </section>
 
-    <!-- Product Upload for Businesses -->
-    <section class="container my-5">
-        <h3>Business Product Upload</h3>
-        <form id="product-upload-form">
+    <!-- FX Trading Section -->
+    <section class="container fx-section">
+        <h3>FX Trading</h3>
+        <form id="fx-trade-form">
             <div class="form-group">
-                <label for="product-name">Product Name</label>
-                <input type="text" id="product-name" class="form-control" placeholder="Enter product name" required>
+                <label for="currency-pair">Currency Pair</label>
+                <select id="currency-pair" class="form-control" required>
+                    <option value="ZAR-USD">ZAR to USD</option>
+                    <option value="ZAR-EUR">ZAR to EUR</option>
+                    <option value="USD-ZAR">USD to ZAR</option>
+                    <option value="EUR-ZAR">EUR to ZAR</option>
+                </select>
             </div>
             <div class="form-group">
-                <label for="product-description">Product Description</label>
-                <textarea id="product-description" class="form-control" placeholder="Enter product description" required></textarea>
+                <label for="amount">Amount (in ZAR)</label>
+                <input type="number" id="amount" class="form-control" placeholder="Enter amount in ZAR" required>
             </div>
-            <div class="form-group">
-                <label for="product-price">Price</label>
-                <input type="number" id="product-price" class="form-control" placeholder="Enter product price" required>
-            </div>
-            <div class="form-group">
-                <label for="product-image">Product Image</label>
-                <input type="file" id="product-image" class="form-control" accept="image/*" required>
-            </div>
-            <button type="submit" class="payment-button">Upload Product</button>
+            <button type="submit" class="payment-button">Make Trade</button>
         </form>
     </section>
 
-    <!-- Product Listings Section -->
-    <section class="container my-5">
-        <h3>Product Listings</h3>
-        <div id="product-listings" class="row">
-            <!-- Dynamically loaded products will go here -->
-        </div>
-    </section>
-
-    <!-- Cart Section -->
-    <section class="container cart">
-        <h3>Your Cart</h3>
-        <ul id="cart-items">
-            <!-- Cart items will be dynamically added here -->
-        </ul>
-        <p>Total: $<span id="cart-total">0</span></p>
-        <button class="payment-button" onclick="startPaymentProcess()">Proceed to Checkout</button>
-    </section>
-
-    <!-- Transfer Funds Section -->
-    <section class="container transfer-section">
-        <h3>Transfer Funds</h3>
-        <form id="transfer-form">
-            <div class="form-group">
-                <label for="recipient">Recipient's Wallet ID</label>
-                <input type="text" id="recipient" class="form-control" placeholder="Enter recipient's wallet ID" required>
-            </div>
-            <div class="form-group">
-                <label for="amount">Amount to Transfer</label>
-                <input type="number" id="amount" class="form-control" placeholder="Enter amount" required>
-            </div>
-            <button type="submit" class="payment-button">Transfer Funds</button>
-        </form>
-    </section>
-
-    <!-- Receipt Section -->
-    <section id="receipt-section" class="container receipt-section" style="display:none;">
-        <h4>Transfer Receipt</h4>
-        <p><strong>Transaction ID:</strong> <span id="transaction-id"></span></p>
-        <p><strong>Transfer Amount:</strong> $<span id="transfer-amount"></span></p>
-        <p><strong>Service Fee:</strong> $<span id="service-fee"></span></p>
-        <p><strong>Final Amount to Transfer:</strong> $<span id="final-amount"></span></p>
-        <p><strong>Date and Time:</strong> <span id="transaction-time"></span></p>
+    <!-- Final Transaction Report -->
+    <section id="transaction-report" class="container receipt-section" style="display:none;">
+        <h4>Transaction Report</h4>
+        <p><strong>Initial Amount (ZAR):</strong> <span id="initial-amount"></span></p>
+        <p><strong>Converted Amount (USD):</strong> <span id="converted-amount"></span></p>
+        <p><strong>Transaction Fee (2%):</strong> $<span id="transaction-fee"></span></p>
+        <p><strong>Bank Charge (Capitec):</strong> $<span id="bank-charge"></span></p>
+        <p><strong>Final Amount (USD):</strong> $<span id="final-amount"></span></p>
     </section>
 
     <!-- Footer Section -->
@@ -173,138 +118,50 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let cart = [];
-        let total = 0;
-        const serviceFeePercentage = 2; // Service fee (2% in this case)
+        const exchangeRates = {
+            'ZAR-USD': 0.065, // Example exchange rate for ZAR to USD
+            'ZAR-EUR': 0.059, // Example exchange rate for ZAR to EUR
+            'USD-ZAR': 15.3,  // Example exchange rate for USD to ZAR
+            'EUR-ZAR': 17.0   // Example exchange rate for EUR to ZAR
+        };
 
-        // Function to add products to the cart
-        function addToCart(productName, productPrice) {
-            cart.push({ name: productName, price: productPrice });
-            total += productPrice;
-            updateCart();
-        }
+        const transactionFeePercentage = 2;  // Transaction fee (2%)
+        const bankCharge = 0.10;  // Bank charge (0.10 ZAR)
 
-        // Update the cart display
-        function updateCart() {
-            const cartItems = document.getElementById('cart-items');
-            cartItems.innerHTML = ''; // Clear current items
-            cart.forEach(item => {
-                const listItem = document.createElement('li');
-                listItem.textContent = `${item.name} - $${item.price}`;
-                cartItems.appendChild(listItem);
-            });
-
-            // Update total price
-            document.getElementById('cart-total').textContent = total;
-        }
-
-        // Handle product upload form
-        document.getElementById('product-upload-form').addEventListener('submit', function(event) {
+        // Handle FX trade form submission
+        document.getElementById('fx-trade-form').addEventListener('submit', function(event) {
             event.preventDefault();
 
-            const name = document.getElementById('product-name').value;
-            const description = document.getElementById('product-description').value;
-            const price = parseFloat(document.getElementById('product-price').value);
-            const image = document.getElementById('product-image').files[0];
+            const amountInZAR = parseFloat(document.getElementById('amount').value);
+            const selectedCurrencyPair = document.getElementById('currency-pair').value;
 
-            if (name && description && price > 0 && image) {
-                // Simulate a product upload to backend
-                const productId = Date.now(); // Unique ID for the product
-
-                const product = {
-                    id: productId,
-                    name: name,
-                    description: description,
-                    price: price,
-                    image: URL.createObjectURL(image),
-                };
-
-                // Display the new product in the marketplace
-                const productContainer = document.getElementById('product-listings');
-                const productCard = document.createElement('div');
-                productCard.classList.add('col-md-4', 'product-card');
-
-                productCard.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}" class="product-img">
-                    <h4>${product.name}</h4>
-                    <p>${product.description}</p>
-                    <p>$${product.price}</p>
-                    <button class="payment-button" onclick="addToCart('${product.name}', ${product.price})">Add to Cart</button>
-                `;
-
-                productContainer.appendChild(productCard);
-
-                // Reset the form
-                document.getElementById('product-upload-form').reset();
-            } else {
-                alert('Please fill out all fields.');
-            }
-        });
-
-        // Simulate payment process (Google Pay, VodaPay, etc.)
-        function startPaymentProcess() {
-            const paymentChoice = prompt("Choose payment method: \n1. Google Pay\n2. VodaPay\n3. EcoCash");
-
-            switch(paymentChoice) {
-                case '1':
-                    alert("Google Pay payment gateway will be triggered here.");
-                    // Add your Google Pay API call here
-                    break;
-                case '2':
-                    alert("VodaPay payment gateway will be triggered here.");
-                    // Add your VodaPay API call here
-                    break;
-                case '3':
-                    alert("EcoCash payment gateway will be triggered here.");
-                    // Add your EcoCash API call here
-                    break;
-                default:
-                    alert("Invalid payment option.");
-            }
-        }
-
-        // Handle funds transfer
-        document.getElementById('transfer-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-
-            const recipient = document.getElementById('recipient').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-
-            if (!recipient || !amount || amount <= 0) {
-                alert('Please provide valid recipient ID and amount.');
+            if (!amountInZAR || amountInZAR <= 0) {
+                alert('Please enter a valid amount.');
                 return;
             }
 
-            // Calculate service fee
-            const serviceFee = (amount * serviceFeePercentage) / 100;
-            const finalAmount = amount - serviceFee;
+            // Get the exchange rate for the selected currency pair
+            const exchangeRate = exchangeRates[selectedCurrencyPair];
 
-            // Generate a unique transaction ID (for example, using Date.now())
-            const transactionId = 'TXN' + Date.now();
+            // Calculate the converted amount
+            const convertedAmount = amountInZAR * exchangeRate;
 
-            // Get the current date and time
-            const transactionTime = new Date().toLocaleString();
+            // Calculate the transaction fee
+            const transactionFee = (convertedAmount * transactionFeePercentage) / 100;
 
-            // Display receipt information
-            document.getElementById('transaction-id').textContent = transactionId;
-            document.getElementById('transfer-amount').textContent = amount.toFixed(2);
-            document.getElementById('service-fee').textContent = serviceFee.toFixed(2);
+            // Calculate the final amount after the transaction fee
+            const finalAmount = convertedAmount - transactionFee - bankCharge;
+
+            // Display the transaction report
+            document.getElementById('initial-amount').textContent = amountInZAR.toFixed(2) + ' ZAR';
+            document.getElementById('converted-amount').textContent = convertedAmount.toFixed(2) + ' USD';
+            document.getElementById('transaction-fee').textContent = transactionFee.toFixed(2);
+            document.getElementById('bank-charge').textContent = bankCharge.toFixed(2);
             document.getElementById('final-amount').textContent = finalAmount.toFixed(2);
-            document.getElementById('transaction-time').textContent = transactionTime;
 
-            // Show the receipt section
-            document.getElementById('receipt-section').style.display = 'block';
-
-            // Log the transaction details for debugging purposes
-            console.log(`Transaction ID: ${transactionId}`);
-            console.log(`Amount: $${amount}`);
-            console.log(`Service Fee: $${serviceFee.toFixed(2)}`);
-            console.log(`Final Amount: $${finalAmount.toFixed(2)}`);
-            console.log(`Transaction Time: ${transactionTime}`);
-
-            alert(`Transfer of $${finalAmount.toFixed(2)} to ${recipient} initiated.`);
+            // Show the report section
+            document.getElementById('transaction-report').style.display = 'block';
         });
     </script>
-
 </body>
-</html>
+</htmt>

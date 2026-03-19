@@ -1,7 +1,227 @@
-Sure! Here's the continuation and completion of the JavaScript code for the calculations, and the rest of the financial formulas:
-Html
-Copy code
-// Debt Sustainability
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Dashboard - Dark Theme</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Dark Mode CSS */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1c1c1c; /* Dark background */
+            color: #eaeaea; /* Light text for contrast */
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .box {
+            background-color: #252525;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px;
+            width: 280px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .box:hover {
+            background-color: #333;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+
+        p {
+            font-size: 18px;
+            color: #f0f0f0;
+        }
+
+        input,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        input:focus,
+        button:focus {
+            outline: none;
+            border: 2px solid #4CAF50;
+        }
+
+        footer {
+            background-color: #333;
+            color: #ccc;
+            text-align: center;
+            padding: 15px;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Financial Management Dashboard</h1>
+        <p>Track and visualize financial data with ease</p>
+    </header>
+
+    <div class="container">
+        <!-- Debt to GDP Ratio -->
+        <div class="box">
+            <h2>Debt to GDP Ratio</h2>
+            <label for="debt">Total Debt ($):</label>
+            <input type="number" id="debt" placeholder="Enter Total Debt">
+            <label for="gdp">GDP ($):</label>
+            <input type="number" id="gdp" placeholder="Enter GDP">
+            <button onclick="calculateDebtGDP()">Calculate Debt to GDP Ratio</button>
+            <p id="debtGDPResult"></p>
+        </div>
+
+        <!-- Debt Sustainability -->
+        <div class="box">
+            <h2>Debt Sustainability</h2>
+            <label for="primaryDeficit">Primary Deficit ($):</label>
+            <input type="number" id="primaryDeficit" placeholder="Enter Primary Deficit">
+            <label for="debtStock">Debt Stock ($):</label>
+            <input type="number" id="debtStock" placeholder="Enter Debt Stock">
+            <label for="interestRate">Interest Rate (%):</label>
+            <input type="number" id="interestRate" placeholder="Enter Interest Rate">
+            <button onclick="calculateDebtSustainability()">Calculate Debt Sustainability</button>
+            <p id="debtSustainabilityResult"></p>
+        </div>
+
+        <!-- Gross Financing Need -->
+        <div class="box">
+            <h2>Gross Financing Need</h2>
+            <label for="debtService">Debt Service ($):</label>
+            <input type="number" id="debtService" placeholder="Enter Debt Service">
+            <label for="primaryDeficitGFN">Primary Deficit ($):</label>
+            <input type="number" id="primaryDeficitGFN" placeholder="Enter Primary Deficit">
+            <button onclick="calculateGrossFinancingNeed()">Calculate Gross Financing Need</button>
+            <p id="grossFinancingNeedResult"></p>
+        </div>
+
+        <!-- Taxable Income -->
+        <div class="box">
+            <h2>Taxable Income</h2>
+            <label for="grossIncome">Gross Income ($):</label>
+            <input type="number" id="grossIncome" placeholder="Enter Gross Income">
+            <label for="deductions">Allowable Deductions ($):</label>
+            <input type="number" id="deductions" placeholder="Enter Deductions">
+            <button onclick="calculateTaxableIncome()">Calculate Taxable Income</button>
+            <p id="taxableIncomeResult"></p>
+        </div>
+
+        <!-- Labor Force Participation Rate -->
+        <div class="box">
+            <h2>Labor Force Participation Rate</h2>
+            <label for="laborForce">Labor Force:</label>
+            <input type="number" id="laborForce" placeholder="Enter Labor Force">
+            <label for="workingAgePopulation">Working-Age Population:</label>
+            <input type="number" id="workingAgePopulation" placeholder="Enter Working-Age Population">
+            <button onclick="calculateLaborForceParticipationRate()">Calculate Labor Force Participation Rate</button>
+            <p id="laborForceParticipationRateResult"></p>
+        </div>
+
+        <!-- Money Multiplier -->
+        <div class="box">
+            <h2>Money Multiplier</h2>
+            <label for="reserveRequirement">Reserve Requirement Ratio (%):</label>
+            <input type="number" id="reserveRequirement" placeholder="Enter Reserve Requirement Ratio">
+            <button onclick="calculateMoneyMultiplier()">Calculate Money Multiplier</button>
+            <p id="moneyMultiplierResult"></p>
+        </div>
+
+        <!-- Dividend Discount Model -->
+        <div class="box">
+            <h2>Dividend Discount Model (DDM)</h2>
+            <label for="dividend">Dividend ($):</label>
+            <input type="number" id="dividend" placeholder="Enter Dividend">
+            <label for="rateOfReturn">Rate of Return (%):</label>
+            <input type="number" id="rateOfReturn" placeholder="Enter Rate of Return">
+            <label for="growthRate">Growth Rate (%):</label>
+            <input type="number" id="growthRate" placeholder="Enter Growth Rate">
+            <button onclick="calculateDDM()">Calculate DDM</button>
+            <p id="ddmResult"></p>
+        </div>
+
+        <!-- Capital Asset Pricing Model -->
+        <div class="box">
+            <h2>Capital Asset Pricing Model (CAPM)</h2>
+            <label for="riskFreeRate">Risk-Free Rate (%):</label>
+            <input type="number" id="riskFreeRate" placeholder="Enter Risk-Free Rate">
+            <label for="beta">Beta:</label>
+            <input type="number" id="beta" placeholder="Enter Beta">
+            <label for="marketReturn">Market Return (%):</label>
+            <input type="number" id="marketReturn" placeholder="Enter Market Return">
+            <button onclick="calculateCAPM()">Calculate CAPM</button>
+            <p id="capmResult"></p>
+        </div>
+    </div>
+
+    <!-- Chart Container -->
+    <div class="chart-container">
+        <canvas id="financialChart"></canvas>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Financial Solutions</p>
+    </footer>
+
+    <script>
+        // Debt to GDP Ratio
+        function calculateDebtGDP() {
+            var debt = document.getElementById('debt').value;
+            var gdp = document.getElementById('gdp').value;
+            if (debt && gdp) {
+                var ratio = (debt / gdp) * 100;
+                document.getElementById('debtGDPResult').innerText = 'Debt to GDP Ratio: ' + ratio.toFixed(2) + '%';
+            }
+        }
+
+        // Debt Sustainability
         function calculateDebtSustainability() {
             var primaryDeficit = document.getElementById('primaryDeficit').value;
             var debtStock = document.getElementById('debtStock').value;
